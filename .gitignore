@@ -1,0 +1,14 @@
+## [Visual Studio / .NET Standard .gitignore]
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+.vscode/
+_ReSharper*/
+*.DotSettings.user
+*.suo
+*.userpreferences
+appsettings.Production.json
