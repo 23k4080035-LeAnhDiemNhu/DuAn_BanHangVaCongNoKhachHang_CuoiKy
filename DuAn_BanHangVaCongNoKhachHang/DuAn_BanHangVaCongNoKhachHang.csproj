@@ -1,5 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
+  <ItemGroup>
+    <ProjectReference Include="..\BanHang.CoreBusiness\BanHang.CoreBusiness.csproj" />
+    <ProjectReference Include="..\BanHang.UseCases\BanHang.UseCases.csproj" />
+    <ProjectReference Include="..\BanHang.DataStore.SQL\BanHang.DataStore.SQL.csproj" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
