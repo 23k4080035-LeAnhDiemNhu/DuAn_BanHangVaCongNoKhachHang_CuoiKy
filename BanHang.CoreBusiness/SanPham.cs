@@ -34,6 +34,11 @@ public class SanPham
     public string? HinhAnh { get; set; }
 
     /// <summary>
+    /// Ngày tạo sản phẩm trong hệ thống
+    /// </summary>
+    public DateTime NgayTao { get; set; } = DateTime.Now;
+
+    /// <summary>
     /// Trạng thái hoạt động: true là đang bán, false là ngừng bán
     /// </summary>
     public bool TrangThai { get; set; } = true;

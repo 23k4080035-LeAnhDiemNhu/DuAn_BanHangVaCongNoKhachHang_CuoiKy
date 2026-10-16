@@ -30,6 +30,10 @@ builder.Services.AddScoped<IDoiTrangThaiKhachHangUseCase, DoiTrangThaiKhachHangU
 
 builder.Services.AddScoped<ISanPhamRepository, SanPhamRepository>();
 builder.Services.AddScoped<IXemDanhSachSanPhamHoatDongUseCase, XemDanhSachSanPhamHoatDongUseCase>();
+builder.Services.AddScoped<IXemDanhSachSanPhamUseCase, XemDanhSachSanPhamUseCase>();
+builder.Services.AddScoped<IThemSanPhamUseCase, ThemSanPhamUseCase>();
+builder.Services.AddScoped<ICapNhatSanPhamUseCase, CapNhatSanPhamUseCase>();
+builder.Services.AddScoped<IDoiTrangThaiSanPhamUseCase, DoiTrangThaiSanPhamUseCase>();
 
 builder.Services.AddScoped<IHoaDonRepository, HoaDonRepository>();
 builder.Services.AddScoped<IXemDanhSachHoaDonUseCase, XemDanhSachHoaDonUseCase>();

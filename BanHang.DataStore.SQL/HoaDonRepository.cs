@@ -116,7 +116,7 @@ public class HoaDonRepository : IHoaDonRepository
             var sanPhamIds = request.ChiTietHoaDons.Select(c => c.SanPhamId).Distinct().ToList();
             const string sqlSanPhams = @"
                 SELECT SanPhamId, MaSanPham, TenSanPham, DonViTinh, DonGia, TrangThai
-                FROM dbo.SanPhams
+                FROM dbo.SanPhams WITH (UPDLOCK, HOLDLOCK)
                 WHERE SanPhamId IN @sanPhamIds;";
 
             var dbSanPhams = (await connection.QueryAsync<SanPhamDbDto>(
