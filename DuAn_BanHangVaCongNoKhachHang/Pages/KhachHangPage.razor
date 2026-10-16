@@ -1,0 +1,122 @@
+@page "/khach-hang"
+@using System.Globalization
+@using Microsoft.Extensions.Logging
+@inject IXemDanhSachKhachHangUseCase XemDanhSachKhachHangUseCase
+@inject ILogger<KhachHangPage> Logger
+
+<PageTitle>Danh sách khách hàng</PageTitle>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>Quản lý Khách hàng & Công nợ</h3>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex align-items-center my-4">
+        <div class="spinner-border text-primary me-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span>Đang tải dữ liệu khách hàng từ SQL Server...</span>
+    </div>
+}
+else if (hasError)
+{
+    <div class="alert alert-danger d-flex align-items-center" role="alert">
+        <div>
+            <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
+            <p class="mb-0">@errorMessage</p>
+        </div>
+    </div>
+}
+else if (danhSachKhachHang == null || !danhSachKhachHang.Any())
+{
+    <div class="alert alert-info" role="alert">
+        Chưa có khách hàng nào trong hệ thống.
+    </div>
+}
+else
+{
+    <div class="table-responsive">
+        <table class="table table-striped table-hover align-middle border">
+            <thead class="table-dark">
+                <tr>
+                    <th scope="col" style="width: 120px;">Mã KH</th>
+                    <th scope="col">Tên khách hàng</th>
+                    <th scope="col" style="width: 140px;">Điện thoại</th>
+                    <th scope="col" class="text-end" style="width: 180px;">Hạn mức công nợ</th>
+                    <th scope="col" class="text-end" style="width: 180px;">Công nợ hiện tại</th>
+                    <th scope="col" class="text-center" style="width: 150px;">Trạng thái nợ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var kh in danhSachKhachHang)
+                {
+                    <tr>
+                        <td class="fw-bold text-primary">@kh.MaKhachHang</td>
+                        <td>
+                            <div class="fw-semibold">@kh.TenKhachHang</div>
+                            @if (!string.IsNullOrEmpty(kh.DiaChi))
+                            {
+                                <small class="text-muted d-block text-truncate" style="max-width: 300px;">@kh.DiaChi</small>
+                            }
+                        </td>
+                        <td>@(string.IsNullOrEmpty(kh.SoDienThoai) ? "-" : kh.SoDienThoai)</td>
+                        <td class="text-end">@kh.HanMucCongNo.ToString("N0", viCulture) đ</td>
+                        <td class="text-end fw-bold @(kh.SoDuCongNo > 0 ? "text-danger" : "text-success")">
+                            @kh.SoDuCongNo.ToString("N0", viCulture) đ
+                        </td>
+                        <td class="text-center">
+                            @if (kh.DaVuotHanMuc)
+                            {
+                                <span class="badge bg-danger">Vượt hạn mức</span>
+                            }
+                            else if (kh.SoDuCongNo > 0)
+                            {
+                                <span class="badge bg-warning text-dark">Đang có nợ</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-success">Không nợ</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    private IEnumerable<KhachHang>? danhSachKhachHang;
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = string.Empty;
+    private readonly CultureInfo viCulture = new CultureInfo("vi-VN");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TaiDanhSachKhachHangAsync();
+    }
+
+    private async Task TaiDanhSachKhachHangAsync()
+    {
+        isLoading = true;
+        hasError = false;
+        errorMessage = string.Empty;
+
+        try
+        {
+            danhSachKhachHang = await XemDanhSachKhachHangUseCase.ExecuteAsync();
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = "Không thể tải danh sách khách hàng. Vui lòng kiểm tra kết nối hệ thống hoặc thử lại sau.";
+            Logger.LogError(ex, "Lỗi xảy ra khi gọi XemDanhSachKhachHangUseCase.ExecuteAsync()");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

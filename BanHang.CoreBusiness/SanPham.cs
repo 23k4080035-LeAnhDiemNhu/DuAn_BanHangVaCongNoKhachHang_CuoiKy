@@ -34,6 +34,11 @@ public class SanPham
     public string? HinhAnh { get; set; }
 
     /// <summary>
+    /// Trạng thái hoạt động: true là đang bán, false là ngừng bán
+    /// </summary>
+    public bool TrangThai { get; set; } = true;
+
+    /// <summary>
     /// Kiểm tra số lượng tồn kho có đủ đáp ứng số lượng cần xuất không
     /// </summary>
     public bool CoDuTonKho(int soLuongCan)

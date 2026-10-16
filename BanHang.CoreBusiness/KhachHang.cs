@@ -29,6 +29,11 @@ public class KhachHang
     public string? DiaChi { get; set; }
 
     /// <summary>
+    /// Trạng thái hoạt động: true là đang hoạt động, false là tạm khóa
+    /// </summary>
+    public bool TrangThai { get; set; } = true;
+
+    /// <summary>
     /// Hạn mức công nợ tối đa cho phép khách hàng được nợ (VNĐ). Mặc định là 0 (phải thanh toán ngay).
     /// </summary>
     [Range(0, double.MaxValue, ErrorMessage = "Hạn mức công nợ không được âm")]

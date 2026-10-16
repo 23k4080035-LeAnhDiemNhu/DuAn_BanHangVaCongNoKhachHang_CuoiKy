@@ -1,3 +1,8 @@
+using BanHang.DataStore.SQL;
+using BanHang.UseCases.HoaDonScreen;
+using BanHang.UseCases.KhachHangScreen;
+using BanHang.UseCases.PluginInterfaces.DataStore;
+using BanHang.UseCases.SanPhamScreen;
 using DuAn_BanHangVaCongNoKhachHang.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -8,6 +13,22 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddRazorPages();
 builder.Services.AddServerSideBlazor();
 builder.Services.AddSingleton<WeatherForecastService>();
+
+// Đăng ký SQL Connection Factory từ cấu hình
+var connectionString = builder.Configuration.GetConnectionString("BanHangCongNo")
+    ?? throw new InvalidOperationException("Chuỗi kết nối 'BanHangCongNo' không tìm thấy trong cấu hình.");
+builder.Services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(connectionString));
+
+// Đăng ký Repository và Use Cases (Scoped)
+builder.Services.AddScoped<IKhachHangRepository, KhachHangRepository>();
+builder.Services.AddScoped<IXemDanhSachKhachHangUseCase, XemDanhSachKhachHangUseCase>();
+
+builder.Services.AddScoped<ISanPhamRepository, SanPhamRepository>();
+builder.Services.AddScoped<IXemDanhSachSanPhamHoatDongUseCase, XemDanhSachSanPhamHoatDongUseCase>();
+
+builder.Services.AddScoped<IHoaDonRepository, HoaDonRepository>();
+builder.Services.AddScoped<IXemDanhSachHoaDonUseCase, XemDanhSachHoaDonUseCase>();
+builder.Services.AddScoped<ITaoHoaDonBanChiuUseCase, TaoHoaDonBanChiuUseCase>();
 
 var app = builder.Build();
 

@@ -30,7 +30,7 @@ public class HoaDon
     /// <summary>
     /// Hạn chót phải thanh toán hóa đơn (dùng để tính tuổi nợ quá hạn)
     /// </summary>
-    public DateTime HanThanhToan { get; set; } = DateTime.Today.AddDays(30);
+    public DateTime HanThanhToan { get; set; } = DateTime.Today;
 
     /// <summary>
     /// Tổng tiền phải thanh toán của hóa đơn
