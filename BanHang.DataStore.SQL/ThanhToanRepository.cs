@@ -1,0 +1,273 @@
+using System.Data;
+using BanHang.CoreBusiness;
+using BanHang.UseCases.PluginInterfaces.DataStore;
+using BanHang.UseCases.ThanhToanScreen;
+using Dapper;
+
+namespace BanHang.DataStore.SQL;
+
+/// <summary>
+/// Triển khai IThanhToanRepository truy xuất dữ liệu Phiếu thu & Phân bổ FIFO bằng Dapper
+/// </summary>
+public class ThanhToanRepository : IThanhToanRepository
+{
+    private readonly ISqlConnectionFactory _connectionFactory;
+
+    public ThanhToanRepository(ISqlConnectionFactory connectionFactory)
+    {
+        _connectionFactory = connectionFactory ?? throw new ArgumentNullException(nameof(connectionFactory));
+    }
+
+    public async Task<IEnumerable<ThanhToanListItemDto>> LayDanhSachThanhToanAsync()
+    {
+        const string sql = @"
+            SELECT 
+                t.ThanhToanId,
+                t.MaPhieuThu,
+                t.KhachHangId,
+                k.MaKhachHang,
+                k.TenKhachHang,
+                t.NgayThanhToan,
+                t.SoTien,
+                t.PhuongThuc,
+                t.GhiChu,
+                ISNULL(pb.TongDaPhanBo, 0) AS TongDaPhanBo,
+                (t.SoTien - ISNULL(pb.TongDaPhanBo, 0)) AS TienChuaPhanBo
+            FROM dbo.ThanhToans t
+            INNER JOIN dbo.KhachHangs k ON t.KhachHangId = k.KhachHangId
+            LEFT JOIN (
+                SELECT ThanhToanId, SUM(SoTienPhanBo) AS TongDaPhanBo
+                FROM dbo.PhanBoThanhToans
+                GROUP BY ThanhToanId
+            ) pb ON t.ThanhToanId = pb.ThanhToanId
+            ORDER BY t.NgayThanhToan DESC, t.ThanhToanId DESC;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        return await connection.QueryAsync<ThanhToanListItemDto>(sql);
+    }
+
+    public async Task<IEnumerable<HoaDonNoModel>> LayDanhSachHoaDonConNoTheoKhachHangAsync(int khachHangId)
+    {
+        const string sql = @"
+            SELECT 
+                HoaDonId,
+                MaHoaDon,
+                NgayLap,
+                TongTien,
+                DaThanhToan,
+                ConLai
+            FROM dbo.HoaDons
+            WHERE KhachHangId = @khachHangId AND ConLai > 0
+            ORDER BY NgayLap ASC, HoaDonId ASC;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        return await connection.QueryAsync<HoaDonNoModel>(sql, new { khachHangId });
+    }
+
+    public async Task<TaoThanhToanResult> GhiNhanThanhToanAsync(TaoThanhToanRequest request)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is System.Data.Common.DbConnection dbConnection)
+        {
+            await dbConnection.OpenAsync();
+        }
+        else
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
+        try
+        {
+            // 1. Khóa khách hàng theo hàng (UPDLOCK, HOLDLOCK) đồng bộ với quy ước tạo hóa đơn
+            // Điều này đảm bảo giao dịch tạo hóa đơn và giao dịch thanh toán cho cùng một khách hàng không thể chạy xen kẽ gây sai lệch công nợ
+            const string sqlLockKhachHang = @"
+                SELECT KhachHangId, MaKhachHang, TenKhachHang, TrangThai
+                FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK)
+                WHERE KhachHangId = @KhachHangId;";
+
+            var khachHang = await connection.QuerySingleOrDefaultAsync<dynamic>(
+                sqlLockKhachHang,
+                new { request.KhachHangId },
+                transaction: transaction);
+
+            if (khachHang == null)
+            {
+                transaction.Rollback();
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = "Khách hàng không tồn tại trong hệ thống."
+                };
+            }
+
+            // Quy tắc: Không cấm khách hàng tạm khóa trả nợ (chỉ cấm mua chịu thêm)
+
+            // 2. Kiểm tra tính duy nhất của Mã phiếu thu
+            const string sqlCheckMaPhieu = @"
+                SELECT COUNT(1) 
+                FROM dbo.ThanhToans WITH (UPDLOCK, HOLDLOCK) 
+                WHERE MaPhieuThu = @MaPhieuThu;";
+
+            var countMa = await connection.ExecuteScalarAsync<int>(
+                sqlCheckMaPhieu,
+                new { request.MaPhieuThu },
+                transaction: transaction);
+
+            if (countMa > 0)
+            {
+                transaction.Rollback();
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = $"Mã phiếu thu '{request.MaPhieuThu}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+                };
+            }
+
+            // 3. Đọc lại danh sách hóa đơn còn nợ đủ điều kiện trong transaction có khóa UPDLOCK, HOLDLOCK
+            const string sqlHoaDonConNo = @"
+                SELECT 
+                    HoaDonId,
+                    MaHoaDon,
+                    NgayLap,
+                    TongTien,
+                    DaThanhToan,
+                    ConLai
+                FROM dbo.HoaDons WITH (UPDLOCK, HOLDLOCK)
+                WHERE KhachHangId = @KhachHangId AND ConLai > 0
+                ORDER BY NgayLap ASC, HoaDonId ASC;";
+
+            var hoaDons = (await connection.QueryAsync<HoaDonNoModel>(
+                sqlHoaDonConNo,
+                new { request.KhachHangId },
+                transaction: transaction)).ToList();
+
+            // 4. Áp dụng thuật toán FIFO thuần túy trong CoreBusiness
+            var ketQuaFifo = ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan);
+
+            // 5. Kiểm tra phát hiện thay đổi so với bản xem trước (nếu có gửi bản xem trước)
+            if (request.DanhSachXemTruoc != null)
+            {
+                bool khopXemTruoc = true;
+                if (request.DanhSachXemTruoc.Count != ketQuaFifo.DanhSachPhanBo.Count)
+                {
+                    khopXemTruoc = false;
+                }
+                else
+                {
+                    for (int i = 0; i < request.DanhSachXemTruoc.Count; i++)
+                    {
+                        var xt = request.DanhSachXemTruoc[i];
+                        var pb = ketQuaFifo.DanhSachPhanBo[i];
+                        if (xt.HoaDonId != pb.HoaDonId || xt.SoTienPhanBo != pb.SoTienPhanBo)
+                        {
+                            khopXemTruoc = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (!khopXemTruoc)
+                {
+                    transaction.Rollback();
+                    return new TaoThanhToanResult
+                    {
+                        ThanhCong = false,
+                        DuLieuThayDoiSoVoiXemTruoc = true,
+                        DanhSachPhanBo = ketQuaFifo.DanhSachPhanBo,
+                        TongDaPhanBo = ketQuaFifo.TongDaPhanBo,
+                        TienChuaPhanBo = ketQuaFifo.TienChuaPhanBo,
+                        ThongBao = "Dữ liệu công nợ hóa đơn của khách hàng đã thay đổi so với bản xem trước. Vui lòng xem lại danh sách phân bổ mới trước khi xác nhận lưu."
+                    };
+                }
+            }
+
+            // 6. Ghi nhận Header phiếu thu vào dbo.ThanhToans
+            const string sqlInsertThanhToan = @"
+                INSERT INTO dbo.ThanhToans 
+                    (MaPhieuThu, KhachHangId, NgayThanhToan, SoTien, PhuongThuc, GhiChu, NgayTao)
+                VALUES 
+                    (@MaPhieuThu, @KhachHangId, @NgayThanhToan, @SoTien, @PhuongThuc, @GhiChu, GETDATE());
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+            var thanhToanId = await connection.ExecuteScalarAsync<int>(
+                sqlInsertThanhToan,
+                new
+                {
+                    request.MaPhieuThu,
+                    request.KhachHangId,
+                    request.NgayThanhToan,
+                    request.SoTien,
+                    request.PhuongThuc,
+                    request.GhiChu
+                },
+                transaction: transaction);
+
+            // 7. Ghi nhận từng dòng phân bổ và cập nhật hóa đơn
+            const string sqlInsertPhanBo = @"
+                INSERT INTO dbo.PhanBoThanhToans 
+                    (ThanhToanId, HoaDonId, SoTienPhanBo, NgayPhanBo)
+                VALUES 
+                    (@ThanhToanId, @HoaDonId, @SoTienPhanBo, GETDATE());";
+
+            const string sqlUpdateHoaDon = @"
+                UPDATE dbo.HoaDons
+                SET DaThanhToan = DaThanhToan + @SoTienPhanBo,
+                    TrangThai = CASE WHEN (DaThanhToan + @SoTienPhanBo) >= TongTien THEN 2 ELSE 1 END
+                WHERE HoaDonId = @HoaDonId;";
+
+            foreach (var pb in ketQuaFifo.DanhSachPhanBo)
+            {
+                // Thêm dòng phân bổ (NgayPhanBo là thời điểm thực tế GETDATE())
+                await connection.ExecuteAsync(
+                    sqlInsertPhanBo,
+                    new
+                    {
+                        ThanhToanId = thanhToanId,
+                        pb.HoaDonId,
+                        pb.SoTienPhanBo
+                    },
+                    transaction: transaction);
+
+                // Cập nhật DaThanhToan và TrangThai hóa đơn (Tuyệt đối không update cột computed ConLai)
+                await connection.ExecuteAsync(
+                    sqlUpdateHoaDon,
+                    new
+                    {
+                        pb.HoaDonId,
+                        pb.SoTienPhanBo
+                    },
+                    transaction: transaction);
+            }
+
+            // 8. Toàn bộ thao tác thành công -> Commit transaction
+            transaction.Commit();
+
+            return new TaoThanhToanResult
+            {
+                ThanhCong = true,
+                ThanhToanIdMoi = thanhToanId,
+                MaPhieuThu = request.MaPhieuThu,
+                SoTien = request.SoTien,
+                TongDaPhanBo = ketQuaFifo.TongDaPhanBo,
+                TienChuaPhanBo = ketQuaFifo.TienChuaPhanBo,
+                DanhSachPhanBo = ketQuaFifo.DanhSachPhanBo,
+                ThongBao = "Ghi nhận phiếu thu và phân bổ công nợ thành công."
+            };
+        }
+        catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 2627 || sqlEx.Number == 2601)
+        {
+            try { transaction.Rollback(); } catch { }
+            return new TaoThanhToanResult
+            {
+                ThanhCong = false,
+                ThongBao = $"Mã phiếu thu '{request.MaPhieuThu}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+            };
+        }
+        catch (Exception)
+        {
+            try { transaction.Rollback(); } catch { }
+            throw;
+        }
+    }
+}

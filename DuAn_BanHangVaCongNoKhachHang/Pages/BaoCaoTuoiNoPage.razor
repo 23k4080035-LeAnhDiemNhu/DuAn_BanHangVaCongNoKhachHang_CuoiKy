@@ -1,0 +1,196 @@
+@page "/bao-cao-tuoi-no"
+@using System.Globalization
+@using BanHang.CoreBusiness
+@using BanHang.UseCases.BaoCaoTuoiNoScreen
+@using Microsoft.Extensions.Logging
+@inject IXemBaoCaoTuoiNoUseCase XemBaoCaoTuoiNoUseCase
+@inject ILogger<BaoCaoTuoiNoPage> Logger
+
+<PageTitle>Báo cáo tuổi nợ khách hàng</PageTitle>
+
+<div class="mb-3">
+    <h3 class="mb-1 text-primary fw-bold">Báo Cáo Phân Tích Tuổi Nợ Khách Hàng</h3>
+    <p class="text-muted mb-0 small">Theo dõi công nợ theo 4 nhóm hạn nợ (Aging Schedule): 0–30, 31–60, 61–90 và trên 90 ngày.</p>
+</div>
+
+<!-- Bộ lọc chọn ngày chốt báo cáo -->
+<div class="card mb-3 shadow-sm border-0 bg-light">
+    <div class="card-body py-3">
+        <div class="row g-2 align-items-center">
+            <div class="col-auto">
+                <label for="input-ngay-bao-cao" class="col-form-label fw-semibold">Ngày chốt báo cáo:</label>
+            </div>
+            <div class="col-auto">
+                <input type="date" id="input-ngay-bao-cao" class="form-control" @bind="ngayBaoCaoInput" />
+            </div>
+            <div class="col-auto">
+                <button class="btn btn-primary" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@isLoading">
+                    @if (isLoading)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Đang tính toán...</span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-search me-1"></span>
+                        <span>Xem báo cáo</span>
+                    }
+                </button>
+            </div>
+            <div class="col-auto ms-auto">
+                <span class="badge bg-secondary p-2 fs-6">
+                    Số liệu áp dụng ngày: <strong id="lbl-ngay-ap-dung">@ngayBaoCaoApDung.ToString("dd/MM/yyyy")</strong>
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Chú thích quy ước nghiệp vụ đề 18 -->
+<div class="alert alert-secondary py-2 px-3 small mb-3" role="alert">
+    <ul class="mb-0 ps-3">
+        <li><strong>Quy ước nhóm:</strong> Nhóm 0–30 bao gồm khoản chưa đến hạn và khoản quá hạn tối đa 30 ngày tính đến ngày chốt báo cáo.</li>
+        <li><strong>Phạm vi thời gian:</strong> Báo cáo phản ánh các hóa đơn và phân bổ thanh toán đã ghi nhận đến hết ngày báo cáo (chưa tái dựng lại FIFO cho phiếu thu nhập lùi ngày).</li>
+    </ul>
+</div>
+
+@if (isLoading)
+{
+    <div class="d-flex align-items-center my-4">
+        <div class="spinner-border text-primary me-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span>Đang tính toán phân tích tuổi nợ từ SQL Server...</span>
+    </div>
+}
+else if (hasError)
+{
+    <div class="alert alert-danger" role="alert">
+        <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
+        <p class="mb-0">@errorMessage</p>
+    </div>
+}
+else if (baoCaoResult == null || !baoCaoResult.DanhSach.Any())
+{
+    <div class="alert alert-info" role="alert">
+        Không có dữ liệu khách hàng nào tại ngày báo cáo đã chọn.
+    </div>
+}
+else
+{
+    @if (baoCaoResult.TienThuChuaPhanBo > 0)
+    {
+        <div class="alert alert-warning py-2 mb-3 d-flex justify-content-between align-items-center" role="alert">
+            <div>
+                <strong>Tiền thu chưa phân bổ:</strong>
+                Tổng số tiền phiếu thu còn dư chưa cấn trừ tính đến ngày @ngayBaoCaoApDung.ToString("dd/MM/yyyy") là:
+                <strong class="text-danger">@baoCaoResult.TienThuChuaPhanBo.ToString("N0", cultureVi) ₫</strong>
+            </div>
+            <span class="badge bg-light text-dark border">Lưu riêng trên phiếu thu, không tự trừ vào dư nợ hóa đơn</span>
+        </div>
+    }
+
+    <div class="table-responsive">
+        <table class="table table-bordered table-hover align-middle mb-0" id="table-tuoi-no">
+            <thead class="table-dark text-center">
+                <tr>
+                    <th scope="col" style="width: 50px;">STT</th>
+                    <th scope="col" style="width: 100px;">Mã KH</th>
+                    <th scope="col">Tên khách hàng</th>
+                    <th scope="col" class="text-end" style="width: 130px;">Hạn mức</th>
+                    <th scope="col" class="text-end text-info" style="width: 130px;">0–30 ngày</th>
+                    <th scope="col" class="text-end text-warning" style="width: 130px;">31–60 ngày</th>
+                    <th scope="col" class="text-end text-danger" style="width: 130px;">61–90 ngày</th>
+                    <th scope="col" class="text-end text-danger" style="width: 130px;">Trên 90 ngày</th>
+                    <th scope="col" class="text-end" style="width: 140px;">Tổng công nợ</th>
+                </tr>
+            </thead>
+            <tbody>
+                @{
+                    int stt = 1;
+                }
+                @foreach (var item in baoCaoResult.DanhSach)
+                {
+                    <tr>
+                        <td class="text-center">@(stt++)</td>
+                        <td class="fw-semibold">@item.MaKhachHang</td>
+                        <td>
+                            <div>@item.TenKhachHang</div>
+                            @if (!string.IsNullOrEmpty(item.SoDienThoai))
+                            {
+                                <small class="text-muted">SĐT: @item.SoDienThoai</small>
+                            }
+                        </td>
+                        <td class="text-end text-muted">@item.HanMucCongNo.ToString("N0", cultureVi) ₫</td>
+                        <td class="text-end @(item.TuoiNo_0_30 > 0 ? "fw-semibold text-info" : "text-muted")">
+                            @item.TuoiNo_0_30.ToString("N0", cultureVi) ₫
+                        </td>
+                        <td class="text-end @(item.TuoiNo_31_60 > 0 ? "fw-semibold text-warning" : "text-muted")">
+                            @item.TuoiNo_31_60.ToString("N0", cultureVi) ₫
+                        </td>
+                        <td class="text-end @(item.TuoiNo_61_90 > 0 ? "fw-semibold text-danger" : "text-muted")">
+                            @item.TuoiNo_61_90.ToString("N0", cultureVi) ₫
+                        </td>
+                        <td class="text-end @(item.TuoiNo_Tren_90 > 0 ? "fw-bold text-danger" : "text-muted")">
+                            @item.TuoiNo_Tren_90.ToString("N0", cultureVi) ₫
+                        </td>
+                        <td class="text-end fw-bold @(item.TongCongNo > 0 ? "text-dark" : "text-muted")">
+                            @item.TongCongNo.ToString("N0", cultureVi) ₫
+                        </td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot class="table-light border-top border-2 fw-bold text-end">
+                <tr>
+                    <td colspan="4" class="text-center text-uppercase">Tổng cộng</td>
+                    <td class="text-info">@baoCaoResult.Tong_TuoiNo_0_30.ToString("N0", cultureVi) ₫</td>
+                    <td class="text-warning">@baoCaoResult.Tong_TuoiNo_31_60.ToString("N0", cultureVi) ₫</td>
+                    <td class="text-danger">@baoCaoResult.Tong_TuoiNo_61_90.ToString("N0", cultureVi) ₫</td>
+                    <td class="text-danger">@baoCaoResult.Tong_TuoiNo_Tren_90.ToString("N0", cultureVi) ₫</td>
+                    <td class="fs-6 text-primary">@baoCaoResult.Tong_CongNo.ToString("N0", cultureVi) ₫</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}
+
+@code {
+    private DateTime ngayBaoCaoInput = DateTime.Today;
+    private DateTime ngayBaoCaoApDung = DateTime.Today;
+    private BaoCaoTuoiNoResult? baoCaoResult;
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string errorMessage = string.Empty;
+
+    private readonly CultureInfo cultureVi = CultureInfo.GetCultureInfo("vi-VN");
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TaiBaoCaoAsync();
+    }
+
+    private async Task TaiBaoCaoAsync()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            errorMessage = string.Empty;
+
+            Logger.LogInformation("Đang tải Báo cáo tuổi nợ cho ngày {NgayBaoCao}", ngayBaoCaoInput.ToString("yyyy-MM-dd"));
+
+            baoCaoResult = await XemBaoCaoTuoiNoUseCase.ExecuteAsync(ngayBaoCaoInput);
+            ngayBaoCaoApDung = ngayBaoCaoInput; // Cập nhật ngày áp dụng sau khi tải thành công
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi tải Báo cáo tuổi nợ cho ngày {NgayBaoCao}", ngayBaoCaoInput.ToString("yyyy-MM-dd"));
+            hasError = true;
+            errorMessage = $"Không thể tải báo cáo tuổi nợ: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

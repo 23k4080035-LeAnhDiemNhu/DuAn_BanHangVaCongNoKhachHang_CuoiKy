@@ -54,7 +54,7 @@ public class IntegrationTests : IAsyncLifetime
             await testConn.OpenAsync();
 
             const string sqlCreateSchema = @"
-                IF OBJECT_ID('dbo.PhanBoThanhToans', 'U') IS NULL AND OBJECT_ID('dbo.ChiTietHoaDons', 'U') IS NULL
+                IF OBJECT_ID('dbo.KhachHangs', 'U') IS NULL
                 BEGIN
                     CREATE TABLE dbo.KhachHangs
                     (
@@ -68,7 +68,10 @@ public class IntegrationTests : IAsyncLifetime
                         NgayTao DATETIME NOT NULL DEFAULT (GETDATE()),
                         TrangThai BIT NOT NULL DEFAULT (1)
                     );
+                END
 
+                IF OBJECT_ID('dbo.SanPhams', 'U') IS NULL
+                BEGIN
                     CREATE TABLE dbo.SanPhams
                     (
                         SanPhamId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -82,7 +85,10 @@ public class IntegrationTests : IAsyncLifetime
                         NgayTao DATETIME NOT NULL DEFAULT (GETDATE()),
                         TrangThai BIT NOT NULL DEFAULT (1)
                     );
+                END
 
+                IF OBJECT_ID('dbo.HoaDons', 'U') IS NULL
+                BEGIN
                     CREATE TABLE dbo.HoaDons
                     (
                         HoaDonId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -97,7 +103,10 @@ public class IntegrationTests : IAsyncLifetime
                         GhiChu NVARCHAR(500) NULL,
                         NgayTao DATETIME NOT NULL DEFAULT (GETDATE())
                     );
+                END
 
+                IF OBJECT_ID('dbo.ChiTietHoaDons', 'U') IS NULL
+                BEGIN
                     CREATE TABLE dbo.ChiTietHoaDons
                     (
                         ChiTietHoaDonId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
@@ -109,12 +118,41 @@ public class IntegrationTests : IAsyncLifetime
                         DonGia DECIMAL(18,2) NOT NULL CHECK (DonGia >= 0),
                         ThanhTien AS (SoLuong * DonGia) PERSISTED
                     );
+                END
+
+                IF OBJECT_ID('dbo.ThanhToans', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.ThanhToans
+                    (
+                        ThanhToanId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        MaPhieuThu NVARCHAR(20) NOT NULL UNIQUE,
+                        KhachHangId INT NOT NULL FOREIGN KEY REFERENCES dbo.KhachHangs(KhachHangId),
+                        NgayThanhToan DATETIME NOT NULL DEFAULT (GETDATE()),
+                        SoTien DECIMAL(18,2) NOT NULL CHECK (SoTien > 0),
+                        PhuongThuc NVARCHAR(50) NOT NULL DEFAULT (N'ChuyenKhoan'),
+                        GhiChu NVARCHAR(500) NULL,
+                        NgayTao DATETIME NOT NULL DEFAULT (GETDATE())
+                    );
+                END
+
+                IF OBJECT_ID('dbo.PhanBoThanhToans', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.PhanBoThanhToans
+                    (
+                        PhanBoThanhToanId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        ThanhToanId INT NOT NULL FOREIGN KEY REFERENCES dbo.ThanhToans(ThanhToanId) ON DELETE CASCADE,
+                        HoaDonId INT NOT NULL FOREIGN KEY REFERENCES dbo.HoaDons(HoaDonId),
+                        SoTienPhanBo DECIMAL(18,2) NOT NULL CHECK (SoTienPhanBo > 0),
+                        NgayPhanBo DATETIME NOT NULL DEFAULT (GETDATE())
+                    );
                 END";
 
             await testConn.ExecuteAsync(sqlCreateSchema);
 
             // Làm sạch dữ liệu trong database test trước mỗi lần chạy
             await testConn.ExecuteAsync(@"
+                DELETE FROM dbo.PhanBoThanhToans;
+                DELETE FROM dbo.ThanhToans;
                 DELETE FROM dbo.ChiTietHoaDons;
                 DELETE FROM dbo.HoaDons;
                 DELETE FROM dbo.SanPhams;

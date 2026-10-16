@@ -3,6 +3,8 @@ using BanHang.UseCases.HoaDonScreen;
 using BanHang.UseCases.KhachHangScreen;
 using BanHang.UseCases.PluginInterfaces.DataStore;
 using BanHang.UseCases.SanPhamScreen;
+using BanHang.UseCases.ThanhToanScreen;
+using BanHang.UseCases.BaoCaoTuoiNoScreen;
 using DuAn_BanHangVaCongNoKhachHang.Data;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -29,6 +31,14 @@ builder.Services.AddScoped<IXemDanhSachSanPhamHoatDongUseCase, XemDanhSachSanPha
 builder.Services.AddScoped<IHoaDonRepository, HoaDonRepository>();
 builder.Services.AddScoped<IXemDanhSachHoaDonUseCase, XemDanhSachHoaDonUseCase>();
 builder.Services.AddScoped<ITaoHoaDonBanChiuUseCase, TaoHoaDonBanChiuUseCase>();
+
+builder.Services.AddScoped<IThanhToanRepository, ThanhToanRepository>();
+builder.Services.AddScoped<IXemDanhSachThanhToanUseCase, XemDanhSachThanhToanUseCase>();
+builder.Services.AddScoped<IXemTruocPhanBoFifoUseCase, XemTruocPhanBoFifoUseCase>();
+builder.Services.AddScoped<ITaoThanhToanUseCase, TaoThanhToanUseCase>();
+
+builder.Services.AddScoped<IBaoCaoTuoiNoRepository, BaoCaoTuoiNoRepository>();
+builder.Services.AddScoped<IXemBaoCaoTuoiNoUseCase, XemBaoCaoTuoiNoUseCase>();
 
 var app = builder.Build();
 
