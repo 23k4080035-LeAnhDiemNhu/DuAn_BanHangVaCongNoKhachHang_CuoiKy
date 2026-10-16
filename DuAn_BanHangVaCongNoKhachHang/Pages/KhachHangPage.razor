@@ -1,14 +1,33 @@
 @page "/khach-hang"
 @using System.Globalization
+@using BanHang.CoreBusiness
+@using BanHang.UseCases.KhachHangScreen
 @using Microsoft.Extensions.Logging
 @inject IXemDanhSachKhachHangUseCase XemDanhSachKhachHangUseCase
+@inject IThemKhachHangUseCase ThemKhachHangUseCase
+@inject ICapNhatKhachHangUseCase CapNhatKhachHangUseCase
+@inject IDoiTrangThaiKhachHangUseCase DoiTrangThaiKhachHangUseCase
 @inject ILogger<KhachHangPage> Logger
 
 <PageTitle>Danh sách khách hàng</PageTitle>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Quản lý Khách hàng & Công nợ</h3>
+    <div>
+        <h3 class="mb-1 text-primary fw-bold">Quản lý Khách hàng & Công nợ</h3>
+        <p class="text-muted mb-0 small">Theo dõi thông tin khách hàng, hạn mức tín dụng và công nợ bán chịu.</p>
+    </div>
+    <button class="btn btn-primary" id="btn-them-khach-hang" @onclick="MoModalThemKhachHang">
+        <span class="bi bi-person-plus me-1"></span> + Thêm khách hàng
+    </button>
 </div>
+
+@if (!string.IsNullOrEmpty(thongBaoThanhCong))
+{
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <strong>Thành công!</strong> @thongBaoThanhCong
+        <button type="button" class="btn-close" @onclick="() => thongBaoThanhCong = null" aria-label="Close"></button>
+    </div>
+}
 
 @if (isLoading)
 {
@@ -37,15 +56,17 @@ else if (danhSachKhachHang == null || !danhSachKhachHang.Any())
 else
 {
     <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle border">
+        <table class="table table-striped table-hover align-middle border" id="table-khach-hang">
             <thead class="table-dark">
                 <tr>
-                    <th scope="col" style="width: 120px;">Mã KH</th>
+                    <th scope="col" style="width: 110px;">Mã KH</th>
                     <th scope="col">Tên khách hàng</th>
-                    <th scope="col" style="width: 140px;">Điện thoại</th>
-                    <th scope="col" class="text-end" style="width: 180px;">Hạn mức công nợ</th>
-                    <th scope="col" class="text-end" style="width: 180px;">Công nợ hiện tại</th>
-                    <th scope="col" class="text-center" style="width: 150px;">Trạng thái nợ</th>
+                    <th scope="col" style="width: 130px;">Điện thoại</th>
+                    <th scope="col" class="text-end" style="width: 150px;">Hạn mức</th>
+                    <th scope="col" class="text-end" style="width: 150px;">Công nợ hiện tại</th>
+                    <th scope="col" class="text-center" style="width: 140px;">Trạng thái nợ</th>
+                    <th scope="col" class="text-center" style="width: 140px;">Hoạt động</th>
+                    <th scope="col" class="text-center" style="width: 160px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,9 +76,15 @@ else
                         <td class="fw-bold text-primary">@kh.MaKhachHang</td>
                         <td>
                             <div class="fw-semibold">@kh.TenKhachHang</div>
+                            @if (!string.IsNullOrEmpty(kh.Email))
+                            {
+                                <small class="text-muted d-block"><span class="bi bi-envelope"></span> @kh.Email</small>
+                            }
                             @if (!string.IsNullOrEmpty(kh.DiaChi))
                             {
-                                <small class="text-muted d-block text-truncate" style="max-width: 300px;">@kh.DiaChi</small>
+                                <small class="text-muted d-block text-truncate" style="max-width: 250px;">
+                                    <span class="bi bi-geo-alt"></span> @kh.DiaChi
+                                </small>
                             }
                         </td>
                         <td>@(string.IsNullOrEmpty(kh.SoDienThoai) ? "-" : kh.SoDienThoai)</td>
@@ -79,10 +106,212 @@ else
                                 <span class="badge bg-success">Không nợ</span>
                             }
                         </td>
+                        <td class="text-center">
+                            @if (kh.TrangThai)
+                            {
+                                <span class="badge bg-success">Đang hoạt động</span>
+                            }
+                            else
+                            {
+                                <span class="badge bg-secondary">Tạm khóa</span>
+                            }
+                        </td>
+                        <td class="text-center">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-outline-primary" title="Sửa thông tin" @onclick="() => MoModalSuaKhachHang(kh)">
+                                    Sửa
+                                </button>
+                                @if (kh.TrangThai)
+                                {
+                                    <button class="btn btn-outline-danger" title="Tạm khóa bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, false)">
+                                        Khóa
+                                    </button>
+                                }
+                                else
+                                {
+                                    <button class="btn btn-outline-success" title="Mở lại bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, true)">
+                                        Mở
+                                    </button>
+                                }
+                            </div>
+                        </td>
                     </tr>
                 }
             </tbody>
         </table>
+    </div>
+}
+
+<!-- Modal Thêm / Sửa Khách Hàng -->
+@if (hienThiModalForm)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        @(isEditing ? "Cập Nhật Thông Tin Khách Hàng" : "Thêm Khách Hàng Mới")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving"></button>
+                </div>
+                <div class="modal-body">
+                    @if (!string.IsNullOrEmpty(formErrorMessage))
+                    {
+                        <div class="alert alert-danger py-2 mb-3" role="alert">
+                            @formErrorMessage
+                        </div>
+                    }
+
+                    @if (canXacNhanHaHanMuc)
+                    {
+                        <div class="alert alert-warning py-2 mb-3" role="alert">
+                            <h6 class="alert-heading fw-bold">Xác nhận giảm hạn mức công nợ:</h6>
+                            <p class="mb-2 small">
+                                Hạn mức mới (<strong>@formModel.HanMucCongNo.ToString("N0", viCulture) đ</strong>) thấp hơn số dư công nợ hiện tại (<strong>@congNoHienTaiCanhBao.ToString("N0", viCulture) đ</strong>).
+                                Khách hàng sẽ bị đánh dấu <strong>Vượt hạn mức</strong> và không thể tiếp tục mua chịu cho đến khi thanh toán bớt nợ.
+                            </p>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="chkXacNhanHaHanMuc" @bind="formModel.XacNhanHaHanMucDuoiNo" />
+                                <label class="form-check-label fw-bold text-danger" for="chkXacNhanHaHanMuc">
+                                    Tôi xác nhận muốn áp dụng hạn mức thấp hơn dư nợ này.
+                                </label>
+                            </div>
+                        </div>
+                    }
+
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Mã khách hàng <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
+                                   @bind="formModel.MaKhachHang" disabled="@isEditing" maxlength="20" placeholder="VD: KH005" />
+                            @if (CoLoi("MaKhachHang"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("MaKhachHang")</div>
+                            }
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label fw-semibold">Tên khách hàng <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @(CoLoi("TenKhachHang") ? "is-invalid" : "")"
+                                   @bind="formModel.TenKhachHang" maxlength="150" placeholder="VD: Công ty TNHH Ánh Dương" />
+                            @if (CoLoi("TenKhachHang"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("TenKhachHang")</div>
+                            }
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Số điện thoại</label>
+                            <input type="text" class="form-control @(CoLoi("SoDienThoai") ? "is-invalid" : "")"
+                                   @bind="formModel.SoDienThoai" maxlength="20" placeholder="VD: 0901234567" />
+                            @if (CoLoi("SoDienThoai"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("SoDienThoai")</div>
+                            }
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Email</label>
+                            <input type="email" class="form-control @(CoLoi("Email") ? "is-invalid" : "")"
+                                   @bind="formModel.Email" maxlength="100" placeholder="VD: contact@anhduong.vn" />
+                            @if (CoLoi("Email"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("Email")</div>
+                            }
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Địa chỉ</label>
+                            <textarea class="form-control @(CoLoi("DiaChi") ? "is-invalid" : "")"
+                                      @bind="formModel.DiaChi" rows="2" maxlength="250" placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"></textarea>
+                            @if (CoLoi("DiaChi"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("DiaChi")</div>
+                            }
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Hạn mức công nợ (VNĐ) <span class="text-danger">*</span></label>
+                            <input type="number" step="1000" min="0" class="form-control @(CoLoi("HanMucCongNo") ? "is-invalid" : "")"
+                                   @bind="formModel.HanMucCongNo" />
+                            @if (CoLoi("HanMucCongNo"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("HanMucCongNo")</div>
+                            }
+                            <small class="text-muted">Nhập 0 nếu không cho phép bán chịu.</small>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-center mt-4">
+                            <div class="form-check form-switch fs-6">
+                                <input class="form-check-input" type="checkbox" id="chkTrangThai" @bind="formModel.TrangThai" />
+                                <label class="form-check-label fw-semibold" for="chkTrangThai">
+                                    @(formModel.TrangThai ? "Đang hoạt động (Cho phép bán chịu)" : "Tạm khóa (Chặn bán chịu)")
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary" id="btn-luu-khach-hang" @onclick="LuuKhachHangAsync" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Đang lưu...</span>
+                        }
+                        else
+                        {
+                            <span>@(isEditing ? "Lưu thay đổi" : "Thêm mới")</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- Modal Xác Nhận Tạm Khóa / Mở Lại -->
+@if (hienThiModalXacNhanTrangThai && khachHangDoiTrangThai != null)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow">
+                <div class="modal-header @(trangThaiMoiDuKien ? "bg-success" : "bg-warning") text-white">
+                    <h5 class="modal-title">
+                        @(trangThaiMoiDuKien ? "Xác nhận mở lại khách hàng" : "Xác nhận tạm khóa khách hàng")
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving"></button>
+                </div>
+                <div class="modal-body">
+                    @if (trangThaiMoiDuKien)
+                    {
+                        <p class="mb-0">
+                            Bạn có chắc chắn muốn mở lại khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
+                            Khách hàng sẽ được phép tạo hóa đơn bán chịu tiếp trong hạn mức.
+                        </p>
+                    }
+                    else
+                    {
+                        <p class="mb-0">
+                            Bạn có chắc chắn muốn tạm khóa khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
+                            Hệ thống sẽ <strong>chặn tạo hóa đơn bán chịu mới</strong> cho khách hàng này (khách vẫn được nộp tiền trả nợ).
+                        </p>
+                    }
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
+                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning")" id="btn-xac-nhan-doi-trang-thai"
+                            @onclick="XacNhanDoiTrangThaiAsync" disabled="@isSaving">
+                        @if (isSaving)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>@(trangThaiMoiDuKien ? "Xác nhận mở lại" : "Xác nhận tạm khóa")</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -91,7 +320,24 @@ else
     private bool isLoading = true;
     private bool hasError = false;
     private string errorMessage = string.Empty;
+    private string? thongBaoThanhCong;
     private readonly CultureInfo viCulture = new CultureInfo("vi-VN");
+
+    // State cho Modal Form Thêm / Sửa
+    private bool hienThiModalForm = false;
+    private bool isEditing = false;
+    private bool isSaving = false;
+    private string? formErrorMessage;
+    private Dictionary<string, string> loiTheoTruong = new();
+    private bool canXacNhanHaHanMuc = false;
+    private decimal congNoHienTaiCanhBao = 0;
+
+    private FormKhachHangModel formModel = new();
+
+    // State cho Modal Đổi Trạng Thái
+    private bool hienThiModalXacNhanTrangThai = false;
+    private KhachHang? khachHangDoiTrangThai;
+    private bool trangThaiMoiDuKien;
 
     protected override async Task OnInitializedAsync()
     {
@@ -118,5 +364,185 @@ else
         {
             isLoading = false;
         }
+    }
+
+    private void MoModalThemKhachHang()
+    {
+        isEditing = false;
+        formModel = new FormKhachHangModel
+        {
+            TrangThai = true,
+            HanMucCongNo = 0
+        };
+        loiTheoTruong.Clear();
+        formErrorMessage = null;
+        canXacNhanHaHanMuc = false;
+        hienThiModalForm = true;
+    }
+
+    private void MoModalSuaKhachHang(KhachHang kh)
+    {
+        isEditing = true;
+        formModel = new FormKhachHangModel
+        {
+            KhachHangId = kh.KhachHangId,
+            MaKhachHang = kh.MaKhachHang,
+            TenKhachHang = kh.TenKhachHang,
+            SoDienThoai = kh.SoDienThoai,
+            Email = kh.Email,
+            DiaChi = kh.DiaChi,
+            HanMucCongNo = kh.HanMucCongNo,
+            TrangThai = kh.TrangThai,
+            XacNhanHaHanMucDuoiNo = false
+        };
+        loiTheoTruong.Clear();
+        formErrorMessage = null;
+        canXacNhanHaHanMuc = false;
+        congNoHienTaiCanhBao = kh.SoDuCongNo;
+        hienThiModalForm = true;
+    }
+
+    private void DongModalForm()
+    {
+        hienThiModalForm = false;
+        loiTheoTruong.Clear();
+        formErrorMessage = null;
+        canXacNhanHaHanMuc = false;
+    }
+
+    private async Task LuuKhachHangAsync()
+    {
+        isSaving = true;
+        formErrorMessage = null;
+        loiTheoTruong.Clear();
+
+        try
+        {
+            if (!isEditing)
+            {
+                var req = new TaoKhachHangRequest
+                {
+                    MaKhachHang = formModel.MaKhachHang,
+                    TenKhachHang = formModel.TenKhachHang,
+                    SoDienThoai = formModel.SoDienThoai,
+                    Email = formModel.Email,
+                    DiaChi = formModel.DiaChi,
+                    HanMucCongNo = formModel.HanMucCongNo,
+                    TrangThai = formModel.TrangThai
+                };
+
+                var res = await ThemKhachHangUseCase.ExecuteAsync(req);
+                if (res.ThanhCong)
+                {
+                    thongBaoThanhCong = res.ThongBao;
+                    DongModalForm();
+                    await TaiDanhSachKhachHangAsync();
+                }
+                else
+                {
+                    formErrorMessage = res.ThongBao;
+                    loiTheoTruong = res.LoiTheoTruong;
+                }
+            }
+            else
+            {
+                var req = new CapNhatKhachHangRequest
+                {
+                    KhachHangId = formModel.KhachHangId,
+                    MaKhachHang = formModel.MaKhachHang,
+                    TenKhachHang = formModel.TenKhachHang,
+                    SoDienThoai = formModel.SoDienThoai,
+                    Email = formModel.Email,
+                    DiaChi = formModel.DiaChi,
+                    HanMucCongNo = formModel.HanMucCongNo,
+                    TrangThai = formModel.TrangThai,
+                    XacNhanHaHanMucDuoiNo = formModel.XacNhanHaHanMucDuoiNo
+                };
+
+                var res = await CapNhatKhachHangUseCase.ExecuteAsync(req);
+                if (res.ThanhCong)
+                {
+                    thongBaoThanhCong = res.ThongBao;
+                    DongModalForm();
+                    await TaiDanhSachKhachHangAsync();
+                }
+                else
+                {
+                    formErrorMessage = res.ThongBao;
+                    loiTheoTruong = res.LoiTheoTruong;
+                    if (res.CanXacNhanHaHanMuc)
+                    {
+                        canXacNhanHaHanMuc = true;
+                        congNoHienTaiCanhBao = res.CongNoHienTai;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi xảy ra khi lưu khách hàng");
+            formErrorMessage = "Đã xảy ra lỗi trong quá trình lưu dữ liệu. Vui lòng thử lại sau.";
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private void MoModalXacNhanDoiTrangThai(KhachHang kh, bool trangThaiMoi)
+    {
+        khachHangDoiTrangThai = kh;
+        trangThaiMoiDuKien = trangThaiMoi;
+        hienThiModalXacNhanTrangThai = true;
+    }
+
+    private async Task XacNhanDoiTrangThaiAsync()
+    {
+        if (khachHangDoiTrangThai == null) return;
+
+        isSaving = true;
+        try
+        {
+            var res = await DoiTrangThaiKhachHangUseCase.ExecuteAsync(khachHangDoiTrangThai.KhachHangId, trangThaiMoiDuKien);
+            if (res.ThanhCong)
+            {
+                thongBaoThanhCong = res.ThongBao;
+                hienThiModalXacNhanTrangThai = false;
+                await TaiDanhSachKhachHangAsync();
+            }
+            else
+            {
+                errorMessage = res.ThongBao;
+                hasError = true;
+                hienThiModalXacNhanTrangThai = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi đổi trạng thái khách hàng ID {KhachHangId}", khachHangDoiTrangThai.KhachHangId);
+            errorMessage = "Đã xảy ra lỗi khi thay đổi trạng thái khách hàng.";
+            hasError = true;
+            hienThiModalXacNhanTrangThai = false;
+        }
+        finally
+        {
+            isSaving = false;
+        }
+    }
+
+    private bool CoLoi(string field) => loiTheoTruong.ContainsKey(field);
+    private string LayLoi(string field) => loiTheoTruong.TryGetValue(field, out var val) ? val : string.Empty;
+
+    public class FormKhachHangModel
+    {
+        public int KhachHangId { get; set; }
+        public string MaKhachHang { get; set; } = string.Empty;
+        public string TenKhachHang { get; set; } = string.Empty;
+        public string? SoDienThoai { get; set; }
+        public string? Email { get; set; }
+        public string? DiaChi { get; set; }
+        public decimal HanMucCongNo { get; set; } = 0;
+        public bool TrangThai { get; set; } = true;
+        public bool XacNhanHaHanMucDuoiNo { get; set; } = false;
     }
 }

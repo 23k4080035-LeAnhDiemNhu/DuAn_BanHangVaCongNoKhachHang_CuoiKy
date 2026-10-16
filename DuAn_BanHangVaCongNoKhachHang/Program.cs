@@ -24,6 +24,9 @@ builder.Services.AddSingleton<ISqlConnectionFactory>(new SqlConnectionFactory(co
 // Đăng ký Repository và Use Cases (Scoped)
 builder.Services.AddScoped<IKhachHangRepository, KhachHangRepository>();
 builder.Services.AddScoped<IXemDanhSachKhachHangUseCase, XemDanhSachKhachHangUseCase>();
+builder.Services.AddScoped<IThemKhachHangUseCase, ThemKhachHangUseCase>();
+builder.Services.AddScoped<ICapNhatKhachHangUseCase, CapNhatKhachHangUseCase>();
+builder.Services.AddScoped<IDoiTrangThaiKhachHangUseCase, DoiTrangThaiKhachHangUseCase>();
 
 builder.Services.AddScoped<ISanPhamRepository, SanPhamRepository>();
 builder.Services.AddScoped<IXemDanhSachSanPhamHoatDongUseCase, XemDanhSachSanPhamHoatDongUseCase>();
