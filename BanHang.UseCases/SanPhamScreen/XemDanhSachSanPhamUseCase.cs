@@ -13,14 +13,19 @@ public interface IXemDanhSachSanPhamUseCase
 public class XemDanhSachSanPhamUseCase : IXemDanhSachSanPhamUseCase
 {
     private readonly ISanPhamRepository _sanPhamRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public XemDanhSachSanPhamUseCase(ISanPhamRepository sanPhamRepository)
+    public XemDanhSachSanPhamUseCase(
+        ISanPhamRepository sanPhamRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _sanPhamRepository = sanPhamRepository ?? throw new System.ArgumentNullException(nameof(sanPhamRepository));
+        _currentUserService = currentUserService ?? throw new System.ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<IEnumerable<SanPham>> ExecuteAsync()
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, VaiTroConstants.KeToanCongNo);
         return await _sanPhamRepository.LayDanhSachTatCaSanPhamAsync();
     }
 }

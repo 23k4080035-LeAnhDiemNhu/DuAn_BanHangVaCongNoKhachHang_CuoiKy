@@ -33,14 +33,17 @@ public class BaoCaoTuoiNoIntegrationTests : IAsyncLifetime
     public BaoCaoTuoiNoIntegrationTests()
     {
         _connectionFactory = new SqlConnectionFactory(TestConnectionString);
+        var ktcnUser = FakeCurrentUserService.KeToanCongNo();
+        var nvbhUser = FakeCurrentUserService.NhanVienBanHang();
+
         _baoCaoRepo = new BaoCaoTuoiNoRepository(_connectionFactory);
-        _xemBaoCaoUseCase = new XemBaoCaoTuoiNoUseCase(_baoCaoRepo);
+        _xemBaoCaoUseCase = new XemBaoCaoTuoiNoUseCase(_baoCaoRepo, ktcnUser);
 
         _hoaDonRepo = new HoaDonRepository(_connectionFactory);
-        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo);
+        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo, nvbhUser);
 
         _thanhToanRepo = new ThanhToanRepository(_connectionFactory);
-        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo);
+        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo, ktcnUser);
     }
 
     public async Task InitializeAsync()
@@ -349,6 +352,14 @@ public class BaoCaoTuoiNoIntegrationTests : IAsyncLifetime
             PhuongThuc = "ChuyenKhoan"
         });
         Assert.True(pt2.ThanhCong);
+
+        // Cập nhật NgayPhanBo theo ngày thanh toán thực tế để phân bổ có hiệu lực tại ngày chốt 16/10
+        using (var conn = new SqlConnection(TestConnectionString))
+        {
+            await conn.ExecuteAsync(
+                "UPDATE dbo.PhanBoThanhToans SET NgayPhanBo = '2026-09-01' WHERE ThanhToanId = @Pt1Id; UPDATE dbo.PhanBoThanhToans SET NgayPhanBo = '2026-09-15' WHERE ThanhToanId = @Pt2Id;",
+                new { Pt1Id = pt1.ThanhToanIdMoi!.Value, Pt2Id = pt2.ThanhToanIdMoi!.Value });
+        }
 
         // 4. Báo cáo ngày 16/10: Hóa đơn 10M đã được 2 phân bổ (2M + 3M) = 5M -> Dư nợ còn 5M
         var report = await _xemBaoCaoUseCase.ExecuteAsync(new DateTime(2026, 10, 16));

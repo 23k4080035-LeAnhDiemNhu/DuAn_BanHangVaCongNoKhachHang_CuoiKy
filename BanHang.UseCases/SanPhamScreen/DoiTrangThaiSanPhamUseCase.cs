@@ -12,14 +12,19 @@ public interface IDoiTrangThaiSanPhamUseCase
 public class DoiTrangThaiSanPhamUseCase : IDoiTrangThaiSanPhamUseCase
 {
     private readonly ISanPhamRepository _sanPhamRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public DoiTrangThaiSanPhamUseCase(ISanPhamRepository sanPhamRepository)
+    public DoiTrangThaiSanPhamUseCase(
+        ISanPhamRepository sanPhamRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _sanPhamRepository = sanPhamRepository ?? throw new ArgumentNullException(nameof(sanPhamRepository));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<DoiTrangThaiSanPhamResult> ExecuteAsync(int sanPhamId, bool trangThaiMoi)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
         if (sanPhamId <= 0)
         {
             return new DoiTrangThaiSanPhamResult

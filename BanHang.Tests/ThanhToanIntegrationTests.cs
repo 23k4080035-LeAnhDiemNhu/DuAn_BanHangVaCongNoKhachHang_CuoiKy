@@ -31,9 +31,9 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
     {
         _connectionFactory = new SqlConnectionFactory(TestConnectionString);
         _thanhToanRepo = new ThanhToanRepository(_connectionFactory);
-        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo);
+        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo, FakeCurrentUserService.KeToanCongNo());
         _hoaDonRepo = new HoaDonRepository(_connectionFactory);
-        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo);
+        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo, FakeCurrentUserService.NhanVienBanHang());
     }
 
     public async Task InitializeAsync()

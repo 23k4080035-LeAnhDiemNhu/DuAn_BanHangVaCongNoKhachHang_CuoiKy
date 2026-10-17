@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BanHang.DataStore.SQL", "Ba
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BanHang.Tests", "BanHang.Tests\BanHang.Tests.csproj", "{31859A86-0A4B-43A9-879D-77933B38F685}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BanHang.InitTool", "BanHang.InitTool\BanHang.InitTool.csproj", "{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{31859A86-0A4B-43A9-879D-77933B38F685}.Release|x64.Build.0 = Release|Any CPU
 		{31859A86-0A4B-43A9-879D-77933B38F685}.Release|x86.ActiveCfg = Release|Any CPU
 		{31859A86-0A4B-43A9-879D-77933B38F685}.Release|x86.Build.0 = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|x64.Build.0 = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Debug|x86.Build.0 = Debug|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|x64.ActiveCfg = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|x64.Build.0 = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|x86.ActiveCfg = Release|Any CPU
+		{D2ABA9C8-C4FB-48DD-B95A-2370B4D1F1EA}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

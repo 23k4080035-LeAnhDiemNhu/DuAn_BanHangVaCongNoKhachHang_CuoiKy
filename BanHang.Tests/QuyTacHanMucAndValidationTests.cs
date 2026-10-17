@@ -54,7 +54,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiKhongCoDongHang_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         var request = new TaoHoaDonRequest
         {
@@ -77,7 +77,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiSoLuongKhongHopLe_BaoLoi(int soLuong)
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         var request = new TaoHoaDonRequest
         {
@@ -101,7 +101,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiHanThanhToanTruocNgayLap_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         var request = new TaoHoaDonRequest
         {
@@ -125,7 +125,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiHanThanhToanChuaChon_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         var request = new TaoHoaDonRequest
         {
@@ -149,7 +149,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiMaHoaDonRongHoacQuaDai_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         // Test trống
         var reqRong = new TaoHoaDonRequest
@@ -184,7 +184,7 @@ public class QuyTacHanMucAndValidationTests
     public async Task TaoHoaDon_KhiChonTrungSanPham_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
-        var useCase = new TaoHoaDonBanChiuUseCase(repo);
+        var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
         var request = new TaoHoaDonRequest
         {

@@ -9,14 +9,19 @@ namespace BanHang.UseCases.ThanhToanScreen;
 public class XemTruocPhanBoFifoUseCase : IXemTruocPhanBoFifoUseCase
 {
     private readonly IThanhToanRepository _thanhToanRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public XemTruocPhanBoFifoUseCase(IThanhToanRepository thanhToanRepository)
+    public XemTruocPhanBoFifoUseCase(
+        IThanhToanRepository thanhToanRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _thanhToanRepository = thanhToanRepository ?? throw new ArgumentNullException(nameof(thanhToanRepository));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<XemTruocPhanBoResult> ExecuteAsync(XemTruocPhanBoRequest request)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
         if (request == null)
         {
             return new XemTruocPhanBoResult

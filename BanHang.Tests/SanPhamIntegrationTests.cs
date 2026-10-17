@@ -38,14 +38,17 @@ public class SanPhamIntegrationTests : IAsyncLifetime
     public SanPhamIntegrationTests()
     {
         _connectionFactory = new SqlConnectionFactory(TestConnectionString);
+        var ktcnUser = FakeCurrentUserService.KeToanCongNo();
+        var nvbhUser = FakeCurrentUserService.NhanVienBanHang();
+
         _sanPhamRepo = new SanPhamRepository(_connectionFactory);
-        _themSanPhamUseCase = new ThemSanPhamUseCase(_sanPhamRepo);
-        _capNhatSanPhamUseCase = new CapNhatSanPhamUseCase(_sanPhamRepo);
-        _doiTrangThaiSanPhamUseCase = new DoiTrangThaiSanPhamUseCase(_sanPhamRepo);
-        _xemDanhSachSanPhamUseCase = new XemDanhSachSanPhamUseCase(_sanPhamRepo);
+        _themSanPhamUseCase = new ThemSanPhamUseCase(_sanPhamRepo, ktcnUser);
+        _capNhatSanPhamUseCase = new CapNhatSanPhamUseCase(_sanPhamRepo, ktcnUser);
+        _doiTrangThaiSanPhamUseCase = new DoiTrangThaiSanPhamUseCase(_sanPhamRepo, ktcnUser);
+        _xemDanhSachSanPhamUseCase = new XemDanhSachSanPhamUseCase(_sanPhamRepo, ktcnUser);
 
         _hoaDonRepo = new HoaDonRepository(_connectionFactory);
-        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo);
+        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo, nvbhUser);
     }
 
     public async Task InitializeAsync()

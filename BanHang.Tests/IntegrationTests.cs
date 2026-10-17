@@ -31,7 +31,7 @@ public class IntegrationTests : IAsyncLifetime
     {
         _connectionFactory = new SqlConnectionFactory(TestConnectionString);
         _hoaDonRepository = new HoaDonRepository(_connectionFactory);
-        _useCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepository);
+        _useCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepository, FakeCurrentUserService.NhanVienBanHang());
     }
 
     public async Task InitializeAsync()

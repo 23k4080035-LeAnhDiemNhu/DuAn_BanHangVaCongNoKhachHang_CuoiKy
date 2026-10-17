@@ -13,14 +13,20 @@ public interface IThemKhachHangUseCase
 public class ThemKhachHangUseCase : IThemKhachHangUseCase
 {
     private readonly IKhachHangRepository _khachHangRepo;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public ThemKhachHangUseCase(IKhachHangRepository khachHangRepo)
+    public ThemKhachHangUseCase(
+        IKhachHangRepository khachHangRepo,
+        Common.ICurrentUserService currentUserService)
     {
-        _khachHangRepo = khachHangRepo;
+        _khachHangRepo = khachHangRepo ?? throw new ArgumentNullException(nameof(khachHangRepo));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<TaoKhachHangResult> ExecuteAsync(TaoKhachHangRequest request)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
+
         var result = new TaoKhachHangResult { ThanhCong = false };
 
         if (request == null)

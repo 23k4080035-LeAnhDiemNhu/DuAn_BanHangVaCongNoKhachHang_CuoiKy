@@ -1,5 +1,7 @@
 @page "/hoa-don"
+@attribute [Authorize(Roles = $"{VaiTroConstants.NhanVienBanHang},{VaiTroConstants.KeToanCongNo}")]
 @using System.Globalization
+@using BanHang.CoreBusiness
 @using Microsoft.Extensions.Logging
 @inject IXemDanhSachHoaDonUseCase XemDanhSachHoaDonUseCase
 @inject ILogger<HoaDonPage> Logger
@@ -8,9 +10,11 @@
 
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Quản lý Hóa đơn & Công nợ theo đơn hàng</h3>
-    <a href="/hoa-don/tao" class="btn btn-primary" id="btn-tao-hoa-don">
-        + Tạo hóa đơn bán chịu
-    </a>
+    <AuthorizeView Roles="@VaiTroConstants.NhanVienBanHang">
+        <a href="/hoa-don/tao" class="btn btn-primary" id="btn-tao-hoa-don">
+            + Tạo hóa đơn bán chịu
+        </a>
+    </AuthorizeView>
 </div>
 
 @if (isLoading)

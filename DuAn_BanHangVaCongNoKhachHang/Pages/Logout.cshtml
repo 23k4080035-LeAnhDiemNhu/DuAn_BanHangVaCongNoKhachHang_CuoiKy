@@ -1,0 +1,21 @@
+@page "/logout"
+@model DuAn_BanHangVaCongNoKhachHang.Pages.LogoutModel
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    ViewData["Title"] = "Đăng xuất";
+    Layout = "_AuthLayout";
+}
+
+<div class="container py-5 text-center">
+    <div class="card shadow-sm mx-auto" style="max-width: 400px;">
+        <div class="card-body p-4">
+            <h5 class="card-title text-secondary mb-3">Xác nhận đăng xuất</h5>
+            <p class="text-muted small">Bạn có chắc chắn muốn kết thúc phiên làm việc hiện tại không?</p>
+            <form method="post">
+                @Html.AntiForgeryToken()
+                <button type="submit" class="btn btn-danger w-100 py-2">Đăng xuất ngay</button>
+                <a href="/" class="btn btn-outline-secondary w-100 mt-2">Hủy bỏ</a>
+            </form>
+        </div>
+    </div>
+</div>

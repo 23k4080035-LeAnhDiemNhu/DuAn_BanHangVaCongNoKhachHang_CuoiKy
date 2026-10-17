@@ -62,9 +62,10 @@ public class SanPhamUnitTests
     public SanPhamUnitTests()
     {
         _fakeRepo = new FakeSanPhamRepository();
-        _themUseCase = new ThemSanPhamUseCase(_fakeRepo);
-        _capNhatUseCase = new CapNhatSanPhamUseCase(_fakeRepo);
-        _doiTrangThaiUseCase = new DoiTrangThaiSanPhamUseCase(_fakeRepo);
+        var ktcnUser = FakeCurrentUserService.KeToanCongNo();
+        _themUseCase = new ThemSanPhamUseCase(_fakeRepo, ktcnUser);
+        _capNhatUseCase = new CapNhatSanPhamUseCase(_fakeRepo, ktcnUser);
+        _doiTrangThaiUseCase = new DoiTrangThaiSanPhamUseCase(_fakeRepo, ktcnUser);
     }
 
     [Fact]

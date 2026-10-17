@@ -1,9 +1,71 @@
-﻿@page "/"
+@page "/"
+@using BanHang.CoreBusiness
 
-<PageTitle>Index</PageTitle>
+<PageTitle>Trang chủ - Bán Hàng & Công Nợ</PageTitle>
 
-<h1>Hello, world!</h1>
+<div class="py-4">
+    <div class="p-4 mb-4 bg-light rounded-3 shadow-sm">
+        <h1 class="display-6 fw-bold text-primary">Hệ Thống Bán Hàng & Quản Lý Công Nợ Khách Hàng</h1>
+        <p class="col-md-10 fs-6 text-muted">
+            Hệ thống hỗ trợ lập hóa đơn bán chịu, kiểm soát hạn mức tín dụng tức thời, thu tiền cấn trừ công nợ theo thứ tự FIFO và phân tích tuổi nợ.
+        </p>
+    </div>
 
-Welcome to your new app.
+    <AuthorizeView>
+        <Authorized>
+            <div class="alert alert-info d-flex align-items-center mb-4">
+                <div>
+                    Phiên làm việc hiện tại: <strong>@context.User.Identity?.Name</strong> 
+                    (Vai trò: <span class="badge bg-primary">@(context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>)
+                </div>
+            </div>
 
-<SurveyPrompt Title="How is Blazor working for you?" />
+            <div class="row g-4">
+                <AuthorizeView Roles="@VaiTroConstants.NhanVienBanHang" Context="nvbhContext">
+                    <div class="col-md-6">
+                        <div class="card h-100 shadow-sm border-0 border-top border-4 border-primary">
+                            <div class="card-body p-4">
+                                <h5 class="card-title fw-bold text-primary">Nhân Viên Bán Hàng</h5>
+                                <p class="card-text text-muted">
+                                    Thực hiện lập hóa đơn bán chịu, tra cứu hạn mức tín dụng của khách hàng và theo dõi danh sách hóa đơn xuất bán.
+                                </p>
+                                <div class="d-flex gap-2 mt-3">
+                                    <a href="/hoa-don/tao" class="btn btn-primary btn-sm">+ Lập hóa đơn mới</a>
+                                    <a href="/hoa-don" class="btn btn-outline-primary btn-sm">Xem danh sách hóa đơn</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </AuthorizeView>
+
+                <AuthorizeView Roles="@VaiTroConstants.KeToanCongNo" Context="ktcnContext">
+                    <div class="col-md-6">
+                        <div class="card h-100 shadow-sm border-0 border-top border-4 border-success">
+                            <div class="card-body p-4">
+                                <h5 class="card-title fw-bold text-success">Kế Toán Công Nợ</h5>
+                                <p class="card-text text-muted">
+                                    Quản lý danh mục khách hàng, sản phẩm bảng giá, lập phiếu thu tiền phân bổ FIFO và lập báo cáo phân tích tuổi nợ.
+                                </p>
+                                <div class="d-flex flex-wrap gap-2 mt-3">
+                                    <a href="/khach-hang" class="btn btn-outline-secondary btn-sm">Khách hàng</a>
+                                    <a href="/san-pham" class="btn btn-outline-secondary btn-sm">Sản phẩm</a>
+                                    <a href="/thanh-toan" class="btn btn-success btn-sm">Phiếu thu & FIFO</a>
+                                    <a href="/bao-cao-tuoi-no" class="btn btn-outline-success btn-sm">Báo cáo tuổi nợ</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </AuthorizeView>
+            </div>
+        </Authorized>
+        <NotAuthorized>
+            <div class="card shadow-sm border-0 p-4 text-center">
+                <h5 class="card-title text-secondary mb-3">Yêu cầu đăng nhập</h5>
+                <p class="text-muted">Vui lòng đăng nhập với tài khoản được cấp quyền để bắt đầu thao tác với hệ thống.</p>
+                <div>
+                    <a href="/login" class="btn btn-primary px-4">Đăng nhập tài khoản</a>
+                </div>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
+</div>

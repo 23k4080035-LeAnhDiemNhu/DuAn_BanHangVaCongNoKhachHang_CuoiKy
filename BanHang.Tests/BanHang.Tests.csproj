@@ -11,10 +11,12 @@
     <ProjectReference Include="..\BanHang.CoreBusiness\BanHang.CoreBusiness.csproj" />
     <ProjectReference Include="..\BanHang.UseCases\BanHang.UseCases.csproj" />
     <ProjectReference Include="..\BanHang.DataStore.SQL\BanHang.DataStore.SQL.csproj" />
+    <ProjectReference Include="..\DuAn_BanHangVaCongNoKhachHang\DuAn_BanHangVaCongNoKhachHang.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.10" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageReference Include="xunit" Version="2.9.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />

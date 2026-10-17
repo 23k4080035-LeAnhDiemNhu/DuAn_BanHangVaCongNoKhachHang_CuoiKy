@@ -1,5 +1,7 @@
 @page "/thanh-toan"
+@attribute [Authorize(Roles = VaiTroConstants.KeToanCongNo)]
 @using System.Globalization
+@using BanHang.CoreBusiness
 @using BanHang.UseCases.ThanhToanScreen
 @using Microsoft.Extensions.Logging
 @inject IXemDanhSachThanhToanUseCase XemDanhSachThanhToanUseCase

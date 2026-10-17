@@ -8,14 +8,20 @@ namespace BanHang.UseCases.HoaDonScreen;
 public class TaoHoaDonBanChiuUseCase : ITaoHoaDonBanChiuUseCase
 {
     private readonly IHoaDonRepository _hoaDonRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public TaoHoaDonBanChiuUseCase(IHoaDonRepository hoaDonRepository)
+    public TaoHoaDonBanChiuUseCase(
+        IHoaDonRepository hoaDonRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _hoaDonRepository = hoaDonRepository ?? throw new ArgumentNullException(nameof(hoaDonRepository));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<TaoHoaDonResult> ExecuteAsync(TaoHoaDonRequest request)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.NhanVienBanHang);
+
         // 1. Kiểm tra đối tượng yêu cầu
         if (request == null)
         {

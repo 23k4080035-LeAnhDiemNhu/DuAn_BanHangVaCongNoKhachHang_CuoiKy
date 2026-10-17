@@ -1,0 +1,16 @@
+@page "/accessdenied"
+@addTagHelper *, Microsoft.AspNetCore.Mvc.TagHelpers
+@{
+    ViewData["Title"] = "Từ chối truy cập";
+    Layout = "_AuthLayout";
+}
+
+<div class="container py-5 text-center">
+    <div class="card shadow-sm mx-auto border-danger" style="max-width: 500px;">
+        <div class="card-body p-4">
+            <h4 class="text-danger mb-3">Từ chối truy cập</h4>
+            <p class="text-muted">Tài khoản của bạn không có quyền truy cập vào chức năng hoặc trang này.</p>
+            <a href="/" class="btn btn-primary">Quay về trang chủ</a>
+        </div>
+    </div>
+</div>

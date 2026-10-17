@@ -11,14 +11,19 @@ public interface IDoiTrangThaiKhachHangUseCase
 public class DoiTrangThaiKhachHangUseCase : IDoiTrangThaiKhachHangUseCase
 {
     private readonly IKhachHangRepository _khachHangRepo;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public DoiTrangThaiKhachHangUseCase(IKhachHangRepository khachHangRepo)
+    public DoiTrangThaiKhachHangUseCase(
+        IKhachHangRepository khachHangRepo,
+        Common.ICurrentUserService currentUserService)
     {
-        _khachHangRepo = khachHangRepo;
+        _khachHangRepo = khachHangRepo ?? throw new ArgumentNullException(nameof(khachHangRepo));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<DoiTrangThaiKhachHangResult> ExecuteAsync(int khachHangId, bool trangThaiMoi)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
         if (khachHangId <= 0)
         {
             return new DoiTrangThaiKhachHangResult

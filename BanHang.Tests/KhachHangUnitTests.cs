@@ -62,9 +62,10 @@ public class KhachHangUnitTests
     public KhachHangUnitTests()
     {
         _fakeRepo = new FakeKhachHangRepository();
-        _themUseCase = new ThemKhachHangUseCase(_fakeRepo);
-        _capNhatUseCase = new CapNhatKhachHangUseCase(_fakeRepo);
-        _doiTrangThaiUseCase = new DoiTrangThaiKhachHangUseCase(_fakeRepo);
+        var ktcnUser = FakeCurrentUserService.KeToanCongNo();
+        _themUseCase = new ThemKhachHangUseCase(_fakeRepo, ktcnUser);
+        _capNhatUseCase = new CapNhatKhachHangUseCase(_fakeRepo, ktcnUser);
+        _doiTrangThaiUseCase = new DoiTrangThaiKhachHangUseCase(_fakeRepo, ktcnUser);
     }
 
     [Fact]

@@ -9,14 +9,19 @@ namespace BanHang.UseCases.HoaDonScreen;
 public class XemDanhSachHoaDonUseCase : IXemDanhSachHoaDonUseCase
 {
     private readonly IHoaDonRepository _hoaDonRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public XemDanhSachHoaDonUseCase(IHoaDonRepository hoaDonRepository)
+    public XemDanhSachHoaDonUseCase(
+        IHoaDonRepository hoaDonRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _hoaDonRepository = hoaDonRepository ?? throw new ArgumentNullException(nameof(hoaDonRepository));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<IEnumerable<HoaDonListItemDto>> ExecuteAsync()
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.NhanVienBanHang, CoreBusiness.VaiTroConstants.KeToanCongNo);
         return await _hoaDonRepository.LayDanhSachHoaDonAsync();
     }
 }

@@ -36,17 +36,20 @@ public class KhachHangIntegrationTests : IAsyncLifetime
     public KhachHangIntegrationTests()
     {
         _connectionFactory = new SqlConnectionFactory(TestConnectionString);
+        var ktcnUser = FakeCurrentUserService.KeToanCongNo();
+        var nvbhUser = FakeCurrentUserService.NhanVienBanHang();
+
         _khachHangRepo = new KhachHangRepository(_connectionFactory);
-        _themKhachHangUseCase = new ThemKhachHangUseCase(_khachHangRepo);
-        _capNhatKhachHangUseCase = new CapNhatKhachHangUseCase(_khachHangRepo);
-        _doiTrangThaiKhachHangUseCase = new DoiTrangThaiKhachHangUseCase(_khachHangRepo);
-        _xemDanhSachKhachHangUseCase = new XemDanhSachKhachHangUseCase(_khachHangRepo);
+        _themKhachHangUseCase = new ThemKhachHangUseCase(_khachHangRepo, ktcnUser);
+        _capNhatKhachHangUseCase = new CapNhatKhachHangUseCase(_khachHangRepo, ktcnUser);
+        _doiTrangThaiKhachHangUseCase = new DoiTrangThaiKhachHangUseCase(_khachHangRepo, ktcnUser);
+        _xemDanhSachKhachHangUseCase = new XemDanhSachKhachHangUseCase(_khachHangRepo, ktcnUser);
 
         _hoaDonRepo = new HoaDonRepository(_connectionFactory);
-        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo);
+        _taoHoaDonUseCase = new TaoHoaDonBanChiuUseCase(_hoaDonRepo, nvbhUser);
 
         _thanhToanRepo = new ThanhToanRepository(_connectionFactory);
-        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo);
+        _taoThanhToanUseCase = new TaoThanhToanUseCase(_thanhToanRepo, ktcnUser);
     }
 
     public async Task InitializeAsync()

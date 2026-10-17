@@ -8,14 +8,19 @@ namespace BanHang.UseCases.ThanhToanScreen;
 public class TaoThanhToanUseCase : ITaoThanhToanUseCase
 {
     private readonly IThanhToanRepository _thanhToanRepository;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public TaoThanhToanUseCase(IThanhToanRepository thanhToanRepository)
+    public TaoThanhToanUseCase(
+        IThanhToanRepository thanhToanRepository,
+        Common.ICurrentUserService currentUserService)
     {
         _thanhToanRepository = thanhToanRepository ?? throw new ArgumentNullException(nameof(thanhToanRepository));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<TaoThanhToanResult> ExecuteAsync(TaoThanhToanRequest request)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
         if (request == null)
         {
             return new TaoThanhToanResult

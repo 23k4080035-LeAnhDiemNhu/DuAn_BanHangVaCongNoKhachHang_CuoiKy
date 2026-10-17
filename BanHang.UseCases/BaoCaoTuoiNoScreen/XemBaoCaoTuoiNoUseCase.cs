@@ -10,14 +10,19 @@ namespace BanHang.UseCases.BaoCaoTuoiNoScreen;
 public class XemBaoCaoTuoiNoUseCase : IXemBaoCaoTuoiNoUseCase
 {
     private readonly IBaoCaoTuoiNoRepository _baoCaoRepo;
+    private readonly Common.ICurrentUserService _currentUserService;
 
-    public XemBaoCaoTuoiNoUseCase(IBaoCaoTuoiNoRepository baoCaoRepo)
+    public XemBaoCaoTuoiNoUseCase(
+        IBaoCaoTuoiNoRepository baoCaoRepo,
+        Common.ICurrentUserService currentUserService)
     {
-        _baoCaoRepo = baoCaoRepo;
+        _baoCaoRepo = baoCaoRepo ?? throw new ArgumentNullException(nameof(baoCaoRepo));
+        _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
     public async Task<BaoCaoTuoiNoResult> ExecuteAsync(DateTime ngayBaoCao)
     {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
         var duLieuDoc = await _baoCaoRepo.LayDuLieuBaoCaoAsync(ngayBaoCao);
 
         var result = new BaoCaoTuoiNoResult
