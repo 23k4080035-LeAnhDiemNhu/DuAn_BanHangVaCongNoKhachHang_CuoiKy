@@ -5,6 +5,7 @@
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
+    background-color: #F4F6FA;
 }
 
 main {
@@ -14,6 +15,7 @@ main {
     max-width: 100%;
     display: flex;
     flex-direction: column;
+    background-color: #F4F6FA;
 }
 
 article {
@@ -24,12 +26,12 @@ article {
 }
 
 .sidebar {
-    background-image: linear-gradient(180deg, rgb(5, 39, 103) 0%, #3a0647 70%);
+    background-color: #14243B; /* Sidebar navy phẳng, bỏ hoàn toàn gradient tím */
 }
 
 .top-row {
-    background-color: #f7f7f7;
-    border-bottom: 1px solid #d6d5d5;
+    background-color: #ffffff;
+    border-bottom: 1px solid #E2E8F0;
     justify-content: space-between;
     min-height: 3.5rem;
     height: auto;
@@ -39,6 +41,7 @@ article {
     align-items: center;
     width: 100%;
     max-width: 100%;
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
 }
 
     .top-row ::deep a, .top-row .btn-link {

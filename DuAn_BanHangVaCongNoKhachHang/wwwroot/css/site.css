@@ -1,7 +1,9 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: #F4F6FA;
+    color: #1E293B;
 }
 
 h1:focus {
@@ -9,17 +11,53 @@ h1:focus {
 }
 
 a, .btn-link {
-    color: #0071c1;
+    color: #2563EB;
+    text-decoration: none;
+}
+
+a:hover, .btn-link:hover {
+    color: #1D4ED8;
+    text-decoration: underline;
+}
+
+.text-primary {
+    color: #2563EB !important;
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: #ffffff;
+    background-color: #2563EB;
+    border-color: #2563EB;
+    transition: all 0.15s ease-in-out;
+}
+
+.btn-primary:hover {
+    color: #ffffff;
+    background-color: #1D4ED8;
+    border-color: #1D4ED8;
+}
+
+.btn-primary:focus, .btn-primary:focus-visible {
+    color: #ffffff;
+    background-color: #1D4ED8;
+    border-color: #1D4ED8;
+    box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25);
+}
+
+.btn-primary:disabled, .btn-primary.disabled {
+    background-color: #93C5FD;
+    border-color: #93C5FD;
+    color: #ffffff;
+    opacity: 0.8;
+}
+
+.rounded-pill {
+    border-radius: 9999px !important;
 }
 
 .content {
-    padding-top: 1.1rem;
+    padding-top: 1.25rem;
+    padding-bottom: 2rem;
     min-width: 0;
     width: 100%;
     max-width: 100%;
