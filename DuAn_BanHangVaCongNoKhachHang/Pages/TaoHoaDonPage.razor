@@ -9,8 +9,10 @@
 @inject IXemDanhSachKhachHangUseCase XemDanhSachKhachHangUseCase
 @inject IXemDanhSachSanPhamHoatDongUseCase XemDanhSachSanPhamHoatDongUseCase
 @inject ITaoHoaDonBanChiuUseCase TaoHoaDonBanChiuUseCase
+@inject IHoaDonNhapStateService HoaDonNhapStateService
 @inject NavigationManager NavigationManager
 @inject ILogger<TaoHoaDonPage> Logger
+@implements IDisposable
 
 <PageTitle>Lập hóa đơn bán chịu mới</PageTitle>
 
@@ -134,11 +136,11 @@
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-dark">Ngày lập <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control rounded-3" @bind="ngayLap" />
+                                <input type="date" class="form-control rounded-3" @bind="ngayLap" @bind:after="DongBoVaoDraft" />
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-dark">Hạn thanh toán <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control rounded-3" @bind="hanThanhToan" min="@ngayLap.ToString("yyyy-MM-dd")" />
+                                <input type="date" class="form-control rounded-3" @bind="hanThanhToan" min="@ngayLap.ToString("yyyy-MM-dd")" @bind:after="DongBoVaoDraft" />
                                 @if (!hanThanhToan.HasValue)
                                 {
                                     <small class="text-danger fst-italic">Vui lòng chọn hạn thanh toán</small>
@@ -147,7 +149,7 @@
                         </div>
                         <div class="mb-0">
                             <label class="form-label fw-semibold text-dark">Ghi chú</label>
-                            <textarea class="form-control rounded-3" rows="2" @bind="ghiChu" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
+                            <textarea class="form-control rounded-3" rows="2" @bind="ghiChu" @bind:after="DongBoVaoDraft" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
                         </div>
                     </div>
                 </div>
@@ -355,7 +357,7 @@
                 <!-- Nút thao tác lưu -->
                 <div class="d-flex flex-column align-items-end mb-4">
                     <div class="d-flex gap-2">
-                        <a href="/hoa-don" class="btn btn-outline-secondary rounded-pill px-4">Hủy bỏ</a>
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @onclick="HuyBo">Hủy bỏ</button>
                         <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" 
                                 disabled="@(isSubmitting || VuotHanMucHienTai || selectedKhachHangId <= 0 || !danhSachChiTiet.Any(c => c.SanPhamId > 0) || !hanThanhToan.HasValue)" 
                                 @onclick="LuuHoaDonAsync" id="btn-luu-hoa-don">
@@ -408,6 +410,8 @@
 
     private bool isLoadingData = true;
     private bool isSubmitting = false;
+    private bool daLuuThanhCong = false;
+    private bool daHuyBo = false;
     private string errorMessage = string.Empty;
     private string thongBaoThanhCong = string.Empty;
     private bool giaBiThayDoi = false;
@@ -415,7 +419,7 @@
     private readonly CultureInfo viCulture = new CultureInfo("vi-VN");
 
     private decimal TongTienHoaDonMoi => danhSachChiTiet.Sum(c => c.SoLuong * c.DonGiaHienThi);
-    private bool VuotHanMucHienTai => khachHangHienTai != null && (khachHangHienTai.SoDuCongNo + TongTienHoaDonMoi > khachHangHienTai.HanMucCongNo);
+    private bool VuotHanMucHienTai => khachHangHienTai != null && khachHangHienTai.KiemTraVuotHanMucKhiMua(TongTienHoaDonMoi);
 
     protected override async Task OnInitializedAsync()
     {
@@ -440,7 +444,52 @@
             danhSachSanPham = (await spTask).Where(s => s.TrangThai).ToList();
             maHoaDon = await maTask;
 
-            // Mặc định tạo sẵn 1 dòng sản phẩm trống nếu danh mục có hàng
+            // Khôi phục từ trạng thái hóa đơn nháp Scoped (nếu có)
+            if (HoaDonNhapStateService.CoDuLieuNhap)
+            {
+                var draft = HoaDonNhapStateService.LayDuLieuNhap();
+                selectedKhachHangId = draft.KhachHangId;
+                if (selectedKhachHangId > 0)
+                {
+                    // Lấy entity khách hàng mới nhất từ CSDL để tải lại số dư công nợ và hạn mức thực tế
+                    khachHangHienTai = danhSachKhachHang.FirstOrDefault(k => k.KhachHangId == selectedKhachHangId);
+                }
+
+                ngayLap = draft.NgayLap;
+                hanThanhToan = draft.HanThanhToan;
+                ghiChu = draft.GhiChu;
+
+                danhSachChiTiet.Clear();
+                if (draft.ChiTietDongs != null && draft.ChiTietDongs.Any())
+                {
+                    foreach (var d in draft.ChiTietDongs)
+                    {
+                        var line = new DongChiTietItem
+                        {
+                            SanPhamId = d.SanPhamId,
+                            SoLuong = d.SoLuong > 0 ? d.SoLuong : 1
+                        };
+
+                        if (d.SanPhamId > 0)
+                        {
+                            // Tải lại đơn giá niêm yết và số lượng tồn mới nhất từ CSDL
+                            var sp = danhSachSanPham.FirstOrDefault(s => s.SanPhamId == d.SanPhamId);
+                            if (sp != null)
+                            {
+                                line.TenSanPham = sp.TenSanPham;
+                                line.HinhAnh = sp.HinhAnh;
+                                line.DonViTinh = sp.DonViTinh;
+                                line.DonGiaHienThi = sp.DonGia;
+                                line.SoLuongTon = sp.SoLuongTon;
+                            }
+                        }
+
+                        danhSachChiTiet.Add(line);
+                    }
+                }
+            }
+
+            // Mặc định tạo sẵn 1 dòng sản phẩm trống nếu danh sách còn trống
             if (!danhSachChiTiet.Any())
             {
                 ThemDongSanPham();
@@ -469,11 +518,13 @@
             selectedKhachHangId = 0;
             khachHangHienTai = null;
         }
+        DongBoVaoDraft();
     }
 
     private void ThemDongSanPham()
     {
         danhSachChiTiet.Add(new DongChiTietItem());
+        DongBoVaoDraft();
     }
 
     private void XoaDongSanPham(int index)
@@ -481,6 +532,7 @@
         if (index >= 0 && index < danhSachChiTiet.Count)
         {
             danhSachChiTiet.RemoveAt(index);
+            DongBoVaoDraft();
         }
     }
 
@@ -517,6 +569,7 @@
             item.DonGiaHienThi = sp.DonGia;
             item.SoLuongTon = sp.SoLuongTon;
             item.DropdownOpen = false;
+            DongBoVaoDraft();
         }
     }
 
@@ -545,6 +598,41 @@
         if (index >= 0 && index < danhSachChiTiet.Count && int.TryParse(e.Value?.ToString(), out int sl))
         {
             danhSachChiTiet[index].SoLuong = sl > 0 ? sl : 1;
+            DongBoVaoDraft();
+        }
+    }
+
+    private void DongBoVaoDraft()
+    {
+        if (daLuuThanhCong || daHuyBo) return;
+
+        var dongs = danhSachChiTiet.Select(c => new DongHangNhapDto
+        {
+            SanPhamId = c.SanPhamId,
+            SoLuong = c.SoLuong
+        });
+
+        HoaDonNhapStateService.CapNhatNhap(
+            selectedKhachHangId,
+            ngayLap,
+            hanThanhToan,
+            ghiChu,
+            dongs
+        );
+    }
+
+    private void HuyBo()
+    {
+        daHuyBo = true;
+        HoaDonNhapStateService.XoaNhap();
+        NavigationManager.NavigateTo("/hoa-don");
+    }
+
+    public void Dispose()
+    {
+        if (!daLuuThanhCong && !daHuyBo)
+        {
+            DongBoVaoDraft();
         }
     }
 
@@ -614,6 +702,9 @@
 
             if (result.ThanhCong)
             {
+                daLuuThanhCong = true;
+                HoaDonNhapStateService.XoaNhap();
+
                 // Nếu mã hóa đơn thực tế khác mã dự kiến hiển thị ban đầu (do phiên khác đã lấy mã đó),
                 // thông báo rõ mã thực tế cho người dùng
                 if (!string.IsNullOrEmpty(result.MaHoaDonMoi) && 
@@ -641,6 +732,7 @@
                         line.DonGiaHienThi = sp.DonGia;
                     }
                 }
+                DongBoVaoDraft();
             }
             else
             {
@@ -659,12 +751,14 @@
                     }
                 }
                 catch { }
+                DongBoVaoDraft();
             }
         }
         catch (Exception ex)
         {
             errorMessage = "Đã xảy ra lỗi hệ thống khi lưu hóa đơn. Vui lòng liên hệ quản trị viên hoặc thử lại sau.";
             Logger.LogError(ex, "Lỗi xảy ra trong TaoHoaDonPage.LuuHoaDonAsync() cho mã hóa đơn {MaHoaDon}", maHoaDon);
+            DongBoVaoDraft();
         }
         finally
         {

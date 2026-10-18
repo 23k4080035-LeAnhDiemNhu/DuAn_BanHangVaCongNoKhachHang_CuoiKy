@@ -259,11 +259,24 @@ public class IntegrationTests : IAsyncLifetime
     [Fact]
     public async Task Test02_VuotHanMuc_BiTuChoi_VaKhongDeLaiDuLieu()
     {
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        // Ghi nhận số lượng hóa đơn, chi tiết, tồn kho và công nợ trước khi gọi tạo đơn
+        var tongSoHdTruoc = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.HoaDons;");
+        var soHdTruocCuaKhach = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.HoaDons WHERE KhachHangId = @KhachHang1Id;", new { KhachHang1Id });
+        var tongChiTietTruoc = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.ChiTietHoaDons;");
+        var tonKhoTruoc = await conn.ExecuteScalarAsync<int>(
+            "SELECT SoLuongTon FROM dbo.SanPhams WHERE SanPhamId = @SanPham1Id;", new { SanPham1Id });
+        var tongCongNoTruoc = await conn.ExecuteScalarAsync<decimal>(
+            "SELECT ISNULL(SUM(TongTien - DaThanhToan), 0) FROM dbo.HoaDons WHERE KhachHangId = @KhachHang1Id;", new { KhachHang1Id });
+
         // Khách hàng KH_TEST1 có hạn mức 10M
-        // Tạo đơn hàng 11 * 1M = 11M > 10M
+        // Tạo đơn hàng 11 * 1M = 11M > 10M (dùng cấp mã tự động phía máy chủ, không phụ thuộc mã client)
         var request = new TaoHoaDonRequest
         {
-            MaHoaDon = "HD_EXCEED_01",
+            MaHoaDon = string.Empty,
             KhachHangId = KhachHang1Id,
             NgayLap = DateTime.Today,
             HanThanhToan = DateTime.Today.AddDays(15),
@@ -277,14 +290,31 @@ public class IntegrationTests : IAsyncLifetime
 
         Assert.False(result.ThanhCong);
         Assert.Contains("vượt quá hạn mức công nợ", result.ThongBao);
+        Assert.Null(result.HoaDonIdMoi);
+        Assert.Null(result.MaHoaDonMoi);
 
-        // Kiểm tra không để lại dữ liệu rác trong database
-        using var conn = new SqlConnection(TestConnectionString);
-        await conn.OpenAsync();
+        // 1. So sánh tổng số hóa đơn trước và sau (tuyệt đối không thêm hóa đơn nào vào CSDL)
+        var tongSoHdSau = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.HoaDons;");
+        Assert.Equal(tongSoHdTruoc, tongSoHdSau);
 
-        var countHd = await conn.ExecuteScalarAsync<int>(
-            "SELECT COUNT(1) FROM dbo.HoaDons WHERE MaHoaDon = 'HD_EXCEED_01'");
-        Assert.Equal(0, countHd);
+        // 2. So sánh số hóa đơn của khách hàng trước và sau (bảo toàn danh sách hóa đơn cũ)
+        var soHdSauCuaKhach = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.HoaDons WHERE KhachHangId = @KhachHang1Id;", new { KhachHang1Id });
+        Assert.Equal(soHdTruocCuaKhach, soHdSauCuaKhach);
+
+        // 3. So sánh tổng số chi tiết hóa đơn trước và sau (tuyệt đối không thêm dòng chi tiết nào)
+        var tongChiTietSau = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.ChiTietHoaDons;");
+        Assert.Equal(tongChiTietTruoc, tongChiTietSau);
+
+        // 4. Bảo toàn tồn kho sản phẩm (không bị trừ tồn khi đơn bị từ chối)
+        var tonKhoSau = await conn.ExecuteScalarAsync<int>(
+            "SELECT SoLuongTon FROM dbo.SanPhams WHERE SanPhamId = @SanPham1Id;", new { SanPham1Id });
+        Assert.Equal(tonKhoTruoc, tonKhoSau);
+
+        // 5. Bảo toàn công nợ cũ của khách hàng (không bị tăng thêm)
+        var tongCongNoSau = await conn.ExecuteScalarAsync<decimal>(
+            "SELECT ISNULL(SUM(TongTien - DaThanhToan), 0) FROM dbo.HoaDons WHERE KhachHangId = @KhachHang1Id;", new { KhachHang1Id });
+        Assert.Equal(tongCongNoTruoc, tongCongNoSau);
     }
 
     [Fact]
@@ -504,5 +534,151 @@ public class IntegrationTests : IAsyncLifetime
         var count = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(1) FROM dbo.HoaDons WHERE MaHoaDon = 'HD_PRICE_CHANGE'");
         Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task Test09_BangDungHanMuc_ChoPhepLuuThanhCong()
+    {
+        // Khách hàng có hạn mức đúng 5,000,000 đ, công nợ hiện tại 2,000,000 đ.
+        // Hóa đơn mới: 3 sản phẩm x 1,000,000 đ = 3,000,000 đ.
+        // Tổng công nợ sau tạo: 2,000,000 + 3,000,000 = 5,000,000 đ == Hạn mức.
+        // Luật: Bằng hạn mức được phép tạo thành công.
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        string maKh = $"KH_EXACT_{Guid.NewGuid():N}"[..12];
+        int khId = await conn.ExecuteScalarAsync<int>(@"
+            INSERT INTO dbo.KhachHangs (MaKhachHang, TenKhachHang, HanMucCongNo, TrangThai)
+            VALUES (@maKh, N'Khách Hàng Đúng Hạn Mức', 5000000, 1);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);", new { maKh });
+
+        // Tạo 1 hóa đơn nợ trước đó 2,000,000 đ
+        string maHdCu = $"HD_EXACT_PREV_{Guid.NewGuid():N}"[..15];
+        await conn.ExecuteAsync(@"
+            INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai)
+            VALUES (@maHdCu, @khId, DATEADD(day, -3, GETDATE()), DATEADD(day, 27, GETDATE()), 2000000, 0, 0);",
+            new { maHdCu, khId });
+
+        string maSp = $"SP_EXACT_{Guid.NewGuid():N}"[..12];
+        int spId = await conn.ExecuteScalarAsync<int>(@"
+            INSERT INTO dbo.SanPhams (MaSanPham, TenSanPham, DonViTinh, DonGia, SoLuongTon, TrangThai)
+            VALUES (@maSp, N'Sản Phẩm Đúng Hạn Mức', N'Cái', 1000000, 50, 1);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);", new { maSp });
+
+        string maHdMoi = $"HD_EXACT_NEW_{Guid.NewGuid():N}"[..15];
+        var request = new TaoHoaDonRequest
+        {
+            MaHoaDon = maHdMoi,
+            KhachHangId = khId,
+            NgayLap = DateTime.Today,
+            HanThanhToan = DateTime.Today.AddDays(15),
+            GhiChu = "Đơn bán chịu đúng bằng hạn mức",
+            ChiTietHoaDons = new List<TaoChiTietHoaDonDto>
+            {
+                new() { SanPhamId = spId, SoLuong = 3, DonGiaHienThi = 1000000 } // 3M
+            }
+        };
+
+        var result = await _useCase.ExecuteAsync(request);
+
+        Assert.True(result.ThanhCong);
+        Assert.NotNull(result.HoaDonIdMoi);
+        Assert.Equal(3000000m, result.TongTien);
+
+        // Kiểm tra tồn kho bị trừ đúng 3 cái (50 - 3 = 47)
+        int tonConLai = await conn.ExecuteScalarAsync<int>(
+            "SELECT SoLuongTon FROM dbo.SanPhams WHERE SanPhamId = @spId;", new { spId });
+        Assert.Equal(47, tonConLai);
+
+        // Kiểm tra hóa đơn mới được lưu trong DB
+        var countHd = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.HoaDons WHERE MaHoaDon = @maHdMoi;", new { maHdMoi });
+        Assert.Equal(1, countHd);
+    }
+
+    [Fact]
+    public async Task Test10_VuotDungMotDong_BiTuChoi_KhongTaoHoaDon_KhongTruTon()
+    {
+        // Khách hàng có hạn mức 5,000,000 đ, công nợ hiện tại 2,000,000 đ.
+        // Hóa đơn mới: 3,000,001 đ.
+        // Tổng công nợ sau tạo: 2,000,000 + 3,000,001 = 5,000,001 đ > 5,000,000 đ (vượt đúng 1 đồng).
+        // Luật: Vượt hạn mức 1 đồng bị từ chối; không tạo hóa đơn, không trừ tồn kho.
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        string maKh = $"KH_OVER1_{Guid.NewGuid():N}"[..12];
+        int khId = await conn.ExecuteScalarAsync<int>(@"
+            INSERT INTO dbo.KhachHangs (MaKhachHang, TenKhachHang, HanMucCongNo, TrangThai)
+            VALUES (@maKh, N'Khách Hàng Vượt 1 Đồng', 5000000, 1);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);", new { maKh });
+
+        // Tạo 1 hóa đơn nợ trước đó 2,000,000 đ
+        string maHdCu = $"HD_OVER1_PREV_{Guid.NewGuid():N}"[..15];
+        await conn.ExecuteAsync(@"
+            INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai)
+            VALUES (@maHdCu, @khId, DATEADD(day, -3, GETDATE()), DATEADD(day, 27, GETDATE()), 2000000, 0, 0);",
+            new { maHdCu, khId });
+
+        string maSp = $"SP_OVER1_{Guid.NewGuid():N}"[..12];
+        int spId = await conn.ExecuteScalarAsync<int>(@"
+            INSERT INTO dbo.SanPhams (MaSanPham, TenSanPham, DonViTinh, DonGia, SoLuongTon, TrangThai)
+            VALUES (@maSp, N'Sản Phẩm Vượt 1 Đồng', N'Cái', 3000001, 20, 1);
+            SELECT CAST(SCOPE_IDENTITY() AS INT);", new { maSp });
+
+        var tongSoHdTruoc = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.HoaDons;");
+        var tongChiTietTruoc = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.ChiTietHoaDons;");
+        var tonKhoTruoc = await conn.ExecuteScalarAsync<int>(
+            "SELECT SoLuongTon FROM dbo.SanPhams WHERE SanPhamId = @spId;", new { spId });
+        var tongCongNoTruoc = await conn.ExecuteScalarAsync<decimal>(
+            "SELECT ISNULL(SUM(TongTien - DaThanhToan), 0) FROM dbo.HoaDons WHERE KhachHangId = @khId;", new { khId });
+
+        // Sử dụng mã tự động phía máy chủ
+        var request = new TaoHoaDonRequest
+        {
+            MaHoaDon = string.Empty,
+            KhachHangId = khId,
+            NgayLap = DateTime.Today,
+            HanThanhToan = DateTime.Today.AddDays(15),
+            GhiChu = "Đơn bán chịu vượt đúng 1 đồng (mã tự động)",
+            ChiTietHoaDons = new List<TaoChiTietHoaDonDto>
+            {
+                new() { SanPhamId = spId, SoLuong = 1, DonGiaHienThi = 3000001 } // 3.000.001 đ
+            }
+        };
+
+        var result = await _useCase.ExecuteAsync(request);
+
+        Assert.False(result.ThanhCong);
+        Assert.Contains("vượt quá hạn mức công nợ", result.ThongBao);
+        Assert.Null(result.HoaDonIdMoi);
+        Assert.Null(result.MaHoaDonMoi);
+
+        // 1. So sánh tổng số hóa đơn trước và sau (tuyệt đối không tạo thêm hóa đơn nào)
+        var tongSoHdSau = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.HoaDons;");
+        Assert.Equal(tongSoHdTruoc, tongSoHdSau);
+
+        // 2. So sánh tổng số chi tiết hóa đơn trước và sau (tuyệt đối không thêm chi tiết mới)
+        var tongChiTietSau = await conn.ExecuteScalarAsync<int>("SELECT COUNT(1) FROM dbo.ChiTietHoaDons;");
+        Assert.Equal(tongChiTietTruoc, tongChiTietSau);
+
+        // 3. Bảo toàn tồn kho sản phẩm (không bị trừ 1)
+        var tonKhoSau = await conn.ExecuteScalarAsync<int>(
+            "SELECT SoLuongTon FROM dbo.SanPhams WHERE SanPhamId = @spId;", new { spId });
+        Assert.Equal(tonKhoTruoc, tonKhoSau);
+        Assert.Equal(20, tonKhoSau);
+
+        // 4. Khẳng định bảo toàn hóa đơn nợ cũ và số dư nợ cũ của khách hàng
+        var countHdKh = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.HoaDons WHERE KhachHangId = @khId;", new { khId });
+        Assert.Equal(1, countHdKh); // Khách hàng vẫn có đúng 1 hóa đơn nợ cũ
+
+        var countHdCu = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(1) FROM dbo.HoaDons WHERE MaHoaDon = @maHdCu AND TongTien = 2000000;", new { maHdCu });
+        Assert.Equal(1, countHdCu); // Hóa đơn cũ nguyên vẹn
+
+        var tongCongNoSau = await conn.ExecuteScalarAsync<decimal>(
+            "SELECT ISNULL(SUM(TongTien - DaThanhToan), 0) FROM dbo.HoaDons WHERE KhachHangId = @khId;", new { khId });
+        Assert.Equal(tongCongNoTruoc, tongCongNoSau);
+        Assert.Equal(2000000m, tongCongNoSau); // Đúng 2.000.000 đ công nợ cũ, không bị thay đổi
     }
 }

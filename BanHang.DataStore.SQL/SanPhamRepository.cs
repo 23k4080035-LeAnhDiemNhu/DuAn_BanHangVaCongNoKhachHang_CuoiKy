@@ -131,14 +131,32 @@ public class SanPhamRepository : ISanPhamRepository
 
         try
         {
-            // 1. Khóa ứng dụng cấp mã sản phẩm để tránh đụng độ đồng thời
+            // 1. Khóa ứng dụng cấp mã sản phẩm để tránh đụng độ đồng thời (timeout 5 giây)
             const string sqlAppLock = @"
-                EXEC sp_getapplock 
+                DECLARE @res INT;
+                EXEC @res = sp_getapplock 
                     @Resource = 'QuanLyBanHang_CapMaSanPham', 
                     @LockMode = 'Exclusive', 
                     @LockOwner = 'Transaction', 
-                    @DbPrincipal = 'public';";
-            await connection.ExecuteAsync(sqlAppLock, transaction: transaction);
+                    @LockTimeout = 5000,
+                    @DbPrincipal = 'public';
+                SELECT @res;";
+
+            var lockResult = await connection.ExecuteScalarAsync<int>(sqlAppLock, transaction: transaction);
+            if (lockResult < 0)
+            {
+                transaction.Rollback();
+                return new TaoSanPhamResult
+                {
+                    ThanhCong = false,
+                    ThongBao = lockResult switch
+                    {
+                        -1 => "Hệ thống đang bận xử lý cấp mã sản phẩm cho giao dịch khác (quá thời gian chờ khóa 5 giây). Vui lòng thử lại sau.",
+                        -3 => "Xung đột tranh chấp khóa cấp mã sản phẩm (deadlock victim). Giao dịch đã được hủy an toàn, vui lòng thử lại.",
+                        _ => $"Không thể nhận khóa độc quyền để cấp mã sản phẩm (mã kết quả khóa: {lockResult}). Vui lòng thử lại."
+                    }
+                };
+            }
 
             // 2. Xác định mã sản phẩm thực tế
             string maThucTe = request.MaSanPham?.Trim() ?? string.Empty;

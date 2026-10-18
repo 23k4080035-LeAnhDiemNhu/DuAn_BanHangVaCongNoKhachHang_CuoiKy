@@ -1,4 +1,5 @@
 using System.Data;
+using BanHang.CoreBusiness;
 using BanHang.UseCases.HoaDonScreen;
 using BanHang.UseCases.PluginInterfaces.DataStore;
 using Dapper;
@@ -80,7 +81,7 @@ public class HoaDonRepository : IHoaDonRepository
                 FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK)
                 WHERE KhachHangId = @KhachHangId;";
 
-            var khachHang = await connection.QuerySingleOrDefaultAsync<KhachHangDbDto>(
+            var khachHang = await connection.QuerySingleOrDefaultAsync<KhachHang>(
                 sqlLockKhachHang,
                 new { request.KhachHangId },
                 transaction: transaction);
@@ -194,9 +195,13 @@ public class HoaDonRepository : IHoaDonRepository
                 new { request.KhachHangId },
                 transaction: transaction);
 
-            // 5. Kiểm tra quy tắc hạn mức tín dụng: CongNoHienTai + TongHoaDonMoi <= HanMucCongNo
-            // Bằng hạn mức được phép; vượt hạn mức bị từ chối
-            if (congNoHienTai + tongTienMoi > khachHang.HanMucCongNo)
+            // Gán số dư công nợ thực tế đọc từ CSDL có khóa vào entity KhachHang của CoreBusiness
+            khachHang.SoDuCongNo = congNoHienTai;
+
+            // 5. Kiểm tra quy tắc hạn mức tín dụng bằng phương thức nghiệp vụ của CoreBusiness:
+            // KhachHang.KiemTraVuotHanMucKhiMua: (SoDuCongNo + soTienDonHangMoi) > HanMucCongNo
+            // Bằng hạn mức được phép; vượt 1 đồng bị từ chối
+            if (khachHang.KiemTraVuotHanMucKhiMua(tongTienMoi))
             {
                 transaction.Rollback();
                 return new TaoHoaDonResult
@@ -222,9 +227,31 @@ public class HoaDonRepository : IHoaDonRepository
             // Thứ tự khóa: KhachHangs -> SanPhams -> sp_getapplock('QuanLyBanHang_CapMaHoaDon') -> HoaDons.
             // Đảm bảo: 2 người tạo hóa đơn đồng thời (kể cả 2 khách hàng khác nhau) không thể nhận cùng 1 mã,
             // không gây deadlock vì thứ tự khóa luôn thống nhất một chiều.
-            await connection.ExecuteAsync(
-                "EXEC sp_getapplock @Resource = 'QuanLyBanHang_CapMaHoaDon', @LockMode = 'Exclusive', @LockOwner = 'Transaction';",
-                transaction: transaction);
+            const string sqlAppLock = @"
+                DECLARE @res INT;
+                EXEC @res = sp_getapplock 
+                    @Resource = 'QuanLyBanHang_CapMaHoaDon', 
+                    @LockMode = 'Exclusive', 
+                    @LockOwner = 'Transaction', 
+                    @LockTimeout = 5000,
+                    @DbPrincipal = 'public';
+                SELECT @res;";
+
+            var lockResult = await connection.ExecuteScalarAsync<int>(sqlAppLock, transaction: transaction);
+            if (lockResult < 0)
+            {
+                transaction.Rollback();
+                return new TaoHoaDonResult
+                {
+                    ThanhCong = false,
+                    ThongBao = lockResult switch
+                    {
+                        -1 => "Hệ thống đang bận xử lý cấp mã hóa đơn cho giao dịch khác (quá thời gian chờ khóa 5 giây). Vui lòng thử lại sau.",
+                        -3 => "Xung đột tranh chấp khóa cấp mã hóa đơn (deadlock victim). Giao dịch đã được hủy an toàn, vui lòng thử lại.",
+                        _ => $"Không thể nhận khóa độc quyền để cấp mã hóa đơn (mã kết quả khóa: {lockResult}). Vui lòng thử lại."
+                    }
+                };
+            }
 
             string maHoaDonThucTe;
 
@@ -473,14 +500,6 @@ public class HoaDonRepository : IHoaDonRepository
         }
     }
 
-    private sealed class KhachHangDbDto
-    {
-        public int KhachHangId { get; set; }
-        public string MaKhachHang { get; set; } = string.Empty;
-        public string TenKhachHang { get; set; } = string.Empty;
-        public decimal HanMucCongNo { get; set; }
-        public bool TrangThai { get; set; }
-    }
 
     private sealed class SanPhamDbDto
     {
