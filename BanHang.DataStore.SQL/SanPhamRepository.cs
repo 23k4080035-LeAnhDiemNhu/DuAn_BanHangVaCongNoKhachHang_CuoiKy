@@ -177,6 +177,7 @@ public class SanPhamRepository : ISanPhamRepository
                     TenSanPham,
                     DonViTinh,
                     DonGia,
+                    SoLuongTon,
                     MoTa,
                     HinhAnh,
                     TrangThai
@@ -186,6 +187,7 @@ public class SanPhamRepository : ISanPhamRepository
                     @TenSanPham,
                     @DonViTinh,
                     @DonGia,
+                    @SoLuongTon,
                     @MoTa,
                     @HinhAnh,
                     @TrangThai
@@ -198,6 +200,7 @@ public class SanPhamRepository : ISanPhamRepository
                 request.TenSanPham,
                 request.DonViTinh,
                 request.DonGia,
+                SoLuongTon = (int)request.SoLuongTon,
                 request.MoTa,
                 request.HinhAnh,
                 request.TrangThai
@@ -256,12 +259,13 @@ public class SanPhamRepository : ISanPhamRepository
                 };
             }
 
-            // 2. Cập nhật thông tin: giữ nguyên SanPhamId, MaSanPham, NgayTao và SoLuongTon
+            // 2. Cập nhật thông tin: giữ nguyên SanPhamId, MaSanPham, NgayTao; cập nhật SoLuongTon
             const string sqlUpdate = @"
                 UPDATE dbo.SanPhams
                 SET TenSanPham = @TenSanPham,
                     DonViTinh = @DonViTinh,
                     DonGia = @DonGia,
+                    SoLuongTon = @SoLuongTon,
                     MoTa = @MoTa,
                     HinhAnh = @HinhAnh,
                     TrangThai = @TrangThai
@@ -272,6 +276,7 @@ public class SanPhamRepository : ISanPhamRepository
                 request.TenSanPham,
                 request.DonViTinh,
                 request.DonGia,
+                SoLuongTon = (int)request.SoLuongTon,
                 request.MoTa,
                 request.HinhAnh,
                 request.TrangThai,

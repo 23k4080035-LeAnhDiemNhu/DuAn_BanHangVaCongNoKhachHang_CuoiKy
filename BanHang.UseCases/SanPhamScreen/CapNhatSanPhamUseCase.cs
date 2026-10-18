@@ -84,13 +84,27 @@ public class CapNhatSanPhamUseCase : ICapNhatSanPhamUseCase
             result.LoiTheoTruong["DonGia"] = "Đơn giá chỉ được có tối đa 2 chữ số thập phân.";
         }
 
+        // 5. Kiểm tra số lượng tồn kho (số nguyên không âm, không vượt giới hạn kiểu INT của SQL Server)
+        if (request.SoLuongTon < 0)
+        {
+            result.LoiTheoTruong["SoLuongTon"] = "Số lượng tồn kho không được âm.";
+        }
+        else if (decimal.Floor(request.SoLuongTon) != request.SoLuongTon)
+        {
+            result.LoiTheoTruong["SoLuongTon"] = "Số lượng tồn kho phải là số nguyên.";
+        }
+        else if (request.SoLuongTon > int.MaxValue)
+        {
+            result.LoiTheoTruong["SoLuongTon"] = "Số lượng tồn kho vượt quá giới hạn cho phép (tối đa 2.147.483.647).";
+        }
+
         if (result.LoiTheoTruong.Count > 0)
         {
             result.ThongBao = "Dữ liệu nhập vào chưa hợp lệ. Vui lòng kiểm tra lại các trường được đánh dấu đỏ.";
             return result;
         }
 
-        // 5. Gửi xuống repository (giữ nguyên SanPhamId, MaSanPham, NgayTao và SoLuongTon)
+        // 6. Gửi xuống repository (giữ nguyên SanPhamId, MaSanPham, NgayTao; cập nhật thông tin và SoLuongTon)
         return await _sanPhamRepository.CapNhatSanPhamAsync(request);
     }
 }

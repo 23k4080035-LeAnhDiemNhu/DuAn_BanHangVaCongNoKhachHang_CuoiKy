@@ -8,6 +8,7 @@ public class TaoSanPhamRequest
     public string TenSanPham { get; set; } = string.Empty;
     public string DonViTinh { get; set; } = "Cái";
     public decimal DonGia { get; set; } = 0;
+    public decimal SoLuongTon { get; set; } = 0;
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public bool TrangThai { get; set; } = true;
@@ -29,6 +30,7 @@ public class CapNhatSanPhamRequest
     public string TenSanPham { get; set; } = string.Empty;
     public string DonViTinh { get; set; } = "Cái";
     public decimal DonGia { get; set; } = 0;
+    public decimal SoLuongTon { get; set; } = 0;
     public string? MoTa { get; set; }
     public string? HinhAnh { get; set; }
     public bool TrangThai { get; set; } = true;

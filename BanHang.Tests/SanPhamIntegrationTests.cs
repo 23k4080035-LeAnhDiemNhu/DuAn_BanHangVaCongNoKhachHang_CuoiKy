@@ -265,7 +265,7 @@ public class SanPhamIntegrationTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Test03_SuaSanPham_KhongLamThayDoiId_Ma_NgayTao_HoacTonKho()
+    public async Task Test03_SuaSanPham_KhongLamThayDoiId_Ma_NgayTao_VaCapNhatDungTonKho()
     {
         var addRes = await _themSanPhamUseCase.ExecuteAsync(new TaoSanPhamRequest
         {
@@ -273,19 +273,17 @@ public class SanPhamIntegrationTests : IAsyncLifetime
             TenSanPham = "Tai Nghe Gaming Ban Đầu",
             DonViTinh = "Cái",
             DonGia = 600000,
+            SoLuongTon = 25,
             TrangThai = true
         });
         Assert.True(addRes.ThanhCong);
         int spId = addRes.SanPhamIdMoi!.Value;
 
         using var conn = new SqlConnection(TestConnectionString);
-        // Thiết lập tồn kho bằng 25 để kiểm tra sửa không bị ghi đè tồn kho
-        await conn.ExecuteAsync("UPDATE dbo.SanPhams SET SoLuongTon = 25 WHERE SanPhamId = @Id", new { Id = spId });
-
         var ngayTaoGoc = await conn.ExecuteScalarAsync<DateTime>(
             "SELECT NgayTao FROM dbo.SanPhams WHERE SanPhamId = @Id", new { Id = spId });
 
-        // Cập nhật sản phẩm
+        // Cập nhật sản phẩm: cập nhật tên, ĐVT, giá, ảnh, mô tả và tồn kho mới = 60
         var updateReq = new CapNhatSanPhamRequest
         {
             SanPhamId = spId,
@@ -293,6 +291,7 @@ public class SanPhamIntegrationTests : IAsyncLifetime
             TenSanPham = "Tai Nghe Chống Ồn Cao Cấp",
             DonViTinh = "Hộp",
             DonGia = 950000,
+            SoLuongTon = 60,
             MoTa = "Có Bluetooth và mic",
             HinhAnh = "/images/headphone_v2.png",
             TrangThai = true
@@ -306,11 +305,13 @@ public class SanPhamIntegrationTests : IAsyncLifetime
         var ngayTaoSauSua = await conn.ExecuteScalarAsync<DateTime>(
             "SELECT NgayTao FROM dbo.SanPhams WHERE SanPhamId = @Id", new { Id = spId });
 
-        // SanPhamId, MaSanPham, NgayTao, SoLuongTon phải được giữ nguyên tuyệt đối
+        // SanPhamId, MaSanPham, NgayTao phải được giữ nguyên tuyệt đối
         Assert.Equal(spId, spSauSua.SanPhamId);
         Assert.Equal("SP_SUA_01", spSauSua.MaSanPham);
         Assert.Equal(ngayTaoGoc, ngayTaoSauSua);
-        Assert.Equal(25, spSauSua.SoLuongTon);
+
+        // SoLuongTon được cập nhật đúng giá trị mới
+        Assert.Equal(60, spSauSua.SoLuongTon);
 
         // Các trường sửa đổi được cập nhật
         Assert.Equal("Tai Nghe Chống Ồn Cao Cấp", spSauSua.TenSanPham);
@@ -330,6 +331,7 @@ public class SanPhamIntegrationTests : IAsyncLifetime
             TenSanPham = "Màn Hình IPS 24 inch",
             DonViTinh = "Cái",
             DonGia = 1000000,
+            SoLuongTon = 50,
             TrangThai = true
         });
         int spId = addRes.SanPhamIdMoi!.Value;
@@ -383,6 +385,7 @@ public class SanPhamIntegrationTests : IAsyncLifetime
             TenSanPham = "Cáp HDMI Cũ",
             DonViTinh = "Sợi",
             DonGia = 150000,
+            SoLuongTon = 20,
             TrangThai = true
         });
         int spId = addRes.SanPhamIdMoi!.Value;
@@ -443,6 +446,7 @@ public class SanPhamIntegrationTests : IAsyncLifetime
             TenSanPham = "Chuột Công Thái Học Mới Về",
             DonViTinh = "Cái",
             DonGia = 800000,
+            SoLuongTon = 50,
             TrangThai = false // Ngừng bán
         });
         int spId = addRes.SanPhamIdMoi!.Value;

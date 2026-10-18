@@ -1,30 +1,37 @@
 @page "/san-pham"
 @attribute [Authorize(Roles = VaiTroConstants.KeToanCongNo)]
 @using System.Globalization
+@using System.IO
 @using BanHang.CoreBusiness
+@using BanHang.UseCases.Common
+@using BanHang.UseCases.PluginInterfaces.Security
 @using BanHang.UseCases.SanPhamScreen
+@using Microsoft.AspNetCore.Hosting
+@using Microsoft.AspNetCore.Components.Forms
 @using Microsoft.Extensions.Logging
 @inject IXemDanhSachSanPhamUseCase XemDanhSachSanPhamUseCase
 @inject IThemSanPhamUseCase ThemSanPhamUseCase
 @inject ICapNhatSanPhamUseCase CapNhatSanPhamUseCase
 @inject IDoiTrangThaiSanPhamUseCase DoiTrangThaiSanPhamUseCase
+@inject ICurrentUserService CurrentUserService
+@inject IWebHostEnvironment Environment
 @inject ILogger<SanPhamPage> Logger
 
 <PageTitle>Danh sách sản phẩm</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h3 class="mb-1 text-primary fw-bold">Quản lý Sản phẩm & Đơn giá</h3>
-        <p class="text-muted mb-0 small">Theo dõi danh mục hàng hóa, đơn giá bán niêm yết và trạng thái kinh doanh.</p>
+        <h3 class="fw-bold mb-1 page-title">Quản lý Sản phẩm & Đơn giá</h3>
+        <p class="text-muted small mb-0">Theo dõi danh mục hàng hóa, đơn giá bán niêm yết và trạng thái kinh doanh.</p>
     </div>
-    <button class="btn btn-primary text-nowrap" id="btn-them-san-pham" @onclick="MoModalThemSanPham">
+    <button class="btn btn-primary rounded-pill px-3 py-2 text-nowrap fw-semibold d-inline-flex align-items-center shadow-sm" id="btn-them-san-pham" @onclick="MoModalThemSanPham">
         <span class="bi bi-plus-circle me-1"></span> + Thêm sản phẩm
     </button>
 </div>
 
 @if (!string.IsNullOrEmpty(thongBaoThanhCong))
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
         <strong>Thành công!</strong> @thongBaoThanhCong
         <button type="button" class="btn-close" @onclick="() => thongBaoThanhCong = null" aria-label="Close"></button>
     </div>
@@ -41,7 +48,7 @@
 }
 else if (hasError)
 {
-    <div class="alert alert-danger d-flex align-items-center" role="alert">
+    <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4" role="alert">
         <div>
             <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
             <p class="mb-0">@errorMessage</p>
@@ -50,131 +57,135 @@ else if (hasError)
 }
 else if (danhSachSanPham == null || !danhSachSanPham.Any())
 {
-    <div class="alert alert-info" role="alert">
+    <div class="alert alert-info rounded-3" role="alert">
         Chưa có sản phẩm nào trong hệ thống.
     </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle border mb-0" style="min-width: 950px;" id="table-san-pham">
-            <thead class="table-dark">
-                <tr>
-                    <th scope="col" style="width: 110px;" class="text-nowrap">Mã SP</th>
-                    <th scope="col" style="width: 80px;" class="text-center text-nowrap">Hình ảnh</th>
-                    <th scope="col" style="min-width: 240px;">Tên sản phẩm</th>
-                    <th scope="col" style="width: 100px;" class="text-center text-nowrap">ĐVT</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 160px;">Đơn giá</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 110px;">Tồn kho</th>
-                    <th scope="col" class="text-center text-nowrap" style="width: 140px;">Trạng thái</th>
-                    <th scope="col" class="text-center text-nowrap" style="width: 180px;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var sp in danhSachSanPham)
-                {
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-page-table" style="min-width: 950px;" id="table-san-pham">
+                <thead>
                     <tr>
-                        <td class="fw-bold text-primary text-nowrap">@sp.MaSanPham</td>
-                        <td class="text-center">
-                            @if (!string.IsNullOrEmpty(sp.HinhAnh))
-                            {
-                                <img src="@sp.HinhAnh" alt="@sp.TenSanPham" 
-                                     style="width: 44px; height: 44px; object-fit: cover; border-radius: 4px;"
-                                     onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-block';" />
-                                <span class="text-muted" style="display: none; font-size: 1.2rem;">📦</span>
-                            }
-                            else
-                            {
-                                <span class="text-muted" style="font-size: 1.2rem;">📦</span>
-                            }
-                        </td>
-                        <td>
-                            <div class="fw-semibold">@sp.TenSanPham</div>
-                            @if (!string.IsNullOrEmpty(sp.MoTa))
-                            {
-                                <small class="text-muted d-block text-truncate" style="max-width: 320px;">
-                                    @sp.MoTa
-                                </small>
-                            }
-                        </td>
-                        <td class="text-center text-nowrap">@sp.DonViTinh</td>
-                        <td class="text-end text-nowrap fw-bold text-success">
-                            @sp.DonGia.ToString("N0", viCulture) đ
-                        </td>
-                        <td class="text-end text-nowrap">
-                            @sp.SoLuongTon.ToString("N0", viCulture)
-                        </td>
-                        <td class="text-center text-nowrap">
-                            @if (sp.TrangThai)
-                            {
-                                <span class="badge bg-success">Đang bán</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Ngừng bán</span>
-                            }
-                        </td>
-                        <td class="text-center text-nowrap">
-                            <button class="btn btn-sm btn-outline-primary me-1" 
-                                    @onclick="() => MoModalSuaSanPham(sp)" title="Sửa thông tin sản phẩm">
-                                Sửa
-                            </button>
-                            @if (sp.TrangThai)
-                            {
-                                <button class="btn btn-sm btn-outline-warning" 
-                                        @onclick="() => MoModalXacNhanTrangThai(sp, false)" title="Tạm ngừng kinh doanh sản phẩm này">
-                                    Ngừng bán
-                                </button>
-                            }
-                            else
-                            {
-                                <button class="btn btn-sm btn-outline-success" 
-                                        @onclick="() => MoModalXacNhanTrangThai(sp, true)" title="Mở bán lại sản phẩm này">
-                                    Mở bán
-                                </button>
-                            }
-                        </td>
+                        <th scope="col" style="width: 110px;" class="text-nowrap">MÃ SP</th>
+                        <th scope="col" style="width: 80px;" class="text-center text-nowrap">HÌNH ẢNH</th>
+                        <th scope="col" style="min-width: 240px;">TÊN SẢN PHẨM</th>
+                        <th scope="col" style="width: 100px;" class="text-center text-nowrap">ĐVT</th>
+                        <th scope="col" class="text-end text-nowrap" style="width: 160px;">ĐƠN GIÁ</th>
+                        <th scope="col" class="text-end text-nowrap" style="width: 110px;">TỒN KHO</th>
+                        <th scope="col" class="text-center text-nowrap" style="width: 140px;">TRẠNG THÁI</th>
+                        <th scope="col" class="text-center text-nowrap" style="width: 180px;">THAO TÁC</th>
                     </tr>
-                }
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @foreach (var sp in danhSachSanPham)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary text-nowrap">@sp.MaSanPham</td>
+                            <td class="text-center">
+                                @if (!string.IsNullOrEmpty(sp.HinhAnh))
+                                {
+                                    <img src="@sp.HinhAnh" alt="@sp.TenSanPham" 
+                                         class="product-table-thumb"
+                                         onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';" />
+                                    <span class="product-table-fallback" style="display: none;">📦</span>
+                                }
+                                else
+                                {
+                                    <span class="product-table-fallback">📦</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="fw-semibold product-name">@sp.TenSanPham</div>
+                                @if (!string.IsNullOrEmpty(sp.MoTa))
+                                {
+                                    <small class="text-muted d-block text-truncate" style="max-width: 320px;">
+                                        @sp.MoTa
+                                    </small>
+                                }
+                            </td>
+                            <td class="text-center text-nowrap text-secondary">@sp.DonViTinh</td>
+                            <td class="text-end text-nowrap fw-bold text-slate-800">
+                                @sp.DonGia.ToString("N0", viCulture) đ
+                            </td>
+                            <td class="text-end text-nowrap text-secondary">
+                                @sp.SoLuongTon.ToString("N0", viCulture)
+                            </td>
+                            <td class="text-center text-nowrap">
+                                @if (sp.TrangThai)
+                                {
+                                    <span class="status-badge badge-selling text-nowrap">Đang bán</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge badge-stopped text-nowrap">Ngừng bán</span>
+                                }
+                            </td>
+                            <td class="text-center text-nowrap">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5" 
+                                            @onclick="() => MoModalSuaSanPham(sp)" title="Sửa thông tin sản phẩm">
+                                        Sửa
+                                    </button>
+                                    @if (sp.TrangThai)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-0.5" 
+                                                @onclick="() => MoModalXacNhanTrangThai(sp, false)" title="Tạm ngừng kinh doanh sản phẩm này">
+                                            Ngừng bán
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-0.5" 
+                                                @onclick="() => MoModalXacNhanTrangThai(sp, true)" title="Mở bán lại sản phẩm này">
+                                            Mở bán
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 
 <!-- Modal Thêm / Sửa Sản Phẩm -->
 @if (hienThiModalForm)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content shadow">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header modal-header-enterprise text-white">
+                    <h5 class="modal-title fw-bold fs-5">
                         @(isEditing ? "Cập Nhật Thông Tin Sản Phẩm" : "Thêm Sản Phẩm Mới")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving"></button>
+                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(formErrorMessage))
                     {
-                        <div class="alert alert-danger py-2 mb-3" role="alert">
+                        <div class="alert alert-danger py-2 mb-3 rounded-3" role="alert">
                             @formErrorMessage
                         </div>
                     }
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-nowrap">Mã sản phẩm</label>
-                            <input type="text" class="form-control bg-light @(CoLoi("MaSanPham") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-nowrap text-slate-800 small mb-1">Mã sản phẩm</label>
+                            <input type="text" class="form-control rounded-3 bg-light @(CoLoi("MaSanPham") ? "is-invalid" : "")"
                                    @bind="formModel.MaSanPham" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: SP001)" />
-                            <small class="text-muted">Mã được cấp tự động bởi hệ thống</small>
+                            <small class="text-muted d-block mt-1">Mã được cấp tự động bởi hệ thống</small>
                             @if (CoLoi("MaSanPham"))
                             {
                                 <div class="invalid-feedback">@LayLoi("MaSanPham")</div>
                             }
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold text-nowrap">Tên sản phẩm <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @(CoLoi("TenSanPham") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-nowrap text-slate-800 small mb-1">Tên sản phẩm <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-3 @(CoLoi("TenSanPham") ? "is-invalid" : "")"
                                    @bind="formModel.TenSanPham" maxlength="200" placeholder="VD: Màn hình LG 27 inch 4K" />
                             @if (CoLoi("TenSanPham"))
                             {
@@ -183,8 +194,8 @@ else
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-nowrap">Đơn vị tính <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @(CoLoi("DonViTinh") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-nowrap text-slate-800 small mb-1">Đơn vị tính <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-3 @(CoLoi("DonViTinh") ? "is-invalid" : "")"
                                    @bind="formModel.DonViTinh" maxlength="50" placeholder="VD: Cái, Hộp, Bộ" />
                             @if (CoLoi("DonViTinh"))
                             {
@@ -192,36 +203,71 @@ else
                             }
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-nowrap">Đơn giá (VNĐ) <span class="text-danger">*</span></label>
-                            <input type="number" step="1000" min="0" class="form-control @(CoLoi("DonGia") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-nowrap text-slate-800 small mb-1">Đơn giá (VNĐ) <span class="text-danger">*</span></label>
+                            <input type="number" step="any" min="0" class="form-control rounded-3 @(CoLoi("DonGia") ? "is-invalid" : "")"
                                    @bind="formModel.DonGia" />
                             @if (CoLoi("DonGia"))
                             {
                                 <div class="invalid-feedback">@LayLoi("DonGia")</div>
                             }
                         </div>
-                        <div class="col-md-4 d-flex align-items-center mt-4">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-nowrap text-slate-800 small mb-1" for="txtSoLuongTon">Số lượng tồn kho</label>
+                            <input type="number" step="any" min="0" id="txtSoLuongTon" class="form-control rounded-3 @(CoLoi("SoLuongTon") ? "is-invalid" : "")"
+                                   @bind="formModel.SoLuongTon" placeholder="0" />
+                            @if (CoLoi("SoLuongTon"))
+                            {
+                                <div class="invalid-feedback">@LayLoi("SoLuongTon")</div>
+                            }
+                        </div>
+                        <div class="col-12 d-flex align-items-center pt-1">
                             <div class="form-check form-switch fs-6">
                                 <input class="form-check-input" type="checkbox" id="chkTrangThaiSp" @bind="formModel.TrangThai" />
-                                <label class="form-check-label fw-semibold" for="chkTrangThaiSp">
+                                <label class="form-check-label fw-semibold ms-1" for="chkTrangThaiSp">
                                     @(formModel.TrangThai ? "Đang bán" : "Ngừng bán")
                                 </label>
                             </div>
                         </div>
 
+                        <!-- Trường Hình ảnh với tải tệp từ máy và ảnh xem trước -->
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Đường dẫn hình ảnh</label>
-                            <input type="text" class="form-control @(CoLoi("HinhAnh") ? "is-invalid" : "")"
-                                   @bind="formModel.HinhAnh" maxlength="300" placeholder="VD: /images/sanpham.png hoặc https://..." />
+                            <label class="form-label fw-semibold text-slate-800 small mb-1" for="file-anh-san-pham">Hình ảnh</label>
+                            <InputFile id="file-anh-san-pham" OnChange="XuLyChonTepAnhAsync" accept=".jpg,.jpeg,.png,.webp"
+                                       class="@(CoLoi("HinhAnh") ? "form-control rounded-3 is-invalid" : "form-control rounded-3")" disabled="@isSaving" />
+                            <small class="text-muted d-block mt-1">Chấp nhận định dạng JPEG, PNG hoặc WebP. Dung lượng tối đa 5 MB.</small>
                             @if (CoLoi("HinhAnh"))
                             {
-                                <div class="invalid-feedback">@LayLoi("HinhAnh")</div>
+                                <div class="text-danger small mt-1">@LayLoi("HinhAnh")</div>
+                            }
+
+                            @if (!string.IsNullOrEmpty(anhXemTruocUrl) || !string.IsNullOrEmpty(formModel.HinhAnh))
+                            {
+                                <div class="mt-2 d-flex align-items-center gap-3 p-2 border rounded-3 bg-light">
+                                    <img src="@(anhXemTruocUrl ?? formModel.HinhAnh)" alt="Xem trước ảnh sản phẩm"
+                                         class="rounded-2 border bg-white" style="width: 64px; height: 64px; object-fit: cover;"
+                                         onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';" />
+                                    <span class="product-table-fallback" style="display: none; width: 64px; height: 64px; font-size: 1.5rem;">📦</span>
+                                    <div class="small flex-grow-1">
+                                        <div class="fw-semibold text-slate-800">
+                                            @(pendingImageBytes != null ? "Ảnh mới chọn (sẽ lưu khi bấm Lưu)" : "Ảnh hiện tại của sản phẩm")
+                                        </div>
+                                        <div class="text-muted text-truncate" style="max-width: 380px;">
+                                            @(pendingImageBytes != null ? $"{pendingImageOriginalName} ({Math.Round(pendingImageBytes.Length / 1024.0, 1)} KB)" : formModel.HinhAnh)
+                                        </div>
+                                        @if (pendingImageBytes != null)
+                                        {
+                                            <button type="button" class="btn btn-sm btn-link text-danger p-0 mt-1" @onclick="HuyChonAnhMoi" disabled="@isSaving">
+                                                ✕ Bỏ ảnh mới chọn (giữ ảnh cũ)
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
                             }
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Mô tả sản phẩm</label>
-                            <textarea class="form-control @(CoLoi("MoTa") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Mô tả sản phẩm</label>
+                            <textarea class="form-control rounded-3 @(CoLoi("MoTa") ? "is-invalid" : "")"
                                       @bind="formModel.MoTa" rows="3" maxlength="500" placeholder="Nhập tóm tắt tính năng, quy cách..."></textarea>
                             @if (CoLoi("MoTa"))
                             {
@@ -230,9 +276,9 @@ else
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
-                    <button type="button" class="btn btn-primary" id="btn-luu-san-pham" @onclick="LuuSanPhamAsync" disabled="@isSaving">
+                <div class="modal-footer bg-light px-4 py-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-luu-san-pham" @onclick="LuuSanPhamAsync" disabled="@isSaving">
                         @if (isSaving)
                         {
                             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -252,34 +298,34 @@ else
 <!-- Modal Xác Nhận Ngừng Bán / Mở Bán Lại -->
 @if (hienThiModalXacNhanTrangThai && sanPhamDoiTrangThai != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content shadow">
-                <div class="modal-header @(trangThaiMoiDuKien ? "bg-success" : "bg-warning") text-white">
-                    <h5 class="modal-title">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header @(trangThaiMoiDuKien ? "modal-header-success" : "modal-header-warning") text-white">
+                    <h5 class="modal-title fw-bold fs-5">
                         @(trangThaiMoiDuKien ? "Xác nhận mở bán lại sản phẩm" : "Xác nhận ngừng bán sản phẩm")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving"></button>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     @if (trangThaiMoiDuKien)
                     {
-                        <p class="mb-0">
+                        <p class="mb-0 text-slate-800">
                             Bạn có chắc chắn muốn mở bán lại sản phẩm <strong>@sanPhamDoiTrangThai.TenSanPham</strong> (Mã: @sanPhamDoiTrangThai.MaSanPham)?
                             Sản phẩm sẽ có thể được chọn khi lập các hóa đơn bán hàng mới.
                         </p>
                     }
                     else
                     {
-                        <p class="mb-0">
+                        <p class="mb-0 text-slate-800">
                             Bạn có chắc chắn muốn ngừng bán sản phẩm <strong>@sanPhamDoiTrangThai.TenSanPham</strong> (Mã: @sanPhamDoiTrangThai.MaSanPham)?
                             Hệ thống sẽ <strong>chặn không cho thêm sản phẩm này vào các hóa đơn mới</strong> (hóa đơn cũ vẫn bảo toàn).
                         </p>
                     }
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
-                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning")" id="btn-xac-nhan-doi-trang-thai-sp"
+                <div class="modal-footer bg-light px-4 py-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
+                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning text-dark") rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-xac-nhan-doi-trang-thai-sp"
                             @onclick="XacNhanDoiTrangThaiAsync" disabled="@isSaving">
                         @if (isSaving)
                         {
@@ -315,6 +361,12 @@ else
 
     private FormSanPhamModel formModel = new();
 
+    // Quản lý tệp ảnh tải lên từ máy
+    private byte[]? pendingImageBytes;
+    private string? pendingImageExtension;
+    private string? pendingImageOriginalName;
+    private string? anhXemTruocUrl;
+
     // Quản lý Modal Đổi Trạng Thái
     private bool hienThiModalXacNhanTrangThai = false;
     private SanPham? sanPhamDoiTrangThai;
@@ -345,6 +397,20 @@ else
         }
     }
 
+    private void ResetTrangThaiAnh()
+    {
+        pendingImageBytes = null;
+        pendingImageExtension = null;
+        pendingImageOriginalName = null;
+        anhXemTruocUrl = null;
+    }
+
+    private void HuyChonAnhMoi()
+    {
+        ResetTrangThaiAnh();
+        loiTheoTruong.Remove("HinhAnh");
+    }
+
     private async Task MoModalThemSanPham()
     {
         isEditing = false;
@@ -358,12 +424,14 @@ else
             Logger.LogWarning(ex, "Không lấy được mã sản phẩm tiếp theo");
         }
 
+        ResetTrangThaiAnh();
         formModel = new FormSanPhamModel
         {
             MaSanPham = maSpMoi,
             TrangThai = true,
             DonViTinh = "Cái",
-            DonGia = 0
+            DonGia = 0,
+            SoLuongTon = 0
         };
         formErrorMessage = null;
         loiTheoTruong.Clear();
@@ -373,6 +441,7 @@ else
     private void MoModalSuaSanPham(SanPham sp)
     {
         isEditing = true;
+        ResetTrangThaiAnh();
         formModel = new FormSanPhamModel
         {
             SanPhamId = sp.SanPhamId,
@@ -380,6 +449,7 @@ else
             TenSanPham = sp.TenSanPham,
             DonViTinh = sp.DonViTinh,
             DonGia = sp.DonGia,
+            SoLuongTon = sp.SoLuongTon,
             MoTa = sp.MoTa,
             HinhAnh = sp.HinhAnh,
             TrangThai = sp.TrangThai
@@ -392,11 +462,53 @@ else
     private void DongModalForm()
     {
         if (isSaving) return;
+        ResetTrangThaiAnh();
         hienThiModalForm = false;
     }
 
     private bool CoLoi(string tenTruong) => loiTheoTruong.ContainsKey(tenTruong);
     private string LayLoi(string tenTruong) => loiTheoTruong.TryGetValue(tenTruong, out var msg) ? msg : string.Empty;
+
+    private async Task XuLyChonTepAnhAsync(InputFileChangeEventArgs e)
+    {
+        loiTheoTruong.Remove("HinhAnh");
+        var file = e.File;
+        if (file == null) return;
+
+        const long maxFileSize = 5 * 1024 * 1024; // 5 MB
+        if (file.Size > maxFileSize)
+        {
+            loiTheoTruong["HinhAnh"] = "Kích thước hình ảnh vượt quá giới hạn 5 MB.";
+            ResetTrangThaiAnh();
+            return;
+        }
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.OpenReadStream(maxAllowedSize: maxFileSize).CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            var (isValid, ext, mimeType) = KiemTraDinhDangAnh(bytes);
+            if (!isValid)
+            {
+                loiTheoTruong["HinhAnh"] = "Định dạng tệp không hợp lệ. Chỉ chấp nhận tệp hình ảnh JPEG, PNG hoặc WebP.";
+                ResetTrangThaiAnh();
+                return;
+            }
+
+            pendingImageBytes = bytes;
+            pendingImageExtension = ext;
+            pendingImageOriginalName = file.Name;
+            anhXemTruocUrl = $"data:{mimeType};base64,{Convert.ToBase64String(bytes)}";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi đọc tệp ảnh tải lên");
+            loiTheoTruong["HinhAnh"] = "Không thể đọc tệp ảnh. Vui lòng thử lại.";
+            ResetTrangThaiAnh();
+        }
+    }
 
     private async Task LuuSanPhamAsync()
     {
@@ -405,9 +517,30 @@ else
         isSaving = true;
         formErrorMessage = null;
         loiTheoTruong.Clear();
+        string? newlyCreatedFilePath = null;
+        var oldHinhAnh = formModel.HinhAnh;
 
         try
         {
+            // Nếu có ảnh mới chọn từ máy, lưu tệp an toàn lên thư mục máy chủ
+            if (pendingImageBytes != null && !string.IsNullOrEmpty(pendingImageExtension))
+            {
+                // Kiểm tra phân quyền phía máy chủ
+                await AuthorizeHelper.RequireRoleAsync(CurrentUserService, VaiTroConstants.KeToanCongNo);
+
+                var webRoot = Environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadsFolder = Path.Combine(webRoot, "images", "sanpham");
+                if (!Directory.Exists(uploadsFolder))
+                {
+                    Directory.CreateDirectory(uploadsFolder);
+                }
+
+                var safeFileName = $"sp_{Guid.NewGuid():N}{pendingImageExtension}";
+                newlyCreatedFilePath = Path.Combine(uploadsFolder, safeFileName);
+                await File.WriteAllBytesAsync(newlyCreatedFilePath, pendingImageBytes);
+                formModel.HinhAnh = $"/images/sanpham/{safeFileName}";
+            }
+
             if (!isEditing)
             {
                 // Thêm mới
@@ -417,6 +550,7 @@ else
                     TenSanPham = formModel.TenSanPham,
                     DonViTinh = formModel.DonViTinh,
                     DonGia = formModel.DonGia,
+                    SoLuongTon = formModel.SoLuongTon,
                     MoTa = formModel.MoTa,
                     HinhAnh = formModel.HinhAnh,
                     TrangThai = formModel.TrangThai
@@ -425,6 +559,8 @@ else
                 var ketQua = await ThemSanPhamUseCase.ExecuteAsync(request);
                 if (ketQua.ThanhCong)
                 {
+                    newlyCreatedFilePath = null; // Giữ tệp mới thành công
+                    ResetTrangThaiAnh();
                     hienThiModalForm = false;
                     thongBaoThanhCong = ketQua.ThongBao;
                     await TaiDanhSachSanPhamAsync();
@@ -433,6 +569,13 @@ else
                 {
                     formErrorMessage = ketQua.ThongBao;
                     loiTheoTruong = ketQua.LoiTheoTruong ?? new();
+                    // Lưu thất bại: dọn tệp vừa tạo để tránh rác
+                    if (!string.IsNullOrEmpty(newlyCreatedFilePath) && File.Exists(newlyCreatedFilePath))
+                    {
+                        try { File.Delete(newlyCreatedFilePath); } catch (Exception ex) { Logger.LogWarning(ex, "Lỗi dọn tệp ảnh mới sau khi lưu thất bại"); }
+                        newlyCreatedFilePath = null;
+                    }
+                    formModel.HinhAnh = oldHinhAnh;
                 }
             }
             else
@@ -445,6 +588,7 @@ else
                     TenSanPham = formModel.TenSanPham,
                     DonViTinh = formModel.DonViTinh,
                     DonGia = formModel.DonGia,
+                    SoLuongTon = formModel.SoLuongTon,
                     MoTa = formModel.MoTa,
                     HinhAnh = formModel.HinhAnh,
                     TrangThai = formModel.TrangThai
@@ -453,6 +597,8 @@ else
                 var ketQua = await CapNhatSanPhamUseCase.ExecuteAsync(request);
                 if (ketQua.ThanhCong)
                 {
+                    newlyCreatedFilePath = null; // Giữ tệp mới, không xóa ảnh cũ (có thể đang được hóa đơn cũ tham chiếu)
+                    ResetTrangThaiAnh();
                     hienThiModalForm = false;
                     thongBaoThanhCong = ketQua.ThongBao;
                     await TaiDanhSachSanPhamAsync();
@@ -461,11 +607,23 @@ else
                 {
                     formErrorMessage = ketQua.ThongBao;
                     loiTheoTruong = ketQua.LoiTheoTruong ?? new();
+                    // Lưu thất bại: dọn tệp vừa tạo
+                    if (!string.IsNullOrEmpty(newlyCreatedFilePath) && File.Exists(newlyCreatedFilePath))
+                    {
+                        try { File.Delete(newlyCreatedFilePath); } catch (Exception ex) { Logger.LogWarning(ex, "Lỗi dọn tệp ảnh mới sau khi cập nhật thất bại"); }
+                        newlyCreatedFilePath = null;
+                    }
+                    formModel.HinhAnh = oldHinhAnh;
                 }
             }
         }
         catch (Exception ex)
         {
+            if (!string.IsNullOrEmpty(newlyCreatedFilePath) && File.Exists(newlyCreatedFilePath))
+            {
+                try { File.Delete(newlyCreatedFilePath); } catch (Exception delEx) { Logger.LogWarning(delEx, "Lỗi dọn tệp ảnh mới sau ngoại lệ"); }
+            }
+            formModel.HinhAnh = oldHinhAnh;
             formErrorMessage = "Đã xảy ra lỗi không mong muốn khi lưu sản phẩm.";
             Logger.LogError(ex, "Lỗi xảy ra trong quá trình lưu sản phẩm");
         }
@@ -516,13 +674,28 @@ else
         }
     }
 
+    public static (bool IsValid, string Extension, string MimeType) KiemTraDinhDangAnh(byte[]? bytes)
+        => SanPhamHelper.KiemTraDinhDangAnh(bytes);
+
+    public static decimal ChuanHoaDonGia(decimal value)
+        => SanPhamHelper.ChuanHoaDonGia(value);
+
     private class FormSanPhamModel
     {
         public int SanPhamId { get; set; }
         public string MaSanPham { get; set; } = string.Empty;
         public string TenSanPham { get; set; } = string.Empty;
         public string DonViTinh { get; set; } = "Cái";
-        public decimal DonGia { get; set; } = 0;
+
+        private decimal _donGia = 0;
+        public decimal DonGia
+        {
+            get => _donGia;
+            set => _donGia = ChuanHoaDonGia(value);
+        }
+
+        public decimal SoLuongTon { get; set; } = 0;
+
         public string? MoTa { get; set; }
         public string? HinhAnh { get; set; }
         public bool TrangThai { get; set; } = true;

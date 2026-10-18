@@ -12,19 +12,19 @@
 
 <PageTitle>Danh sách khách hàng</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
     <div>
-        <h3 class="mb-1 text-primary fw-bold">Quản lý Khách hàng & Công nợ</h3>
-        <p class="text-muted mb-0 small">Theo dõi thông tin khách hàng, hạn mức tín dụng và công nợ bán chịu.</p>
+        <h3 class="fw-bold mb-1 page-title">Quản lý Khách hàng & Công nợ</h3>
+        <p class="text-muted small mb-0">Theo dõi thông tin khách hàng, hạn mức tín dụng và công nợ bán chịu.</p>
     </div>
-    <button class="btn btn-primary text-nowrap" id="btn-them-khach-hang" @onclick="MoModalThemKhachHang">
-        <span class="bi bi-person-plus me-1"></span> + Thêm khách hàng
+    <button class="btn btn-primary rounded-pill px-3 py-2 text-nowrap fw-semibold d-inline-flex align-items-center shadow-sm" id="btn-them-khach-hang" @onclick="MoModalThemKhachHang">
+        <span class="bi bi-person-plus me-1" aria-hidden="true"></span> + Thêm khách hàng
     </button>
 </div>
 
 @if (!string.IsNullOrEmpty(thongBaoThanhCong))
 {
-    <div class="alert alert-success alert-dismissible fade show" role="alert">
+    <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4" role="alert">
         <strong>Thành công!</strong> @thongBaoThanhCong
         <button type="button" class="btn-close" @onclick="() => thongBaoThanhCong = null" aria-label="Close"></button>
     </div>
@@ -41,7 +41,7 @@
 }
 else if (hasError)
 {
-    <div class="alert alert-danger d-flex align-items-center" role="alert">
+    <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4" role="alert">
         <div>
             <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
             <p class="mb-0">@errorMessage</p>
@@ -50,122 +50,126 @@ else if (hasError)
 }
 else if (danhSachKhachHang == null || !danhSachKhachHang.Any())
 {
-    <div class="alert alert-info" role="alert">
+    <div class="alert alert-info rounded-3" role="alert">
         Chưa có khách hàng nào trong hệ thống.
     </div>
 }
 else
 {
-    <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle border mb-0" style="min-width: 1050px;" id="table-khach-hang">
-            <thead class="table-dark">
-                <tr>
-                    <th scope="col" style="width: 110px;" class="text-nowrap">Mã KH</th>
-                    <th scope="col" style="min-width: 250px;">Tên khách hàng</th>
-                    <th scope="col" style="width: 130px;" class="text-nowrap">Điện thoại</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 160px;">Hạn mức</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 160px;">Công nợ hiện tại</th>
-                    <th scope="col" class="text-center text-nowrap" style="width: 140px;">Trạng thái nợ</th>
-                    <th scope="col" class="text-center text-nowrap" style="width: 140px;">Hoạt động</th>
-                    <th scope="col" class="text-center text-nowrap" style="width: 150px;">Thao tác</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var kh in danhSachKhachHang)
-                {
+    <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-4">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 custom-page-table" style="min-width: 1050px;" id="table-khach-hang">
+                <thead>
                     <tr>
-                        <td class="fw-bold text-primary text-nowrap">@kh.MaKhachHang</td>
-                        <td>
-                            <div class="fw-semibold">@kh.TenKhachHang</div>
-                            @if (!string.IsNullOrEmpty(kh.Email))
-                            {
-                                <small class="text-muted d-block text-truncate" style="max-width: 280px;"><span class="bi bi-envelope"></span> @kh.Email</small>
-                            }
-                            @if (!string.IsNullOrEmpty(kh.DiaChi))
-                            {
-                                <small class="text-muted d-block text-truncate" style="max-width: 280px;">
-                                    <span class="bi bi-geo-alt"></span> @kh.DiaChi
-                                </small>
-                            }
-                        </td>
-                        <td class="text-nowrap">@(string.IsNullOrEmpty(kh.SoDienThoai) ? "-" : kh.SoDienThoai)</td>
-                        <td class="text-end text-nowrap">@kh.HanMucCongNo.ToString("N0", viCulture) đ</td>
-                        <td class="text-end text-nowrap fw-bold @(kh.SoDuCongNo > 0 ? "text-danger" : "text-success")">
-                            @kh.SoDuCongNo.ToString("N0", viCulture) đ
-                        </td>
-                        <td class="text-center text-nowrap">
-                            @if (kh.DaVuotHanMuc)
-                            {
-                                <span class="badge bg-danger">Vượt hạn mức</span>
-                            }
-                            else if (kh.SoDuCongNo > 0)
-                            {
-                                <span class="badge bg-warning text-dark">Đang có nợ</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-success">Không nợ</span>
-                            }
-                        </td>
-                        <td class="text-center text-nowrap">
-                            @if (kh.TrangThai)
-                            {
-                                <span class="badge bg-success">Đang hoạt động</span>
-                            }
-                            else
-                            {
-                                <span class="badge bg-secondary">Tạm khóa</span>
-                            }
-                        </td>
-                        <td class="text-center text-nowrap">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button class="btn btn-outline-primary" title="Sửa thông tin" @onclick="() => MoModalSuaKhachHang(kh)">
-                                    Sửa
-                                </button>
-                                @if (kh.TrangThai)
+                        <th scope="col" style="width: 110px;" class="text-nowrap">MÃ KH</th>
+                        <th scope="col" style="min-width: 250px;">TÊN KHÁCH HÀNG</th>
+                        <th scope="col" style="width: 130px;" class="text-nowrap">ĐIỆN THOẠI</th>
+                        <th scope="col" class="text-end text-nowrap" style="width: 160px;">HẠN MỨC</th>
+                        <th scope="col" class="text-end text-nowrap" style="width: 160px;">CÔNG NỢ HIỆN TẠI</th>
+                        <th scope="col" class="text-center text-nowrap" style="width: 140px;">TRẠNG THÁI NỢ</th>
+                        <th scope="col" class="text-center text-nowrap" style="width: 140px;">HOẠT ĐỘNG</th>
+                        <th scope="col" class="text-center text-nowrap" style="width: 160px;">THAO TÁC</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var kh in danhSachKhachHang)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary text-nowrap">@kh.MaKhachHang</td>
+                            <td>
+                                <div class="fw-semibold customer-name">@kh.TenKhachHang</div>
+                                @if (!string.IsNullOrEmpty(kh.Email))
                                 {
-                                    <button class="btn btn-outline-danger" title="Tạm khóa bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, false)">
-                                        Khóa
-                                    </button>
+                                    <small class="text-muted d-block text-truncate" style="max-width: 280px;">
+                                        <span class="bi bi-envelope"></span> @kh.Email
+                                    </small>
+                                }
+                                @if (!string.IsNullOrEmpty(kh.DiaChi))
+                                {
+                                    <small class="text-muted d-block text-truncate" style="max-width: 280px;">
+                                        <span class="bi bi-geo-alt"></span> @kh.DiaChi
+                                    </small>
+                                }
+                            </td>
+                            <td class="text-nowrap text-secondary">@(string.IsNullOrEmpty(kh.SoDienThoai) ? "-" : kh.SoDienThoai)</td>
+                            <td class="text-end text-nowrap fw-semibold text-slate-800">@kh.HanMucCongNo.ToString("N0", viCulture) đ</td>
+                            <td class="text-end text-nowrap fw-bold @(kh.SoDuCongNo > 0 ? "text-danger" : "text-success")">
+                                @kh.SoDuCongNo.ToString("N0", viCulture) đ
+                            </td>
+                            <td class="text-center text-nowrap">
+                                @if (kh.DaVuotHanMuc)
+                                {
+                                    <span class="status-badge badge-over-limit text-nowrap">Vượt hạn mức</span>
+                                }
+                                else if (kh.SoDuCongNo > 0)
+                                {
+                                    <span class="status-badge badge-has-debt text-nowrap">Đang có nợ</span>
                                 }
                                 else
                                 {
-                                    <button class="btn btn-outline-success" title="Mở lại bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, true)">
-                                        Mở
-                                    </button>
+                                    <span class="status-badge badge-no-debt text-nowrap">Không nợ</span>
                                 }
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+                            </td>
+                            <td class="text-center text-nowrap">
+                                @if (kh.TrangThai)
+                                {
+                                    <span class="status-badge badge-active text-nowrap">Đang hoạt động</span>
+                                }
+                                else
+                                {
+                                    <span class="status-badge badge-locked text-nowrap">Tạm khóa</span>
+                                }
+                            </td>
+                            <td class="text-center text-nowrap">
+                                <div class="d-inline-flex gap-1 align-items-center">
+                                    <button class="btn btn-sm btn-outline-primary rounded-pill px-2.5 py-0.5" title="Sửa thông tin" @onclick="() => MoModalSuaKhachHang(kh)">
+                                        Sửa
+                                    </button>
+                                    @if (kh.TrangThai)
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-0.5" title="Tạm khóa bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, false)">
+                                            Khóa
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-success rounded-pill px-2.5 py-0.5" title="Mở lại bán hàng" @onclick="() => MoModalXacNhanDoiTrangThai(kh, true)">
+                                            Mở
+                                        </button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     </div>
 }
 
 <!-- Modal Thêm / Sửa Khách Hàng -->
 @if (hienThiModalForm)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content shadow">
-                <div class="modal-header bg-primary text-white">
-                    <h5 class="modal-title">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header modal-header-enterprise text-white">
+                    <h5 class="modal-title fw-bold fs-5">
                         @(isEditing ? "Cập Nhật Thông Tin Khách Hàng" : "Thêm Khách Hàng Mới")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving"></button>
+                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     @if (!string.IsNullOrEmpty(formErrorMessage))
                     {
-                        <div class="alert alert-danger py-2 mb-3" role="alert">
+                        <div class="alert alert-danger py-2 mb-3 rounded-3" role="alert">
                             @formErrorMessage
                         </div>
                     }
 
                     @if (canXacNhanHaHanMuc)
                     {
-                        <div class="alert alert-warning py-2 mb-3" role="alert">
+                        <div class="alert alert-warning py-2 mb-3 rounded-3 border-warning" role="alert">
                             <h6 class="alert-heading fw-bold">Xác nhận giảm hạn mức công nợ:</h6>
                             <p class="mb-2 small">
                                 Hạn mức mới (<strong>@formModel.HanMucCongNo.ToString("N0", viCulture) đ</strong>) thấp hơn số dư công nợ hiện tại (<strong>@congNoHienTaiCanhBao.ToString("N0", viCulture) đ</strong>).
@@ -182,18 +186,18 @@ else
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Mã khách hàng</label>
-                            <input type="text" class="form-control bg-light @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Mã khách hàng</label>
+                            <input type="text" class="form-control rounded-3 bg-light @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
                                    @bind="formModel.MaKhachHang" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: KH001)" />
-                            <small class="text-muted">Mã được cấp tự động bởi hệ thống</small>
+                            <small class="text-muted d-block mt-1">Mã được cấp tự động bởi hệ thống</small>
                             @if (CoLoi("MaKhachHang"))
                             {
                                 <div class="invalid-feedback">@LayLoi("MaKhachHang")</div>
                             }
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold">Tên khách hàng <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @(CoLoi("TenKhachHang") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Tên khách hàng <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control rounded-3 @(CoLoi("TenKhachHang") ? "is-invalid" : "")"
                                    @bind="formModel.TenKhachHang" maxlength="150" placeholder="VD: Công ty TNHH Ánh Dương" />
                             @if (CoLoi("TenKhachHang"))
                             {
@@ -202,8 +206,8 @@ else
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Số điện thoại</label>
-                            <input type="text" class="form-control @(CoLoi("SoDienThoai") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Số điện thoại</label>
+                            <input type="text" class="form-control rounded-3 @(CoLoi("SoDienThoai") ? "is-invalid" : "")"
                                    @bind="formModel.SoDienThoai" maxlength="20" placeholder="VD: 0901234567" />
                             @if (CoLoi("SoDienThoai"))
                             {
@@ -211,8 +215,8 @@ else
                             }
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Email</label>
-                            <input type="email" class="form-control @(CoLoi("Email") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Email</label>
+                            <input type="email" class="form-control rounded-3 @(CoLoi("Email") ? "is-invalid" : "")"
                                    @bind="formModel.Email" maxlength="100" placeholder="VD: contact@anhduong.vn" />
                             @if (CoLoi("Email"))
                             {
@@ -221,8 +225,8 @@ else
                         </div>
 
                         <div class="col-12">
-                            <label class="form-label fw-semibold">Địa chỉ</label>
-                            <textarea class="form-control @(CoLoi("DiaChi") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Địa chỉ</label>
+                            <textarea class="form-control rounded-3 @(CoLoi("DiaChi") ? "is-invalid" : "")"
                                       @bind="formModel.DiaChi" rows="2" maxlength="250" placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"></textarea>
                             @if (CoLoi("DiaChi"))
                             {
@@ -231,14 +235,14 @@ else
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold">Hạn mức công nợ (VNĐ) <span class="text-danger">*</span></label>
-                            <input type="number" step="1000" min="0" class="form-control @(CoLoi("HanMucCongNo") ? "is-invalid" : "")"
+                            <label class="form-label fw-semibold text-slate-800 small mb-1">Hạn mức công nợ (VNĐ) <span class="text-danger">*</span></label>
+                            <input type="number" step="1000" min="0" class="form-control rounded-3 @(CoLoi("HanMucCongNo") ? "is-invalid" : "")"
                                    @bind="formModel.HanMucCongNo" />
                             @if (CoLoi("HanMucCongNo"))
                             {
                                 <div class="invalid-feedback">@LayLoi("HanMucCongNo")</div>
                             }
-                            <small class="text-muted">Nhập 0 nếu không cho phép bán chịu.</small>
+                            <small class="text-muted d-block mt-1">Nhập 0 nếu không cho phép bán chịu.</small>
                         </div>
                         <div class="col-md-6 d-flex align-items-center mt-4">
                             <div class="form-check form-switch fs-6">
@@ -250,9 +254,9 @@ else
                         </div>
                     </div>
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
-                    <button type="button" class="btn btn-primary" id="btn-luu-khach-hang" @onclick="LuuKhachHangAsync" disabled="@isSaving">
+                <div class="modal-footer bg-light px-4 py-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
+                    <button type="button" class="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-luu-khach-hang" @onclick="LuuKhachHangAsync" disabled="@isSaving">
                         @if (isSaving)
                         {
                             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -272,34 +276,34 @@ else
 <!-- Modal Xác Nhận Tạm Khóa / Mở Lại -->
 @if (hienThiModalXacNhanTrangThai && khachHangDoiTrangThai != null)
 {
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content shadow">
-                <div class="modal-header @(trangThaiMoiDuKien ? "bg-success" : "bg-warning") text-white">
-                    <h5 class="modal-title">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header @(trangThaiMoiDuKien ? "modal-header-success" : "modal-header-warning") text-white">
+                    <h5 class="modal-title fw-bold fs-5">
                         @(trangThaiMoiDuKien ? "Xác nhận mở lại khách hàng" : "Xác nhận tạm khóa khách hàng")
                     </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving"></button>
+                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving" aria-label="Close"></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body p-4">
                     @if (trangThaiMoiDuKien)
                     {
-                        <p class="mb-0">
+                        <p class="mb-0 text-slate-800">
                             Bạn có chắc chắn muốn mở lại khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
                             Khách hàng sẽ được phép tạo hóa đơn bán chịu tiếp trong hạn mức.
                         </p>
                     }
                     else
                     {
-                        <p class="mb-0">
+                        <p class="mb-0 text-slate-800">
                             Bạn có chắc chắn muốn tạm khóa khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
                             Hệ thống sẽ <strong>chặn tạo hóa đơn bán chịu mới</strong> cho khách hàng này (khách vẫn được nộp tiền trả nợ).
                         </p>
                     }
                 </div>
-                <div class="modal-footer bg-light">
-                    <button type="button" class="btn btn-secondary" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
-                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning")" id="btn-xac-nhan-doi-trang-thai"
+                <div class="modal-footer bg-light px-4 py-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
+                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning text-dark") rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-xac-nhan-doi-trang-thai"
                             @onclick="XacNhanDoiTrangThaiAsync" disabled="@isSaving">
                         @if (isSaving)
                         {

@@ -105,10 +105,10 @@ public class HoaDonRepository : IHoaDonRepository
                 };
             }
 
-            // 2. Đọc lại danh sách sản phẩm trong transaction để lấy giá hiện hành và kiểm tra trạng thái bán
-            var sanPhamIds = request.ChiTietHoaDons.Select(c => c.SanPhamId).Distinct().ToList();
+            // 2. Đọc lại danh sách sản phẩm trong transaction để lấy giá hiện hành, số lượng tồn và kiểm tra trạng thái bán
+            var sanPhamIds = request.ChiTietHoaDons.Select(c => c.SanPhamId).Distinct().OrderBy(id => id).ToList();
             const string sqlSanPhams = @"
-                SELECT SanPhamId, MaSanPham, TenSanPham, DonViTinh, DonGia, TrangThai
+                SELECT SanPhamId, MaSanPham, TenSanPham, DonViTinh, DonGia, SoLuongTon, TrangThai
                 FROM dbo.SanPhams WITH (UPDLOCK, HOLDLOCK)
                 WHERE SanPhamId IN @sanPhamIds;";
 
@@ -149,6 +149,28 @@ public class HoaDonRepository : IHoaDonRepository
                         ThanhCong = false,
                         GiaBiThayDoi = true,
                         ThongBao = $"Đơn giá của sản phẩm '{sp.TenSanPham}' đã thay đổi từ {item.DonGiaHienThi:N0} đ thành {sp.DonGia:N0} đ trên hệ thống. Vui lòng kiểm tra lại đơn giá trước khi lưu."
+                    };
+                }
+            }
+
+            // Kiểm tra tồn kho thực tế của từng sản phẩm phía máy chủ (từ chối toàn bộ hóa đơn nếu một sản phẩm không đủ tồn)
+            var soLuongYeuCauTheoSp = request.ChiTietHoaDons
+                .GroupBy(c => c.SanPhamId)
+                .ToDictionary(g => g.Key, g => g.Sum(c => c.SoLuong));
+
+            foreach (var kvp in soLuongYeuCauTheoSp)
+            {
+                var spId = kvp.Key;
+                var soLuongYeuCau = kvp.Value;
+                var sp = dbSanPhams[spId];
+
+                if (sp.SoLuongTon < soLuongYeuCau)
+                {
+                    transaction.Rollback();
+                    return new TaoHoaDonResult
+                    {
+                        ThanhCong = false,
+                        ThongBao = $"Sản phẩm '{sp.TenSanPham}' không đủ số lượng tồn kho (tồn hiện tại: {sp.SoLuongTon}, số lượng yêu cầu: {soLuongYeuCau})."
                     };
                 }
             }
@@ -296,7 +318,35 @@ public class HoaDonRepository : IHoaDonRepository
                     transaction: transaction);
             }
 
-            // 9. Toàn bộ thao tác thành công -> Commit transaction
+            // 9. Trừ tồn kho từng sản phẩm trong cùng transaction (kiểm tra số dòng UPDATE thực tế)
+            const string sqlTruTonKho = @"
+                UPDATE dbo.SanPhams
+                SET SoLuongTon = SoLuongTon - @SoLuongBan
+                WHERE SanPhamId = @SanPhamId AND SoLuongTon >= @SoLuongBan;";
+
+            foreach (var kvp in soLuongYeuCauTheoSp)
+            {
+                var spId = kvp.Key;
+                var soLuongBan = kvp.Value;
+                var sp = dbSanPhams[spId];
+
+                var rowsAffected = await connection.ExecuteAsync(
+                    sqlTruTonKho,
+                    new { SanPhamId = spId, SoLuongBan = soLuongBan },
+                    transaction: transaction);
+
+                if (rowsAffected != 1)
+                {
+                    transaction.Rollback();
+                    return new TaoHoaDonResult
+                    {
+                        ThanhCong = false,
+                        ThongBao = $"Không thể trừ tồn kho cho sản phẩm '{sp.TenSanPham}'. Tồn kho không đủ hoặc đã bị thay đổi bởi giao dịch khác (tồn hiện tại: {sp.SoLuongTon}, yêu cầu: {soLuongBan})."
+                    };
+                }
+            }
+
+            // 10. Toàn bộ thao tác thành công -> Commit transaction
             transaction.Commit();
 
             return new TaoHoaDonResult
@@ -439,6 +489,7 @@ public class HoaDonRepository : IHoaDonRepository
         public string TenSanPham { get; set; } = string.Empty;
         public string DonViTinh { get; set; } = string.Empty;
         public decimal DonGia { get; set; }
+        public int SoLuongTon { get; set; }
         public bool TrangThai { get; set; }
     }
 }
