@@ -182,9 +182,10 @@ else
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Mã khách hàng <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
-                                   @bind="formModel.MaKhachHang" disabled="@isEditing" maxlength="20" placeholder="VD: KH005" />
+                            <label class="form-label fw-semibold">Mã khách hàng</label>
+                            <input type="text" class="form-control bg-light @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
+                                   @bind="formModel.MaKhachHang" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: KH001)" />
+                            <small class="text-muted">Mã được cấp tự động bởi hệ thống</small>
                             @if (CoLoi("MaKhachHang"))
                             {
                                 <div class="invalid-feedback">@LayLoi("MaKhachHang")</div>
@@ -367,11 +368,22 @@ else
         }
     }
 
-    private void MoModalThemKhachHang()
+    private async Task MoModalThemKhachHang()
     {
         isEditing = false;
+        string maKhMoi = string.Empty;
+        try
+        {
+            maKhMoi = await ThemKhachHangUseCase.LayMaKhachHangTiepTheoAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Không lấy được mã khách hàng tiếp theo");
+        }
+
         formModel = new FormKhachHangModel
         {
+            MaKhachHang = maKhMoi,
             TrangThai = true,
             HanMucCongNo = 0
         };

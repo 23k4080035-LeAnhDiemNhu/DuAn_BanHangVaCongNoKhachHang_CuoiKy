@@ -32,6 +32,9 @@ public class ChiTietHoaDonUnitTests
 
         public Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request) =>
             Task.FromResult(new TaoHoaDonResult { ThanhCong = true });
+
+        public Task<string> LayMaHoaDonTiepTheoAsync() =>
+            Task.FromResult("HD011");
     }
 
     [Fact]

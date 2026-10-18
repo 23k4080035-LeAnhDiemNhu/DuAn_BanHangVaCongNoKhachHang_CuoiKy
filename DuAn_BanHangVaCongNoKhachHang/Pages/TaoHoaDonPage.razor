@@ -14,20 +14,19 @@
 
 <PageTitle>Lập hóa đơn bán chịu mới</PageTitle>
 
-<div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
         <div>
-            <h3 class="mb-1 text-primary fw-bold">Lập Hóa Đơn Bán Chịu</h3>
-            <p class="text-muted mb-0 small">
+            <h3 class="fw-bold mb-1 page-title">Lập Hóa Đơn Bán Chịu</h3>
+            <p class="text-muted small mb-0">
                 Ghi nhận doanh số bán chịu và công nợ khách hàng (Đã thanh toán = 0, Trạng thái = Chưa thanh toán).
             </p>
         </div>
-        <a href="/hoa-don" class="btn btn-outline-secondary btn-sm text-nowrap">
-            &larr; Quay lại danh sách
+        <a href="/hoa-don" class="btn btn-outline-secondary rounded-pill px-3 py-2 text-nowrap d-inline-flex align-items-center shadow-sm">
+            <span class="oi oi-arrow-left me-1" aria-hidden="true"></span> Quay lại danh sách
         </a>
     </div>
 
-    <div class="alert alert-secondary py-2 px-3 small border-0 bg-light mb-3">
+    <div class="alert alert-secondary py-2 px-3 small border-0 bg-white shadow-sm rounded-3 mb-4">
         <strong>Lưu ý nghiệp vụ:</strong> Đây là luồng lập hóa đơn bán chịu, toàn bộ giá trị hóa đơn sẽ ghi nhận vào nợ phải thu của khách hàng (chưa hỗ trợ thu tiền ngay trong luồng này). Hệ thống sẽ tự động đối soát hạn mức công nợ trước khi lưu.
     </div>
 
@@ -37,54 +36,66 @@
             <div class="spinner-border text-primary me-3" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <span>Đang tải danh mục khách hàng và bảng giá sản phẩm...</span>
+            <span>Đang tải danh mục khách hàng, mã hóa đơn tự động và bảng giá sản phẩm...</span>
         </div>
     }
     else
     {
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show rounded-3 mb-3" role="alert">
                 <h6 class="alert-heading fw-bold mb-1">Không thể lưu hóa đơn!</h6>
                 <div>@errorMessage</div>
                 <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty" aria-label="Close"></button>
             </div>
         }
 
+        @if (!string.IsNullOrEmpty(thongBaoThanhCong))
+        {
+            <div class="alert alert-success alert-dismissible fade show rounded-3 mb-3" role="alert">
+                <h6 class="alert-heading fw-bold mb-1">Lưu hóa đơn thành công!</h6>
+                <div>@thongBaoThanhCong</div>
+                <div class="mt-2">
+                    <a href="/hoa-don" class="btn btn-sm btn-success rounded-pill px-3">Xem danh sách hóa đơn</a>
+                </div>
+                <button type="button" class="btn-close" @onclick="() => thongBaoThanhCong = string.Empty" aria-label="Close"></button>
+            </div>
+        }
+
         @if (giaBiThayDoi)
         {
-            <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
+            <div class="alert alert-warning alert-dismissible fade show rounded-3 mb-3" role="alert">
                 <h6 class="alert-heading fw-bold mb-1">Cảnh báo chênh lệch đơn giá!</h6>
                 <div>@canhBaoGiaMessage</div>
                 <button type="button" class="btn-close" @onclick="() => giaBiThayDoi = false" aria-label="Close"></button>
             </div>
         }
 
-        <div class="row g-3">
+        <div class="row g-4">
             <!-- Cột trái: Thông tin hóa đơn & Khách hàng -->
             <div class="col-lg-5">
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-header bg-primary text-white py-2">
+                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                    <div class="card-header card-header-enterprise">
                         <span class="fw-semibold">1. Thông tin Khách hàng & Hạn mức</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Chọn khách hàng <span class="text-danger">*</span></label>
-                            <select class="form-select" @onchange="OnKhachHangSelected" value="@selectedKhachHangId">
+                            <label class="form-label fw-bold text-dark">Chọn khách hàng <span class="text-danger">*</span></label>
+                            <select class="form-select rounded-3" @onchange="OnKhachHangSelected" value="@selectedKhachHangId">
                                 <option value="0">-- Chọn khách hàng nhận nợ --</option>
                                 @foreach (var kh in danhSachKhachHang)
                                 {
-                                    <option value="@kh.KhachHangId">@kh.MaKhachHang - @kh.TenKhachHang</option>
+                                    <option value="@kh.KhachHangId">@kh.TenKhachHang</option>
                                 }
                             </select>
                         </div>
 
                         @if (khachHangHienTai != null)
                         {
-                            <div class="p-3 rounded bg-light border">
+                            <div class="p-3 rounded-3 bg-light border">
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted">Mã khách hàng:</span>
-                                    <span class="fw-semibold">@khachHangHienTai.MaKhachHang</span>
+                                    <span class="fw-semibold text-dark">@khachHangHienTai.MaKhachHang</span>
                                 </div>
                                 <div class="d-flex justify-content-between mb-1">
                                     <span class="text-muted">Hạn mức tín dụng:</span>
@@ -111,24 +122,23 @@
                     </div>
                 </div>
 
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-header bg-primary text-white py-2">
+                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                    <div class="card-header card-header-enterprise">
                         <span class="fw-semibold">2. Thông tin Chứng từ</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Mã hóa đơn <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" @bind="maHoaDon" maxlength="20" placeholder="VD: HD008 (tối đa 20 ký tự)" />
-                            <small class="text-muted">Mã hóa đơn phải là duy nhất trên toàn hệ thống.</small>
+                            <label class="form-label fw-bold text-dark">Mã hóa đơn</label>
+                            <input type="text" class="form-control bg-light rounded-3 fw-bold text-primary" value="@maHoaDon" readonly />
                         </div>
                         <div class="row g-2 mb-3">
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Ngày lập <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" @bind="ngayLap" />
+                                <label class="form-label fw-bold text-dark">Ngày lập <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control rounded-3" @bind="ngayLap" />
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold">Hạn thanh toán <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control" @bind="hanThanhToan" min="@ngayLap.ToString("yyyy-MM-dd")" />
+                                <label class="form-label fw-bold text-dark">Hạn thanh toán <span class="text-danger">*</span></label>
+                                <input type="date" class="form-control rounded-3" @bind="hanThanhToan" min="@ngayLap.ToString("yyyy-MM-dd")" />
                                 @if (!hanThanhToan.HasValue)
                                 {
                                     <small class="text-danger fst-italic">Vui lòng chọn hạn thanh toán</small>
@@ -136,8 +146,8 @@
                             </div>
                         </div>
                         <div class="mb-0">
-                            <label class="form-label">Ghi chú</label>
-                            <textarea class="form-control" rows="2" @bind="ghiChu" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
+                            <label class="form-label fw-semibold text-dark">Ghi chú</label>
+                            <textarea class="form-control rounded-3" rows="2" @bind="ghiChu" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
                         </div>
                     </div>
                 </div>
@@ -145,24 +155,24 @@
 
             <!-- Cột phải: Chi tiết dòng hàng & Đối soát hạn mức -->
             <div class="col-lg-7">
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center py-2">
+                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                    <div class="card-header card-header-enterprise d-flex justify-content-between align-items-center">
                         <span class="fw-semibold">3. Chi tiết Hàng hóa Xuất bán</span>
-                        <button type="button" class="btn btn-light btn-sm text-primary fw-bold" @onclick="ThemDongSanPham">
-                            + Thêm sản phẩm
+                        <button type="button" class="btn btn-light btn-sm rounded-pill text-primary fw-semibold px-3 shadow-sm" @onclick="ThemDongSanPham">
+                            <span class="oi oi-plus me-1" aria-hidden="true"></span> Thêm sản phẩm
                         </button>
                     </div>
                     <div class="card-body p-0">
-                        <div class="table-responsive">
-                            <table class="table table-bordered table-hover align-middle mb-0" style="min-width: 650px;">
+                        <div class="table-responsive table-responsive-product">
+                            <table class="table table-hover align-middle mb-0" style="min-width: 680px;">
                                 <thead class="table-light">
-                                    <tr class="text-center small">
-                                        <th style="width: 40px;" class="text-nowrap">#</th>
-                                        <th style="min-width: 220px;">Sản phẩm</th>
-                                        <th style="width: 70px;" class="text-nowrap">ĐVT</th>
-                                        <th style="width: 120px;" class="text-end text-nowrap">Đơn giá niêm yết</th>
+                                    <tr class="text-secondary small fw-bold">
+                                        <th style="width: 40px;" class="text-center text-nowrap">#</th>
+                                        <th style="min-width: 250px;">Sản phẩm</th>
+                                        <th style="width: 70px;" class="text-center text-nowrap">ĐVT</th>
+                                        <th style="width: 130px;" class="text-end text-nowrap">Đơn giá niêm yết</th>
                                         <th style="width: 90px;" class="text-center text-nowrap">Số lượng</th>
-                                        <th style="width: 130px;" class="text-end text-nowrap">Thành tiền</th>
+                                        <th style="width: 140px;" class="text-end text-nowrap">Thành tiền</th>
                                         <th style="width: 50px;"></th>
                                     </tr>
                                 </thead>
@@ -184,20 +194,73 @@
                                             <tr>
                                                 <td class="text-center text-muted">@(index + 1)</td>
                                                 <td>
-                                                    <select class="form-select form-select-sm" 
-                                                            value="@item.SanPhamId" 
-                                                            @onchange="(e) => OnSanPhamChanged(index, e)">
-                                                        <option value="0">-- Chọn sản phẩm --</option>
-                                                        @foreach (var sp in danhSachSanPham)
+                                                    <div class="product-selector position-relative" @onkeydown="(e) => OnDropdownKeyDown(index, e)">
+                                                        <button type="button" 
+                                                                class="product-select-btn d-flex align-items-center justify-content-between text-start w-100" 
+                                                                id="@($"btn-select-sp-{index}")"
+                                                                aria-haspopup="listbox" 
+                                                                aria-expanded="@item.DropdownOpen"
+                                                                @onclick="() => ToggleDropdown(index)">
+                                                            <div class="d-flex align-items-center text-truncate me-2">
+                                                                @if (item.SanPhamId > 0)
+                                                                {
+                                                                    @if (!string.IsNullOrEmpty(item.HinhAnh))
+                                                                    {
+                                                                        <img src="@item.HinhAnh" alt="@item.TenSanPham" class="product-thumb me-2" 
+                                                                             onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
+                                                                        <span class="product-thumb-fallback me-2" style="display:none;">📦</span>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <span class="product-thumb-fallback me-2">📦</span>
+                                                                    }
+                                                                    <span class="text-truncate fw-medium text-dark">@item.TenSanPham</span>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <span class="text-muted fst-italic small">-- Chọn sản phẩm --</span>
+                                                                }
+                                                            </div>
+                                                            <span class="small text-muted">▾</span>
+                                                        </button>
+
+                                                        @if (item.DropdownOpen)
                                                         {
-                                                            <option value="@sp.SanPhamId">@sp.MaSanPham - @sp.TenSanPham</option>
+                                                            <div class="product-dropdown-menu" role="listbox">
+                                                                @foreach (var sp in danhSachSanPham)
+                                                                {
+                                                                    <div class="product-dropdown-item d-flex align-items-center justify-content-between @(sp.SanPhamId == item.SanPhamId ? "active-item" : "")"
+                                                                         role="option"
+                                                                         tabindex="0"
+                                                                         @onclick="() => ChonSanPham(index, sp)"
+                                                                         @onkeydown="(e) => HandleItemKeyDown(index, sp, e)">
+                                                                        <div class="d-flex align-items-center text-truncate me-2">
+                                                                            @if (!string.IsNullOrEmpty(sp.HinhAnh))
+                                                                            {
+                                                                                <img src="@sp.HinhAnh" alt="@sp.TenSanPham" class="product-thumb-menu me-2" 
+                                                                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='inline';" />
+                                                                                <span class="product-thumb-fallback me-2" style="display:none;">📦</span>
+                                                                            }
+                                                                            else
+                                                                            {
+                                                                                <span class="product-thumb-fallback me-2">📦</span>
+                                                                            }
+                                                                            <span class="fw-medium text-truncate text-dark">@sp.TenSanPham</span>
+                                                                        </div>
+                                                                        <div class="text-end text-nowrap small text-muted">
+                                                                            <span class="fw-bold text-primary">@sp.DonGia.ToString("N0", viCulture) đ</span>
+                                                                            <span> / @sp.DonViTinh</span>
+                                                                        </div>
+                                                                    </div>
+                                                                }
+                                                            </div>
                                                         }
-                                                    </select>
+                                                    </div>
                                                 </td>
                                                 <td class="text-center text-muted small">@item.DonViTinh</td>
                                                 <td class="text-end text-muted small">@item.DonGiaHienThi.ToString("N0", viCulture) đ</td>
                                                 <td>
-                                                    <input type="number" class="form-control form-control-sm text-center" 
+                                                    <input type="number" class="form-control form-control-sm text-center rounded-3" 
                                                            min="1" max="100000" 
                                                            value="@item.SoLuong" 
                                                            @onchange="(e) => OnSoLuongChanged(index, e)" />
@@ -206,7 +269,7 @@
                                                     @((item.SoLuong * item.DonGiaHienThi).ToString("N0", viCulture)) đ
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-outline-danger btn-sm py-0 px-2" 
+                                                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill py-0 px-2" 
                                                             title="Xóa dòng" 
                                                             @onclick="() => XoaDongSanPham(index)">
                                                         &times;
@@ -231,11 +294,11 @@
                 </div>
 
                 <!-- Card đối soát hạn mức tín dụng -->
-                <div class="card shadow-sm border-0 mb-3">
-                    <div class="card-header bg-light py-2">
+                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                    <div class="card-header card-header-enterprise-light py-2">
                         <span class="fw-semibold">4. Đối soát Hạn mức Tín dụng Khách hàng</span>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
                         @if (khachHangHienTai != null)
                         {
                             var tongNoSauKhiMua = khachHangHienTai.SoDuCongNo + TongTienHoaDonMoi;
@@ -243,19 +306,19 @@
 
                             <div class="row g-2 text-center mb-3">
                                 <div class="col-sm-4">
-                                    <div class="p-2 border rounded bg-light">
+                                    <div class="p-2 border rounded-3 bg-light">
                                         <small class="text-muted d-block">Công nợ hiện tại</small>
-                                        <span class="fw-bold">@khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ</span>
+                                        <span class="fw-bold text-dark">@khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ</span>
                                     </div>
                                 </div>
                                 <div class="col-sm-4">
-                                    <div class="p-2 border rounded bg-light">
+                                    <div class="p-2 border rounded-3 bg-light">
                                         <small class="text-muted d-block">+ Hóa đơn mới</small>
                                         <span class="fw-bold text-primary">@TongTienHoaDonMoi.ToString("N0", viCulture) đ</span>
                                     </div>
                                 </div>
                                 <div class="col-sm-4">
-                                    <div class="p-2 border rounded @(vuotHanMuc ? "bg-danger text-white" : "bg-light")">
+                                    <div class="p-2 border rounded-3 @(vuotHanMuc ? "bg-danger text-white" : "bg-light")">
                                         <small class="@(vuotHanMuc ? "text-white" : "text-muted") d-block">= Tổng nợ dự kiến</small>
                                         <span class="fw-bold">@tongNoSauKhiMua.ToString("N0", viCulture) đ</span>
                                     </div>
@@ -264,7 +327,7 @@
 
                             @if (vuotHanMuc)
                             {
-                                <div class="alert alert-danger py-2 mb-0 d-flex align-items-center">
+                                <div class="alert alert-danger py-2 mb-0 rounded-3 d-flex align-items-center">
                                     <div>
                                         <strong>CẢNH BÁO VƯỢT HẠN MỨC:</strong>
                                         Tổng nợ dự kiến (@tongNoSauKhiMua.ToString("N0", viCulture) đ) vượt quá hạn mức được cấp (@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ) là <strong>@((tongNoSauKhiMua - khachHangHienTai.HanMucCongNo).ToString("N0", viCulture)) đ</strong>. Hệ thống sẽ từ chối lưu hóa đơn này.
@@ -273,7 +336,7 @@
                             }
                             else
                             {
-                                <div class="alert alert-success py-2 mb-0 small">
+                                <div class="alert alert-success py-2 mb-0 rounded-3 small">
                                     Hợp lệ: Tổng nợ dự kiến nằm trong hạn mức tín dụng cho phép của khách hàng (còn dư hạn mức: @((khachHangHienTai.HanMucCongNo - tongNoSauKhiMua).ToString("N0", viCulture)) đ).
                                 </div>
                             }
@@ -288,8 +351,8 @@
                 <!-- Nút thao tác lưu -->
                 <div class="d-flex flex-column align-items-end mb-4">
                     <div class="d-flex gap-2">
-                        <a href="/hoa-don" class="btn btn-outline-secondary">Hủy bỏ</a>
-                        <button type="button" class="btn btn-primary px-4 fw-semibold" 
+                        <a href="/hoa-don" class="btn btn-outline-secondary rounded-pill px-4">Hủy bỏ</a>
+                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" 
                                 disabled="@(isSubmitting || VuotHanMucHienTai || selectedKhachHangId <= 0 || !danhSachChiTiet.Any(c => c.SanPhamId > 0) || !hanThanhToan.HasValue)" 
                                 @onclick="LuuHoaDonAsync" id="btn-luu-hoa-don">
                             @if (isSubmitting)
@@ -313,7 +376,6 @@
             </div>
         </div>
     }
-</div>
 
 @code {
     private List<KhachHang> danhSachKhachHang = new();
@@ -330,9 +392,11 @@
     {
         public int SanPhamId { get; set; }
         public string TenSanPham { get; set; } = string.Empty;
+        public string? HinhAnh { get; set; }
         public string DonViTinh { get; set; } = "-";
         public decimal DonGiaHienThi { get; set; }
         public int SoLuong { get; set; } = 1;
+        public bool DropdownOpen { get; set; } = false;
     }
 
     private List<DongChiTietItem> danhSachChiTiet = new();
@@ -340,6 +404,7 @@
     private bool isLoadingData = true;
     private bool isSubmitting = false;
     private string errorMessage = string.Empty;
+    private string thongBaoThanhCong = string.Empty;
     private bool giaBiThayDoi = false;
     private string canhBaoGiaMessage = string.Empty;
     private readonly CultureInfo viCulture = new CultureInfo("vi-VN");
@@ -361,12 +426,14 @@
         {
             var khTask = XemDanhSachKhachHangUseCase.ExecuteAsync();
             var spTask = XemDanhSachSanPhamHoatDongUseCase.ExecuteAsync();
+            var maTask = TaoHoaDonBanChiuUseCase.LayMaHoaDonTiepTheoAsync();
 
-            await Task.WhenAll(khTask, spTask);
+            await Task.WhenAll(khTask, spTask, maTask);
 
             // Chỉ cho chọn khách hàng và sản phẩm đang hoạt động
             danhSachKhachHang = (await khTask).Where(k => k.TrangThai).ToList();
             danhSachSanPham = (await spTask).Where(s => s.TrangThai).ToList();
+            maHoaDon = await maTask;
 
             // Mặc định tạo sẵn 1 dòng sản phẩm trống nếu danh mục có hàng
             if (!danhSachChiTiet.Any())
@@ -376,7 +443,7 @@
         }
         catch (Exception ex)
         {
-            errorMessage = "Không thể tải danh mục khách hàng hoặc sản phẩm. Vui lòng thử lại sau.";
+            errorMessage = "Không thể tải danh mục khách hàng, sản phẩm hoặc mã hóa đơn. Vui lòng thử lại sau.";
             Logger.LogError(ex, "Lỗi xảy ra trong TaoHoaDonPage.LoadDataAsync()");
         }
         finally
@@ -412,25 +479,58 @@
         }
     }
 
-    private void OnSanPhamChanged(int index, ChangeEventArgs e)
+    private void ToggleDropdown(int index)
     {
-        if (index >= 0 && index < danhSachChiTiet.Count && int.TryParse(e.Value?.ToString(), out int spId))
+        if (index >= 0 && index < danhSachChiTiet.Count)
+        {
+            var currentState = danhSachChiTiet[index].DropdownOpen;
+            foreach (var item in danhSachChiTiet)
+            {
+                item.DropdownOpen = false;
+            }
+            danhSachChiTiet[index].DropdownOpen = !currentState;
+        }
+    }
+
+    private void DongDropdown(int index)
+    {
+        if (index >= 0 && index < danhSachChiTiet.Count)
+        {
+            danhSachChiTiet[index].DropdownOpen = false;
+        }
+    }
+
+    private void ChonSanPham(int index, SanPham sp)
+    {
+        if (index >= 0 && index < danhSachChiTiet.Count && sp != null)
         {
             var item = danhSachChiTiet[index];
-            item.SanPhamId = spId;
-            var sp = danhSachSanPham.FirstOrDefault(s => s.SanPhamId == spId);
-            if (sp != null)
-            {
-                item.TenSanPham = sp.TenSanPham;
-                item.DonViTinh = sp.DonViTinh;
-                item.DonGiaHienThi = sp.DonGia;
-            }
-            else
-            {
-                item.TenSanPham = string.Empty;
-                item.DonViTinh = "-";
-                item.DonGiaHienThi = 0;
-            }
+            item.SanPhamId = sp.SanPhamId;
+            item.TenSanPham = sp.TenSanPham;
+            item.HinhAnh = sp.HinhAnh;
+            item.DonViTinh = sp.DonViTinh;
+            item.DonGiaHienThi = sp.DonGia;
+            item.DropdownOpen = false;
+        }
+    }
+
+    private void OnDropdownKeyDown(int index, KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            DongDropdown(index);
+        }
+    }
+
+    private void HandleItemKeyDown(int index, SanPham sp, KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" || e.Key == " ")
+        {
+            ChonSanPham(index, sp);
+        }
+        else if (e.Key == "Escape")
+        {
+            DongDropdown(index);
         }
     }
 
@@ -447,6 +547,7 @@
         if (isSubmitting) return;
 
         errorMessage = string.Empty;
+        thongBaoThanhCong = string.Empty;
         giaBiThayDoi = false;
         canhBaoGiaMessage = string.Empty;
 
@@ -454,12 +555,6 @@
         if (selectedKhachHangId <= 0)
         {
             errorMessage = "Vui lòng chọn khách hàng.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(maHoaDon))
-        {
-            errorMessage = "Vui lòng nhập mã hóa đơn.";
             return;
         }
 
@@ -494,7 +589,7 @@
             var request = new TaoHoaDonRequest
             {
                 KhachHangId = selectedKhachHangId,
-                MaHoaDon = maHoaDon.Trim(),
+                MaHoaDon = maHoaDon?.Trim() ?? string.Empty,
                 NgayLap = ngayLap,
                 HanThanhToan = hanThanhToan.Value,
                 GhiChu = ghiChu,
@@ -513,8 +608,18 @@
 
             if (result.ThanhCong)
             {
-                // Thành công: điều hướng về trang danh sách hóa đơn
-                NavigationManager.NavigateTo("/hoa-don");
+                // Nếu mã hóa đơn thực tế khác mã dự kiến hiển thị ban đầu (do phiên khác đã lấy mã đó),
+                // thông báo rõ mã thực tế cho người dùng
+                if (!string.IsNullOrEmpty(result.MaHoaDonMoi) && 
+                    !string.Equals(result.MaHoaDonMoi, maHoaDon, StringComparison.OrdinalIgnoreCase))
+                {
+                    thongBaoThanhCong = $"Hóa đơn đã được lưu thành công với mã thực tế là {result.MaHoaDonMoi} (mã dự kiến ban đầu {maHoaDon} đã được cấp cho phiên khác).";
+                    maHoaDon = result.MaHoaDonMoi;
+                }
+                else
+                {
+                    NavigationManager.NavigateTo("/hoa-don");
+                }
             }
             else if (result.GiaBiThayDoi)
             {

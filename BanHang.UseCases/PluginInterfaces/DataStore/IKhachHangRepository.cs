@@ -42,4 +42,9 @@ public interface IKhachHangRepository
     /// Thay đổi trạng thái hoạt động (Tạm khóa / Mở lại)
     /// </summary>
     Task<DoiTrangThaiKhachHangResult> DoiTrangThaiKhachHangAsync(int khachHangId, bool trangThaiMoi);
+
+    /// <summary>
+    /// Lấy mã khách hàng tiếp theo dự kiến dạng KHxxx (không chèn dữ liệu)
+    /// </summary>
+    Task<string> LayMaKhachHangTiepTheoAsync();
 }

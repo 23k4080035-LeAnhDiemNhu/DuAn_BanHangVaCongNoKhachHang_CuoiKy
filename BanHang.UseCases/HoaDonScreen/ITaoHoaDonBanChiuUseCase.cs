@@ -5,5 +5,6 @@ namespace BanHang.UseCases.HoaDonScreen;
 /// </summary>
 public interface ITaoHoaDonBanChiuUseCase
 {
+    Task<string> LayMaHoaDonTiepTheoAsync();
     Task<TaoHoaDonResult> ExecuteAsync(TaoHoaDonRequest request);
 }

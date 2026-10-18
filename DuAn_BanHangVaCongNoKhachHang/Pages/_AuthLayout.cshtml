@@ -6,11 +6,11 @@
     <title>@ViewData["Title"] - Bán Hàng & Công Nợ</title>
     <base href="~/" />
     <link rel="stylesheet" href="css/bootstrap/bootstrap.min.css" />
-    <link rel="stylesheet" href="css/site.css" />
-    <link rel="stylesheet" href="DuAn_BanHangVaCongNoKhachHang.styles.css" />
+    <link rel="stylesheet" href="css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="DuAn_BanHangVaCongNoKhachHang.styles.css" asp-append-version="true" />
 </head>
-<body class="bg-light">
-    <main role="main">
+<body style="margin: 0; padding: 0; background-color: #F4F6FA; min-height: 100vh; width: 100%;">
+    <main role="main" style="min-height: 100vh; width: 100%; display: flex; flex-direction: column;">
         @RenderBody()
     </main>
 </body>

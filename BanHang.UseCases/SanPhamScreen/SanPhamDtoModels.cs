@@ -18,6 +18,7 @@ public class TaoSanPhamResult
     public bool ThanhCong { get; set; }
     public string ThongBao { get; set; } = string.Empty;
     public int? SanPhamIdMoi { get; set; }
+    public string? MaSanPhamMoi { get; set; }
     public Dictionary<string, string> LoiTheoTruong { get; set; } = new();
 }
 

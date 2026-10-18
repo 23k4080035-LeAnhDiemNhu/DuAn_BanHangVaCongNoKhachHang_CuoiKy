@@ -268,36 +268,32 @@ public class HttpSecurityIntegrationTests : IClassFixture<WebApplicationFactory<
             var existingHd2 = await conn.ExecuteScalarAsync<int?>("SELECT HoaDonId FROM dbo.HoaDons WHERE MaHoaDon = 'HD002'");
             if (existingHd2.HasValue)
             {
-                idHd002 = existingHd2.Value;
+                await conn.ExecuteAsync("DELETE FROM dbo.PhanBoThanhToans WHERE HoaDonId = @Id; DELETE FROM dbo.ChiTietHoaDons WHERE HoaDonId = @Id; DELETE FROM dbo.HoaDons WHERE HoaDonId = @Id;", new { Id = existingHd2.Value });
             }
-            else
-            {
-                idHd002 = await conn.ExecuteScalarAsync<int>(@"
-                    INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai, GhiChu)
-                    VALUES ('HD002', @KhId, '2026-10-01', '2026-10-31', 6800000, 6800000, 2, N'Hóa đơn test HD002');
-                    SELECT CAST(SCOPE_IDENTITY() AS INT);", new { KhId = khId.Value });
 
-                await conn.ExecuteAsync(@"
-                    INSERT INTO dbo.ChiTietHoaDons (HoaDonId, SanPhamId, TenSanPham, DonViTinh, SoLuong, DonGia)
-                    VALUES (@Id, @SpId, N'Màn hình Dell UltraSharp', N'Cái', 1, 6800000);", new { Id = idHd002, SpId = spId.Value });
-            }
+            idHd002 = await conn.ExecuteScalarAsync<int>(@"
+                INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai, GhiChu)
+                VALUES ('HD002', @KhId, '2026-10-01', '2026-10-31', 6800000, 6800000, 2, N'Hóa đơn test HD002');
+                SELECT CAST(SCOPE_IDENTITY() AS INT);", new { KhId = khId.Value });
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.ChiTietHoaDons (HoaDonId, SanPhamId, TenSanPham, DonViTinh, SoLuong, DonGia)
+                VALUES (@Id, @SpId, N'Màn hình Dell UltraSharp', N'Cái', 1, 6800000);", new { Id = idHd002, SpId = spId.Value });
 
             var existingHd4 = await conn.ExecuteScalarAsync<int?>("SELECT HoaDonId FROM dbo.HoaDons WHERE MaHoaDon = 'HD004'");
             if (existingHd4.HasValue)
             {
-                idHd004 = existingHd4.Value;
+                await conn.ExecuteAsync("DELETE FROM dbo.PhanBoThanhToans WHERE HoaDonId = @Id; DELETE FROM dbo.ChiTietHoaDons WHERE HoaDonId = @Id; DELETE FROM dbo.HoaDons WHERE HoaDonId = @Id;", new { Id = existingHd4.Value });
             }
-            else
-            {
-                idHd004 = await conn.ExecuteScalarAsync<int>(@"
-                    INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai, GhiChu)
-                    VALUES ('HD004', @KhId, '2026-10-01', '2026-10-31', 9700000, 500000, 1, N'Hóa đơn test HD004');
-                    SELECT CAST(SCOPE_IDENTITY() AS INT);", new { KhId = khId.Value });
 
-                await conn.ExecuteAsync(@"
-                    INSERT INTO dbo.ChiTietHoaDons (HoaDonId, SanPhamId, TenSanPham, DonViTinh, SoLuong, DonGia)
-                    VALUES (@Id, @SpId, N'Màn hình Dell UltraSharp', N'Cái', 1, 9700000);", new { Id = idHd004, SpId = spId.Value });
-            }
+            idHd004 = await conn.ExecuteScalarAsync<int>(@"
+                INSERT INTO dbo.HoaDons (MaHoaDon, KhachHangId, NgayLap, HanThanhToan, TongTien, DaThanhToan, TrangThai, GhiChu)
+                VALUES ('HD004', @KhId, '2026-10-01', '2026-10-31', 9700000, 500000, 1, N'Hóa đơn test HD004');
+                SELECT CAST(SCOPE_IDENTITY() AS INT);", new { KhId = khId.Value });
+
+            await conn.ExecuteAsync(@"
+                INSERT INTO dbo.ChiTietHoaDons (HoaDonId, SanPhamId, TenSanPham, DonViTinh, SoLuong, DonGia)
+                VALUES (@Id, @SpId, N'Màn hình Dell UltraSharp', N'Cái', 1, 9700000);", new { Id = idHd004, SpId = spId.Value });
         }
 
         var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
@@ -376,4 +372,93 @@ public class HttpSecurityIntegrationTests : IClassFixture<WebApplicationFactory<
         Assert.DoesNotContain("Không có quyền truy cập", detail4Html);
         Assert.DoesNotContain("Yêu cầu đăng nhập", detail4Html);
     }
+
+    [Fact]
+    public async Task Test09_LoginPage_CauTrucForm_NutMatVaBaoVeAnToan()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        var resp = await client.GetAsync("/login");
+        Assert.Equal(HttpStatusCode.OK, resp.StatusCode);
+        var html = await resp.Content.ReadAsStringAsync();
+
+        // 1. Nhận diện thương hiệu chuẩn
+        Assert.Contains("Bán hàng & Công nợ", html);
+        Assert.DoesNotContain("Mẫu giao diện • Chờ duyệt", html);
+        Assert.DoesNotContain("Mẫu giao diện", html);
+
+        // 2. Ô mật khẩu mặc định type="password"
+        Assert.Contains("id=\"Input_MatKhau\"", html);
+        Assert.Contains("type=\"password\"", html);
+
+        // 3. Nút mắt ẩn/hiện mật khẩu dùng button type="button", có aria-label
+        Assert.Contains("id=\"btn-toggle-mat-khau\"", html);
+        Assert.Contains("type=\"button\"", html);
+        Assert.Contains("aria-label=\"Hiện mật khẩu\"", html);
+
+        // 4. Nút đăng nhập type="submit"
+        Assert.Contains("id=\"btn-login\"", html);
+        Assert.Contains("type=\"submit\"", html);
+        Assert.Contains("Đăng nhập", html);
+
+        // 5. Antiforgery token
+        Assert.Contains("__RequestVerificationToken", html);
+    }
+
+    [Fact]
+    public async Task Test10_HoaDonPage_NutTaoHoaDon_DungDinhDangVaQuyenNVBH()
+    {
+        var client = _factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            AllowAutoRedirect = false
+        });
+
+        // 1. Đăng nhập nvbh
+        var getLogin = await client.GetAsync("/login");
+        var html = await getLogin.Content.ReadAsStringAsync();
+        var match = System.Text.RegularExpressions.Regex.Match(html, @"name=""__RequestVerificationToken"" type=""hidden"" value=""([^""]+)""");
+        Assert.True(match.Success);
+        string token = match.Groups[1].Value;
+        var afCookies = getLogin.Headers.Contains("Set-Cookie")
+            ? string.Join("; ", getLogin.Headers.GetValues("Set-Cookie"))
+            : "";
+
+        var postReq = new HttpRequestMessage(HttpMethod.Post, "/login");
+        if (!string.IsNullOrEmpty(afCookies)) postReq.Headers.Add("Cookie", afCookies);
+        postReq.Content = new FormUrlEncodedContent(new[]
+        {
+            new KeyValuePair<string, string>("__RequestVerificationToken", token),
+            new KeyValuePair<string, string>("Input.TenDangNhap", "nvbh"),
+            new KeyValuePair<string, string>("Input.MatKhau", "Nvbh@2026!"),
+            new KeyValuePair<string, string>("ReturnUrl", "/hoa-don")
+        });
+
+        var postResp = await client.SendAsync(postReq);
+        Assert.Equal(HttpStatusCode.Redirect, postResp.StatusCode);
+        var cookieHeader = string.Join("; ", postResp.Headers.GetValues("Set-Cookie"));
+
+        // 2. Truy cập /hoa-don với vai trò nvbh
+        var listReq = new HttpRequestMessage(HttpMethod.Get, "/hoa-don");
+        listReq.Headers.Add("Cookie", cookieHeader);
+        var listResp = await client.SendAsync(listReq);
+        Assert.Equal(HttpStatusCode.OK, listResp.StatusCode);
+        var listHtml = await listResp.Content.ReadAsStringAsync();
+
+        // 3. Kiểm tra nút Tạo hóa đơn bán chịu
+        Assert.Contains("id=\"btn-tao-hoa-don\"", listHtml);
+        Assert.Contains("href=\"/hoa-don/tao\"", listHtml);
+
+        var btnMatch = System.Text.RegularExpressions.Regex.Match(listHtml, @"<a[^>]*id=""btn-tao-hoa-don""[^>]*>([\s\S]*?)</a>");
+        Assert.True(btnMatch.Success, "Không tìm thấy thẻ a có id='btn-tao-hoa-don'");
+        var btnInner = btnMatch.Groups[1].Value;
+
+        Assert.Contains("oi-plus", btnInner);
+        Assert.Contains("Tạo hóa đơn bán chịu", btnInner);
+        // Đảm bảo không có dấu '+' văn bản bị lặp lại ngoài tên class 'oi-plus'
+        Assert.DoesNotContain("+", btnInner.Replace("oi-plus", ""));
+    }
 }
+

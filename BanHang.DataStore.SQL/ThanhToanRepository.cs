@@ -64,6 +64,20 @@ public class ThanhToanRepository : IThanhToanRepository
         return await connection.QueryAsync<HoaDonNoModel>(sql, new { khachHangId });
     }
 
+    public async Task<string> LayMaPhieuThuTiepTheoAsync()
+    {
+        const string sql = @"
+            SELECT ISNULL(MAX(CAST(SUBSTRING(MaPhieuThu, 3, LEN(MaPhieuThu) - 2) AS INT)), 0) + 1
+            FROM dbo.ThanhToans
+            WHERE MaPhieuThu LIKE 'PT[0-9]%' 
+              AND ISNUMERIC(SUBSTRING(MaPhieuThu, 3, LEN(MaPhieuThu) - 2)) = 1;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        var nextNum = await connection.ExecuteScalarAsync<int>(sql);
+        if (nextNum <= 0) nextNum = 1;
+        return $"PT{nextNum:D3}";
+    }
+
     public async Task<TaoThanhToanResult> GhiNhanThanhToanAsync(TaoThanhToanRequest request)
     {
         using var connection = _connectionFactory.CreateConnection();
@@ -79,8 +93,16 @@ public class ThanhToanRepository : IThanhToanRepository
         using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
         try
         {
-            // 1. Khóa khách hàng theo hàng (UPDLOCK, HOLDLOCK) đồng bộ với quy ước tạo hóa đơn
-            // Điều này đảm bảo giao dịch tạo hóa đơn và giao dịch thanh toán cho cùng một khách hàng không thể chạy xen kẽ gây sai lệch công nợ
+            // 1. Khóa ứng dụng cấp mã phiếu thu để tránh đụng độ đồng thời
+            const string sqlAppLock = @"
+                EXEC sp_getapplock 
+                    @Resource = 'QuanLyBanHang_CapMaPhieuThu', 
+                    @LockMode = 'Exclusive', 
+                    @LockOwner = 'Transaction', 
+                    @DbPrincipal = 'public';";
+            await connection.ExecuteAsync(sqlAppLock, transaction: transaction);
+
+            // 2. Khóa khách hàng theo hàng (UPDLOCK, HOLDLOCK) đồng bộ với quy ước tạo hóa đơn
             const string sqlLockKhachHang = @"
                 SELECT KhachHangId, MaKhachHang, TenKhachHang, TrangThai
                 FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK)
@@ -101,28 +123,40 @@ public class ThanhToanRepository : IThanhToanRepository
                 };
             }
 
-            // Quy tắc: Không cấm khách hàng tạm khóa trả nợ (chỉ cấm mua chịu thêm)
+            // 3. Xác định mã phiếu thu thực tế
+            string maThucTe;
+            bool laMaTuyChinh = !string.IsNullOrWhiteSpace(request.MaPhieuThu) 
+                && !(System.Text.RegularExpressions.Regex.IsMatch(request.MaPhieuThu.Trim(), @"^PT\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
 
-            // 2. Kiểm tra tính duy nhất của Mã phiếu thu
-            const string sqlCheckMaPhieu = @"
-                SELECT COUNT(1) 
-                FROM dbo.ThanhToans WITH (UPDLOCK, HOLDLOCK) 
-                WHERE MaPhieuThu = @MaPhieuThu;";
-
-            var countMa = await connection.ExecuteScalarAsync<int>(
-                sqlCheckMaPhieu,
-                new { request.MaPhieuThu },
-                transaction: transaction);
-
-            if (countMa > 0)
+            if (laMaTuyChinh)
             {
-                transaction.Rollback();
-                return new TaoThanhToanResult
+                maThucTe = request.MaPhieuThu.Trim();
+                const string sqlCheckCustom = "SELECT COUNT(1) FROM dbo.ThanhToans WITH (UPDLOCK, HOLDLOCK) WHERE MaPhieuThu = @maThucTe;";
+                var countCustom = await connection.ExecuteScalarAsync<int>(sqlCheckCustom, new { maThucTe }, transaction: transaction);
+                if (countCustom > 0)
                 {
-                    ThanhCong = false,
-                    ThongBao = $"Mã phiếu thu '{request.MaPhieuThu}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
-                };
+                    transaction.Rollback();
+                    return new TaoThanhToanResult
+                    {
+                        ThanhCong = false,
+                        ThongBao = $"Mã phiếu thu '{maThucTe}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+                    };
+                }
             }
+            else
+            {
+                const string sqlMaxNum = @"
+                    SELECT ISNULL(MAX(CAST(SUBSTRING(MaPhieuThu, 3, LEN(MaPhieuThu) - 2) AS INT)), 0) + 1
+                    FROM dbo.ThanhToans WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MaPhieuThu LIKE 'PT[0-9]%' 
+                      AND ISNUMERIC(SUBSTRING(MaPhieuThu, 3, LEN(MaPhieuThu) - 2)) = 1;";
+
+                var nextNum = await connection.ExecuteScalarAsync<int>(sqlMaxNum, transaction: transaction);
+                if (nextNum <= 0) nextNum = 1;
+                maThucTe = $"PT{nextNum:D3}";
+            }
+
+            request.MaPhieuThu = maThucTe;
 
             // 3. Đọc lại danh sách hóa đơn còn nợ đủ điều kiện trong transaction có khóa UPDLOCK, HOLDLOCK
             const string sqlHoaDonConNo = @"

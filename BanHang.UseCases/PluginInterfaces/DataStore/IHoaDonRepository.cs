@@ -13,6 +13,11 @@ public interface IHoaDonRepository
     Task<IEnumerable<HoaDonListItemDto>> LayDanhSachHoaDonAsync();
 
     /// <summary>
+    /// Lấy mã hóa đơn dự kiến tiếp theo theo định dạng HD001, HD002... tăng dần từ dữ liệu thực tế
+    /// </summary>
+    Task<string> LayMaHoaDonTiepTheoAsync();
+
+    /// <summary>
     /// Tạo hóa đơn bán chịu mới trong một transaction nguyên tử với khóa chống xung đột đồng thời
     /// </summary>
     Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request);

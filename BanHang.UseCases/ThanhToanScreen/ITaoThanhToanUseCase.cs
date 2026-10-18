@@ -6,4 +6,5 @@ namespace BanHang.UseCases.ThanhToanScreen;
 public interface ITaoThanhToanUseCase
 {
     Task<TaoThanhToanResult> ExecuteAsync(TaoThanhToanRequest request);
+    Task<string> LayMaPhieuThuTiepTheoAsync();
 }

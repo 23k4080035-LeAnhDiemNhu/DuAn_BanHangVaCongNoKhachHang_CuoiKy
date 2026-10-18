@@ -7,6 +7,7 @@ namespace BanHang.UseCases.SanPhamScreen;
 public interface IThemSanPhamUseCase
 {
     Task<TaoSanPhamResult> ExecuteAsync(TaoSanPhamRequest request);
+    Task<string> LayMaSanPhamTiepTheoAsync();
 }
 
 public class ThemSanPhamUseCase : IThemSanPhamUseCase
@@ -20,6 +21,11 @@ public class ThemSanPhamUseCase : IThemSanPhamUseCase
     {
         _sanPhamRepository = sanPhamRepository ?? throw new ArgumentNullException(nameof(sanPhamRepository));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+    }
+
+    public Task<string> LayMaSanPhamTiepTheoAsync()
+    {
+        return _sanPhamRepository.LayMaSanPhamTiepTheoAsync();
     }
 
     public async Task<TaoSanPhamResult> ExecuteAsync(TaoSanPhamRequest request)
@@ -41,12 +47,8 @@ public class ThemSanPhamUseCase : IThemSanPhamUseCase
         request.MoTa = string.IsNullOrWhiteSpace(request.MoTa) ? null : request.MoTa.Trim();
         request.HinhAnh = string.IsNullOrWhiteSpace(request.HinhAnh) ? null : request.HinhAnh.Trim();
 
-        // 2. Kiểm tra các trường bắt buộc
-        if (string.IsNullOrWhiteSpace(request.MaSanPham))
-        {
-            result.LoiTheoTruong["MaSanPham"] = "Mã sản phẩm không được để trống.";
-        }
-        else if (request.MaSanPham.Length > 20)
+        // 2. Kiểm tra các trường bắt buộc (Mã sản phẩm tự động cấp nếu để trống)
+        if (!string.IsNullOrWhiteSpace(request.MaSanPham) && request.MaSanPham.Length > 20)
         {
             result.LoiTheoTruong["MaSanPham"] = "Mã sản phẩm tối đa 20 ký tự.";
         }
@@ -100,13 +102,16 @@ public class ThemSanPhamUseCase : IThemSanPhamUseCase
             return result;
         }
 
-        // 5. Kiểm tra trùng mã sản phẩm
-        bool trungMa = await _sanPhamRepository.KiemTraTrungMaSanPhamAsync(request.MaSanPham);
-        if (trungMa)
+        // 5. Kiểm tra trùng mã sản phẩm (nếu có truyền mã)
+        if (!string.IsNullOrWhiteSpace(request.MaSanPham))
         {
-            result.LoiTheoTruong["MaSanPham"] = $"Mã sản phẩm '{request.MaSanPham}' đã được sử dụng. Vui lòng chọn mã khác.";
-            result.ThongBao = result.LoiTheoTruong["MaSanPham"];
-            return result;
+            bool trungMa = await _sanPhamRepository.KiemTraTrungMaSanPhamAsync(request.MaSanPham);
+            if (trungMa)
+            {
+                result.LoiTheoTruong["MaSanPham"] = $"Mã sản phẩm '{request.MaSanPham}' đã được sử dụng. Vui lòng chọn mã khác.";
+                result.ThongBao = result.LoiTheoTruong["MaSanPham"];
+                return result;
+            }
         }
 
         // 6. Gửi xuống repository

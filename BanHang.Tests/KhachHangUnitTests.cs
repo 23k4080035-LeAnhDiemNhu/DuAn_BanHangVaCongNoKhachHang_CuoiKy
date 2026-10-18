@@ -39,8 +39,14 @@ public class KhachHangUnitTests
 
         public Task<TaoKhachHangResult> ThemKhachHangAsync(TaoKhachHangRequest request)
         {
-            ExistingCodes.Add(request.MaKhachHang);
-            return Task.FromResult(new TaoKhachHangResult { ThanhCong = true, KhachHangIdMoi = 10 });
+            var code = string.IsNullOrWhiteSpace(request.MaKhachHang) ? "KH001" : request.MaKhachHang;
+            ExistingCodes.Add(code);
+            return Task.FromResult(new TaoKhachHangResult { ThanhCong = true, KhachHangIdMoi = 10, MaKhachHangMoi = code });
+        }
+
+        public Task<string> LayMaKhachHangTiepTheoAsync()
+        {
+            return Task.FromResult("KH001");
         }
 
         public Task<CapNhatKhachHangResult> CapNhatKhachHangAsync(CapNhatKhachHangRequest request)
@@ -92,11 +98,9 @@ public class KhachHangUnitTests
     }
 
     [Theory]
-    [InlineData("", "Tên hợp lệ", "MaKhachHang")]
-    [InlineData("   ", "Tên hợp lệ", "MaKhachHang")]
-    [InlineData("KH001", "", "TenKhachHang")]
-    [InlineData("KH001", "   ", "TenKhachHang")]
-    public async Task Test02_ThemKhachHang_ThieuMaHoacTen_BaoLoiTheoTruong(string ma, string ten, string truongLoiExpected)
+    [InlineData("KH001", "")]
+    [InlineData("KH001", "   ")]
+    public async Task Test02_ThemKhachHang_ThieuTen_BaoLoiTheoTruong(string ma, string ten)
     {
         var req = new TaoKhachHangRequest
         {
@@ -108,7 +112,23 @@ public class KhachHangUnitTests
         var result = await _themUseCase.ExecuteAsync(req);
 
         Assert.False(result.ThanhCong);
-        Assert.True(result.LoiTheoTruong.ContainsKey(truongLoiExpected));
+        Assert.True(result.LoiTheoTruong.ContainsKey("TenKhachHang"));
+    }
+
+    [Fact]
+    public async Task Test02b_ThemKhachHang_DeTrongMa_TuDongCapMa_ThanhCong()
+    {
+        var req = new TaoKhachHangRequest
+        {
+            MaKhachHang = "",
+            TenKhachHang = "Khách Hàng Tự Động Mã",
+            HanMucCongNo = 5000000
+        };
+
+        var result = await _themUseCase.ExecuteAsync(req);
+
+        Assert.True(result.ThanhCong);
+        Assert.False(result.LoiTheoTruong.ContainsKey("MaKhachHang"));
     }
 
     [Fact]

@@ -18,6 +18,12 @@ public class TaoHoaDonBanChiuUseCase : ITaoHoaDonBanChiuUseCase
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
+    public async Task<string> LayMaHoaDonTiepTheoAsync()
+    {
+        await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.NhanVienBanHang);
+        return await _hoaDonRepository.LayMaHoaDonTiepTheoAsync();
+    }
+
     public async Task<TaoHoaDonResult> ExecuteAsync(TaoHoaDonRequest request)
     {
         await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.NhanVienBanHang);
@@ -32,24 +38,18 @@ public class TaoHoaDonBanChiuUseCase : ITaoHoaDonBanChiuUseCase
             };
         }
 
-        // 2. Kiểm tra Mã hóa đơn
-        if (string.IsNullOrWhiteSpace(request.MaHoaDon))
+        // 2. Kiểm tra Mã hóa đơn (mã có thể để trống hoặc gửi mã dự kiến; máy chủ quyết định mã thực tế trong transaction)
+        if (!string.IsNullOrWhiteSpace(request.MaHoaDon))
         {
-            return new TaoHoaDonResult
+            request.MaHoaDon = request.MaHoaDon.Trim();
+            if (request.MaHoaDon.Length > 20)
             {
-                ThanhCong = false,
-                ThongBao = "Vui lòng nhập mã hóa đơn."
-            };
-        }
-
-        request.MaHoaDon = request.MaHoaDon.Trim();
-        if (request.MaHoaDon.Length > 20)
-        {
-            return new TaoHoaDonResult
-            {
-                ThanhCong = false,
-                ThongBao = "Mã hóa đơn tối đa 20 ký tự."
-            };
+                return new TaoHoaDonResult
+                {
+                    ThanhCong = false,
+                    ThongBao = "Mã hóa đơn tối đa 20 ký tự."
+                };
+            }
         }
 
         // 3. Kiểm tra thông tin khách hàng

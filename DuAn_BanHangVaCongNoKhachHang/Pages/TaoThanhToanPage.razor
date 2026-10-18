@@ -112,9 +112,9 @@
                     </div>
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Mã phiếu thu <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" @bind="maPhieuThu" maxlength="20" placeholder="VD: PT002 (tối đa 20 ký tự)" />
-                            <small class="text-muted">Mã phiếu thu phải là duy nhất trên toàn hệ thống.</small>
+                            <label class="form-label fw-bold">Mã phiếu thu</label>
+                            <input type="text" class="form-control bg-light rounded-3 fw-bold text-success" @bind="maPhieuThu" readonly maxlength="20" placeholder="Tự động tạo (VD: PT001)" />
+                            <small class="text-muted">Mã phiếu thu được cấp tự động bởi hệ thống.</small>
                         </div>
 
                         <div class="row g-2 mb-3">
@@ -274,7 +274,7 @@
                 <div class="d-flex justify-content-end gap-2 mb-4">
                     <a href="/thanh-toan" class="btn btn-outline-secondary">Hủy bỏ</a>
                     <button type="button" class="btn btn-success px-4 fw-semibold" 
-                            disabled="@(isSubmitting || selectedKhachHangId <= 0 || string.IsNullOrWhiteSpace(maPhieuThu) || soTienThu <= 0)" 
+                            disabled="@(isSubmitting || selectedKhachHangId <= 0 || soTienThu <= 0)" 
                             @onclick="LuuThanhToanAsync" id="btn-luu-thanh-toan">
                         @if (isSubmitting)
                         {
@@ -327,6 +327,15 @@
         {
             // Tải danh sách khách hàng (bao gồm cả khách bị tạm khóa vì quy tắc cho phép trả nợ)
             danhSachKhachHang = (await XemDanhSachKhachHangUseCase.ExecuteAsync()).ToList();
+
+            try
+            {
+                maPhieuThu = await TaoThanhToanUseCase.LayMaPhieuThuTiepTheoAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.LogWarning(ex, "Không thể lấy mã phiếu thu tiếp theo");
+            }
         }
         catch (Exception ex)
         {
@@ -404,11 +413,6 @@
             return;
         }
 
-        if (string.IsNullOrWhiteSpace(maPhieuThu))
-        {
-            errorMessage = "Vui lòng nhập mã phiếu thu.";
-            return;
-        }
 
         if (soTienThu <= 0)
         {

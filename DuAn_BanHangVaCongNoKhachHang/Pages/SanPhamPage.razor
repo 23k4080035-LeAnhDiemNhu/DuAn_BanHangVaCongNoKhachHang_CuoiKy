@@ -163,9 +163,10 @@ else
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold text-nowrap">Mã sản phẩm <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control @(CoLoi("MaSanPham") ? "is-invalid" : "")"
-                                   @bind="formModel.MaSanPham" disabled="@isEditing" maxlength="20" placeholder="VD: SP009" />
+                            <label class="form-label fw-semibold text-nowrap">Mã sản phẩm</label>
+                            <input type="text" class="form-control bg-light @(CoLoi("MaSanPham") ? "is-invalid" : "")"
+                                   @bind="formModel.MaSanPham" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: SP001)" />
+                            <small class="text-muted">Mã được cấp tự động bởi hệ thống</small>
                             @if (CoLoi("MaSanPham"))
                             {
                                 <div class="invalid-feedback">@LayLoi("MaSanPham")</div>
@@ -344,11 +345,22 @@ else
         }
     }
 
-    private void MoModalThemSanPham()
+    private async Task MoModalThemSanPham()
     {
         isEditing = false;
+        string maSpMoi = string.Empty;
+        try
+        {
+            maSpMoi = await ThemSanPhamUseCase.LayMaSanPhamTiepTheoAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Không lấy được mã sản phẩm tiếp theo");
+        }
+
         formModel = new FormSanPhamModel
         {
+            MaSanPham = maSpMoi,
             TrangThai = true,
             DonViTinh = "Cái",
             DonGia = 0

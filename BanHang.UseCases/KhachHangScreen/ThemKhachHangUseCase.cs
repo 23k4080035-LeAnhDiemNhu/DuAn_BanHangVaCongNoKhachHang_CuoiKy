@@ -8,6 +8,7 @@ namespace BanHang.UseCases.KhachHangScreen;
 public interface IThemKhachHangUseCase
 {
     Task<TaoKhachHangResult> ExecuteAsync(TaoKhachHangRequest request);
+    Task<string> LayMaKhachHangTiepTheoAsync();
 }
 
 public class ThemKhachHangUseCase : IThemKhachHangUseCase
@@ -21,6 +22,11 @@ public class ThemKhachHangUseCase : IThemKhachHangUseCase
     {
         _khachHangRepo = khachHangRepo ?? throw new ArgumentNullException(nameof(khachHangRepo));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+    }
+
+    public Task<string> LayMaKhachHangTiepTheoAsync()
+    {
+        return _khachHangRepo.LayMaKhachHangTiepTheoAsync();
     }
 
     public async Task<TaoKhachHangResult> ExecuteAsync(TaoKhachHangRequest request)
@@ -42,12 +48,8 @@ public class ThemKhachHangUseCase : IThemKhachHangUseCase
         request.Email = string.IsNullOrWhiteSpace(request.Email) ? null : request.Email.Trim();
         request.DiaChi = string.IsNullOrWhiteSpace(request.DiaChi) ? null : request.DiaChi.Trim();
 
-        // 2. Kiểm tra tính bắt buộc và độ dài
-        if (string.IsNullOrWhiteSpace(request.MaKhachHang))
-        {
-            result.LoiTheoTruong["MaKhachHang"] = "Mã khách hàng là bắt buộc.";
-        }
-        else if (request.MaKhachHang.Length > 20)
+        // 2. Kiểm tra tính bắt buộc và độ dài (Mã khách hàng tự động cấp nếu để trống)
+        if (!string.IsNullOrWhiteSpace(request.MaKhachHang) && request.MaKhachHang.Length > 20)
         {
             result.LoiTheoTruong["MaKhachHang"] = "Mã khách hàng không được vượt quá 20 ký tự.";
         }
@@ -99,13 +101,16 @@ public class ThemKhachHangUseCase : IThemKhachHangUseCase
             return result;
         }
 
-        // 4. Kiểm tra trùng mã khách hàng
-        bool daTonTai = await _khachHangRepo.KiemTraTrungMaKhachHangAsync(request.MaKhachHang);
-        if (daTonTai)
+        // 4. Kiểm tra trùng mã khách hàng (nếu có truyền mã)
+        if (!string.IsNullOrWhiteSpace(request.MaKhachHang))
         {
-            result.LoiTheoTruong["MaKhachHang"] = $"Mã khách hàng '{request.MaKhachHang}' đã tồn tại trong hệ thống.";
-            result.ThongBao = $"Mã khách hàng '{request.MaKhachHang}' đã được sử dụng. Vui lòng nhập mã khác.";
-            return result;
+            bool daTonTai = await _khachHangRepo.KiemTraTrungMaKhachHangAsync(request.MaKhachHang);
+            if (daTonTai)
+            {
+                result.LoiTheoTruong["MaKhachHang"] = $"Mã khách hàng '{request.MaKhachHang}' đã tồn tại trong hệ thống.";
+                result.ThongBao = $"Mã khách hàng '{request.MaKhachHang}' đã được sử dụng. Vui lòng nhập mã khác.";
+                return result;
+            }
         }
 
         // 5. Lưu vào DataStore

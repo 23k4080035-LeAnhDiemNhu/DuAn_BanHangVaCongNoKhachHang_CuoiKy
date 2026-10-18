@@ -22,4 +22,9 @@ public interface IThanhToanRepository
     /// Ghi nhận phiếu thu và thực hiện phân bổ thanh toán FIFO trong một transaction nguyên tử với khóa chống xung đột đồng thời
     /// </summary>
     Task<TaoThanhToanResult> GhiNhanThanhToanAsync(TaoThanhToanRequest request);
+
+    /// <summary>
+    /// Lấy mã phiếu thu tiếp theo dự kiến dạng PTxxx (không chèn dữ liệu)
+    /// </summary>
+    Task<string> LayMaPhieuThuTiepTheoAsync();
 }

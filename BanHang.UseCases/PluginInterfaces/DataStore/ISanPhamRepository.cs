@@ -42,4 +42,9 @@ public interface ISanPhamRepository
     /// Thay đổi trạng thái kinh doanh của sản phẩm (Ngừng bán / Mở bán lại), không DELETE
     /// </summary>
     Task<DoiTrangThaiSanPhamResult> DoiTrangThaiSanPhamAsync(int sanPhamId, bool trangThaiMoi);
+
+    /// <summary>
+    /// Lấy mã sản phẩm tiếp theo dự kiến dạng SPxxx (không chèn dữ liệu)
+    /// </summary>
+    Task<string> LayMaSanPhamTiepTheoAsync();
 }

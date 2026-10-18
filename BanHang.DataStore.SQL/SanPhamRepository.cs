@@ -101,70 +101,126 @@ public class SanPhamRepository : ISanPhamRepository
         return count > 0;
     }
 
-    public async Task<TaoSanPhamResult> ThemSanPhamAsync(TaoSanPhamRequest request)
+    public async Task<string> LayMaSanPhamTiepTheoAsync()
     {
         const string sql = @"
-            INSERT INTO dbo.SanPhams (
-                MaSanPham,
-                TenSanPham,
-                DonViTinh,
-                DonGia,
-                MoTa,
-                HinhAnh,
-                TrangThai
-            )
-            VALUES (
-                @MaSanPham,
-                @TenSanPham,
-                @DonViTinh,
-                @DonGia,
-                @MoTa,
-                @HinhAnh,
-                @TrangThai
-            );
-            SELECT CAST(SCOPE_IDENTITY() AS INT);";
+            SELECT ISNULL(MAX(CAST(SUBSTRING(MaSanPham, 3, LEN(MaSanPham) - 2) AS INT)), 0) + 1
+            FROM dbo.SanPhams
+            WHERE MaSanPham LIKE 'SP[0-9]%' 
+              AND ISNUMERIC(SUBSTRING(MaSanPham, 3, LEN(MaSanPham) - 2)) = 1;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        var nextNum = await connection.ExecuteScalarAsync<int>(sql);
+        if (nextNum <= 0) nextNum = 1;
+        return $"SP{nextNum:D3}";
+    }
+
+    public async Task<TaoSanPhamResult> ThemSanPhamAsync(TaoSanPhamRequest request)
+    {
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is System.Data.Common.DbConnection dbConn)
+        {
+            await dbConn.OpenAsync();
+        }
+        else if (connection.State != ConnectionState.Open)
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
 
         try
         {
-            using var connection = _connectionFactory.CreateConnection();
+            // 1. Khóa ứng dụng cấp mã sản phẩm để tránh đụng độ đồng thời
+            const string sqlAppLock = @"
+                EXEC sp_getapplock 
+                    @Resource = 'QuanLyBanHang_CapMaSanPham', 
+                    @LockMode = 'Exclusive', 
+                    @LockOwner = 'Transaction', 
+                    @DbPrincipal = 'public';";
+            await connection.ExecuteAsync(sqlAppLock, transaction: transaction);
+
+            // 2. Xác định mã sản phẩm thực tế
+            string maThucTe = request.MaSanPham?.Trim() ?? string.Empty;
+
+            bool canCapMaMoi = false;
+            if (string.IsNullOrWhiteSpace(maThucTe))
+            {
+                canCapMaMoi = true;
+            }
+            else
+            {
+                const string sqlCheckTonTai = "SELECT COUNT(1) FROM dbo.SanPhams WITH (UPDLOCK, HOLDLOCK) WHERE MaSanPham = @MaSanPham;";
+                var daCo = await connection.ExecuteScalarAsync<int>(sqlCheckTonTai, new { MaSanPham = maThucTe }, transaction: transaction);
+                if (daCo > 0)
+                {
+                    canCapMaMoi = true;
+                }
+            }
+
+            if (canCapMaMoi)
+            {
+                const string sqlMaxNum = @"
+                    SELECT ISNULL(MAX(CAST(SUBSTRING(MaSanPham, 3, LEN(MaSanPham) - 2) AS INT)), 0) + 1
+                    FROM dbo.SanPhams WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MaSanPham LIKE 'SP[0-9]%' 
+                      AND ISNUMERIC(SUBSTRING(MaSanPham, 3, LEN(MaSanPham) - 2)) = 1;";
+
+                var nextNum = await connection.ExecuteScalarAsync<int>(sqlMaxNum, transaction: transaction);
+                if (nextNum <= 0) nextNum = 1;
+                maThucTe = $"SP{nextNum:D3}";
+            }
+
+            const string sql = @"
+                INSERT INTO dbo.SanPhams (
+                    MaSanPham,
+                    TenSanPham,
+                    DonViTinh,
+                    DonGia,
+                    MoTa,
+                    HinhAnh,
+                    TrangThai
+                )
+                VALUES (
+                    @MaSanPham,
+                    @TenSanPham,
+                    @DonViTinh,
+                    @DonGia,
+                    @MoTa,
+                    @HinhAnh,
+                    @TrangThai
+                );
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
             var idMoi = await connection.ExecuteScalarAsync<int>(sql, new
             {
-                request.MaSanPham,
+                MaSanPham = maThucTe,
                 request.TenSanPham,
                 request.DonViTinh,
                 request.DonGia,
                 request.MoTa,
                 request.HinhAnh,
                 request.TrangThai
-            });
+            }, transaction: transaction);
+
+            transaction.Commit();
 
             return new TaoSanPhamResult
             {
                 ThanhCong = true,
                 SanPhamIdMoi = idMoi,
-                ThongBao = $"Thêm mới sản phẩm '{request.TenSanPham}' (Mã: {request.MaSanPham}) thành công."
-            };
-        }
-        catch (SqlException ex) when (ex.Number is 2627 or 2601)
-        {
-            _logger?.LogWarning(ex, "Trùng mã sản phẩm khi thêm mới: {MaSanPham}", request.MaSanPham);
-            return new TaoSanPhamResult
-            {
-                ThanhCong = false,
-                ThongBao = $"Mã sản phẩm '{request.MaSanPham}' đã được sử dụng. Vui lòng chọn mã khác.",
-                LoiTheoTruong = new Dictionary<string, string>
-                {
-                    { "MaSanPham", $"Mã sản phẩm '{request.MaSanPham}' đã tồn tại trong hệ thống." }
-                }
+                MaSanPhamMoi = maThucTe,
+                ThongBao = $"Thêm mới sản phẩm '{request.TenSanPham}' (Mã: {maThucTe}) thành công."
             };
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Lỗi không xác định khi thêm sản phẩm: {MaSanPham}", request.MaSanPham);
+            try { transaction.Rollback(); } catch { }
+            _logger?.LogError(ex, "Lỗi khi thêm mới sản phẩm: {Message}", ex.Message);
             return new TaoSanPhamResult
             {
                 ThanhCong = false,
-                ThongBao = "Đã xảy ra lỗi trong quá trình lưu dữ liệu sản phẩm. Vui lòng thử lại sau."
+                ThongBao = $"Lỗi khi thêm mới sản phẩm: {ex.Message}"
             };
         }
     }

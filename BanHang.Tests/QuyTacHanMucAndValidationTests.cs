@@ -13,12 +13,18 @@ public class QuyTacHanMucAndValidationTests
             return Task.FromResult(Enumerable.Empty<HoaDonListItemDto>());
         }
 
+        public Task<string> LayMaHoaDonTiepTheoAsync()
+        {
+            return Task.FromResult("HD008");
+        }
+
         public Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request)
         {
             return Task.FromResult(new TaoHoaDonResult
             {
                 ThanhCong = true,
                 HoaDonIdMoi = 999,
+                MaHoaDonMoi = string.IsNullOrWhiteSpace(request.MaHoaDon) ? "HD008" : request.MaHoaDon,
                 TongTien = 1000000,
                 ThongBao = "Thành công (Fake)"
             });
@@ -151,30 +157,32 @@ public class QuyTacHanMucAndValidationTests
     }
 
     [Fact]
-    public async Task TaoHoaDon_KhiMaHoaDonRongHoacQuaDai_BaoLoi()
+    public async Task TaoHoaDon_KhiMaHoaDonRong_DuocTuDongSinhMa_VaQua20KyTu_BaoLoi()
     {
         var repo = new FakeHoaDonRepository();
         var useCase = new TaoHoaDonBanChiuUseCase(repo, FakeCurrentUserService.NhanVienBanHang());
 
-        // Test trống
+        // Test trống: cơ chế mới không bắt người dùng nhập thủ công mà tự động sinh mã
         var reqRong = new TaoHoaDonRequest
         {
             MaHoaDon = "   ",
             KhachHangId = 1,
+            HanThanhToan = DateTime.Today.AddDays(7),
             ChiTietHoaDons = new List<TaoChiTietHoaDonDto>
             {
                 new TaoChiTietHoaDonDto { SanPhamId = 1, SoLuong = 1, DonGiaHienThi = 100000 }
             }
         };
         var resRong = await useCase.ExecuteAsync(reqRong);
-        Assert.False(resRong.ThanhCong);
-        Assert.Contains("nhập mã hóa đơn", resRong.ThongBao);
+        Assert.True(resRong.ThanhCong);
+        Assert.Equal("HD008", resRong.MaHoaDonMoi);
 
-        // Test quá 20 ký tự
+        // Test quá 20 ký tự: vẫn chặn nếu người dùng/test truyền chuỗi quá 20 ký tự
         var reqDai = new TaoHoaDonRequest
         {
             MaHoaDon = "HD_QUY_TAC_MA_HOA_DON_QUA_20_KY_TU",
             KhachHangId = 1,
+            HanThanhToan = DateTime.Today.AddDays(7),
             ChiTietHoaDons = new List<TaoChiTietHoaDonDto>
             {
                 new TaoChiTietHoaDonDto { SanPhamId = 1, SoLuong = 1, DonGiaHienThi = 100000 }

@@ -39,8 +39,14 @@ public class SanPhamUnitTests
 
         public Task<TaoSanPhamResult> ThemSanPhamAsync(TaoSanPhamRequest request)
         {
-            ExistingCodes.Add(request.MaSanPham);
-            return Task.FromResult(new TaoSanPhamResult { ThanhCong = true, SanPhamIdMoi = 100 });
+            var code = string.IsNullOrWhiteSpace(request.MaSanPham) ? "SP001" : request.MaSanPham;
+            ExistingCodes.Add(code);
+            return Task.FromResult(new TaoSanPhamResult { ThanhCong = true, SanPhamIdMoi = 100, MaSanPhamMoi = code });
+        }
+
+        public Task<string> LayMaSanPhamTiepTheoAsync()
+        {
+            return Task.FromResult("SP001");
         }
 
         public Task<CapNhatSanPhamResult> CapNhatSanPhamAsync(CapNhatSanPhamRequest request)
@@ -93,8 +99,6 @@ public class SanPhamUnitTests
     }
 
     [Theory]
-    [InlineData("", "Tên hợp lệ", "Cái", "MaSanPham")]
-    [InlineData("   ", "Tên hợp lệ", "Cái", "MaSanPham")]
     [InlineData("SP01", "", "Cái", "TenSanPham")]
     [InlineData("SP01", "   ", "Cái", "TenSanPham")]
     [InlineData("SP01", "Tên hợp lệ", "", "DonViTinh")]
@@ -113,6 +117,23 @@ public class SanPhamUnitTests
 
         Assert.False(result.ThanhCong);
         Assert.True(result.LoiTheoTruong.ContainsKey(truongLoiExpected));
+    }
+
+    [Fact]
+    public async Task Test02b_ThemSanPham_DeTrongMa_TuDongCapMa_ThanhCong()
+    {
+        var req = new TaoSanPhamRequest
+        {
+            MaSanPham = "",
+            TenSanPham = "Sản phẩm tự sinh mã",
+            DonViTinh = "Cái",
+            DonGia = 250000
+        };
+
+        var result = await _themUseCase.ExecuteAsync(req);
+
+        Assert.True(result.ThanhCong);
+        Assert.False(result.LoiTheoTruong.ContainsKey("MaSanPham"));
     }
 
     [Fact]

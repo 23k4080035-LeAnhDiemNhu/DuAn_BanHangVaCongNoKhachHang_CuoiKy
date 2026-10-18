@@ -6,58 +6,454 @@
     Layout = "_AuthLayout";
 }
 
-<div class="container py-5">
-    <div class="row justify-content-center">
-        <div class="col-md-5 col-lg-4">
-            <div class="card shadow border-0 rounded-3">
-                <div class="card-header bg-primary text-white text-center py-3">
-                    <h4 class="mb-0 fw-bold">Bán Hàng & Công Nợ</h4>
-                    <small class="opacity-75">Hệ thống quản lý bán hàng & công nợ khách hàng</small>
-                </div>
-                <div class="card-body p-4">
-                    <h5 class="card-title text-center mb-4 fw-semibold text-secondary">Đăng nhập tài khoản</h5>
+<div class="login-container-split">
+    <!-- Cột trái: Nhận diện thương hiệu màu Navy #0B1A30 với hình học trang trí & Logo BH -->
+    <div class="login-banner-panel">
+        <!-- Lớp hình học trang trí theo ảnh mẫu -->
+        <div class="decor-circle-top"></div>
+        <div class="decor-glass-top"></div>
+        <div class="decor-glass-bottom"></div>
+        <div class="decor-circle-bottom"></div>
 
-                    @if (!string.IsNullOrEmpty(Model.ThongBaoLoi))
-                    {
-                        <div class="alert alert-danger py-2 small" role="alert">
-                            @Model.ThongBaoLoi
-                        </div>
-                    }
-
-                    <form method="post" action="/login">
-                        @Html.AntiForgeryToken()
-                        <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
-
-                        <div class="mb-3">
-                            <label asp-for="Input.TenDangNhap" class="form-label fw-semibold">Tên đăng nhập</label>
-                            <input asp-for="Input.TenDangNhap" name="Input.TenDangNhap" id="Input_TenDangNhap" type="text" class="form-control" autocomplete="username" autofocus placeholder="VD: nvbh hoặc ktcn" required />
-                            <span asp-validation-for="Input.TenDangNhap" class="text-danger small"></span>
-                        </div>
-
-                        <div class="mb-3">
-                            <label asp-for="Input.MatKhau" class="form-label fw-semibold">Mật khẩu</label>
-                            <input asp-for="Input.MatKhau" name="Input.MatKhau" id="Input_MatKhau" type="password" class="form-control" autocomplete="current-password" placeholder="Nhập mật khẩu của bạn" required />
-                            <span asp-validation-for="Input.MatKhau" class="text-danger small"></span>
-                        </div>
-
-                        <div class="mb-3 form-check">
-                            <input asp-for="Input.RememberMe" name="Input.RememberMe" id="chkRememberMe" type="checkbox" class="form-check-input" />
-                            <label asp-for="Input.RememberMe" class="form-check-label text-muted small" for="chkRememberMe">
-                                Duy trì đăng nhập trên thiết bị này
-                            </label>
-                        </div>
-
-                        <div class="d-grid mt-4">
-                            <button type="submit" id="btn-login" class="btn btn-primary py-2 fw-semibold">Đăng nhập</button>
-                        </div>
-                    </form>
-                </div>
-                <div class="card-footer bg-light text-center py-3 text-muted small">
-                    <div>Hai vai trò trong hệ thống:</div>
-                    <span class="badge bg-info text-dark me-1">Nhân viên bán hàng</span>
-                    <span class="badge bg-secondary">Kế toán công nợ</span>
-                </div>
+        <!-- Nội dung thương hiệu căn giữa -->
+        <div class="banner-content">
+            <div class="bh-logo" aria-label="Logo Bán Hàng">
+                <span class="bh-b">B</span><span class="bh-h">H</span>
             </div>
+            <h1 class="brand-title">Bán hàng & Công nợ</h1>
+            <p class="brand-subtitle">Quản lý bán hàng và công nợ khách hàng</p>
+        </div>
+    </div>
+
+    <!-- Cột phải: Form đăng nhập nền sáng với Card trắng nổi bật -->
+    <div class="login-form-panel">
+        <div class="auth-card">
+            <h2 class="card-title">Đăng nhập</h2>
+            <p class="card-subtitle">Chào mừng bạn trở lại</p>
+
+            @if (!string.IsNullOrEmpty(Model.ThongBaoLoi))
+            {
+                <div class="alert alert-danger py-2 px-3 small rounded-3 mb-3 text-start" role="alert">
+                    @Model.ThongBaoLoi
+                </div>
+            }
+
+            <form method="post" action="/login">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ReturnUrl" value="@Model.ReturnUrl" />
+
+                <!-- Ô nhập: Tên đăng nhập -->
+                <div class="field-group mb-3 text-start">
+                    <label asp-for="Input.TenDangNhap" class="input-label">Tên đăng nhập</label>
+                    <div class="input-field-wrap">
+                        <span class="input-field-icon" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
+                        </span>
+                        <input asp-for="Input.TenDangNhap" name="Input.TenDangNhap" id="Input_TenDangNhap" type="text"
+                               class="custom-input" autocomplete="username" autofocus required />
+                    </div>
+                    <span asp-validation-for="Input.TenDangNhap" class="text-danger small"></span>
+                </div>
+
+                <!-- Ô nhập: Mật khẩu -->
+                <div class="field-group mb-3 text-start">
+                    <label asp-for="Input.MatKhau" class="input-label">Mật khẩu</label>
+                    <div class="input-field-wrap">
+                        <span class="input-field-icon" aria-hidden="true">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
+                        </span>
+                        <input asp-for="Input.MatKhau" name="Input.MatKhau" id="Input_MatKhau" type="password"
+                               class="custom-input" autocomplete="current-password" required />
+                        <button type="button" class="eye-toggle-btn" id="btn-toggle-mat-khau"
+                                aria-label="Hiện mật khẩu" title="Hiện mật khẩu" onclick="toggleMatKhau()">
+                            <svg id="svg-eye-open" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
+                            <svg id="svg-eye-closed" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                                <line x1="1" y1="1" x2="23" y2="23"></line>
+                            </svg>
+                        </button>
+                    </div>
+                    <span asp-validation-for="Input.MatKhau" class="text-danger small"></span>
+                </div>
+
+                <!-- Checkbox Duy trì đăng nhập -->
+                <div class="remember-wrap">
+                    <input asp-for="Input.RememberMe" name="Input.RememberMe" id="chkRememberMe" type="checkbox" class="custom-checkbox" />
+                    <label asp-for="Input.RememberMe" class="remember-label" for="chkRememberMe">
+                        Duy trì đăng nhập
+                    </label>
+                </div>
+
+                <!-- Nút Đăng nhập bo tròn dạng viên thuốc -->
+                <div class="submit-wrap mb-4">
+                    <button type="submit" id="btn-login" class="btn-submit-login">
+                        Đăng nhập
+                    </button>
+                </div>
+
+                <!-- Footer ghi chú vai trò phân quyền -->
+                <div class="card-footer-divider">
+                    <p class="card-footer-text">Dành cho nhân viên bán hàng và kế toán công nợ</p>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<style>
+    /* Bố cục split-screen toàn màn hình */
+    .login-container-split {
+        display: flex;
+        width: 100%;
+        min-height: 100vh;
+        background-color: #F8FAFC;
+    }
+
+    /* Panel trái nhận diện Navy #0B1A30 */
+    .login-banner-panel {
+        flex: 0 0 40%;
+        min-width: 380px;
+        background: #0B1B33;
+        position: relative;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    /* Các khối hình học trang trí đồng bộ ảnh mẫu */
+    .decor-circle-top {
+        position: absolute;
+        top: -40px;
+        right: 110px;
+        width: 170px;
+        height: 170px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
+        opacity: 0.95;
+        z-index: 1;
+    }
+
+    .decor-glass-top {
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 190px;
+        height: 250px;
+        border-bottom-left-radius: 60px;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(13, 31, 58, 0.65);
+        backdrop-filter: blur(10px);
+        z-index: 2;
+    }
+
+    .decor-glass-bottom {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 210px;
+        height: 380px;
+        border-top-left-radius: 60px;
+        border-left: 1px solid rgba(255, 255, 255, 0.08);
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+        background: rgba(13, 31, 58, 0.6);
+        backdrop-filter: blur(10px);
+        z-index: 2;
+    }
+
+    .decor-circle-bottom {
+        position: absolute;
+        bottom: -70px;
+        left: -70px;
+        width: 270px;
+        height: 270px;
+        border-radius: 50%;
+        background: radial-gradient(circle, #2563EB 0%, #1D4ED8 50%, #0B1B33 100%);
+        opacity: 0.9;
+        z-index: 1;
+    }
+
+    /* Nội dung nhận diện thương hiệu bên trái */
+    .banner-content {
+        position: relative;
+        z-index: 5;
+        text-align: center;
+        padding: 40px 30px;
+        max-width: 420px;
+    }
+
+    /* Logo BH chuẩn nhận diện ảnh mẫu */
+    .bh-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+        font-weight: 900;
+        font-size: 72px;
+        line-height: 1;
+        letter-spacing: -3px;
+        margin-bottom: 24px;
+        user-select: none;
+    }
+
+    .bh-b {
+        color: #FFFFFF;
+    }
+
+    .bh-h {
+        color: #2563EB;
+        margin-left: 2px;
+    }
+
+    .brand-title {
+        color: #FFFFFF;
+        font-size: 32px;
+        font-weight: 800;
+        margin: 0 0 10px 0;
+        letter-spacing: -0.5px;
+    }
+
+    .brand-subtitle {
+        color: #94A3B8;
+        font-size: 16px;
+        font-weight: 400;
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Panel phải chứa card đăng nhập */
+    .login-form-panel {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 24px;
+        background-color: #F8FAFC;
+    }
+
+    /* Card trắng bo góc nổi bật */
+    .auth-card {
+        background: #FFFFFF;
+        border-radius: 24px;
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.06), 0 0 0 1px rgba(226, 232, 240, 0.8);
+        padding: 48px 44px 36px 44px;
+        width: 100%;
+        max-width: 450px;
+        text-align: center;
+    }
+
+    .card-title {
+        font-size: 28px;
+        font-weight: 800;
+        color: #0F172A;
+        margin: 0 0 8px 0;
+        letter-spacing: -0.5px;
+    }
+
+    .card-subtitle {
+        font-size: 15px;
+        font-weight: 400;
+        color: #64748B;
+        margin: 0 0 32px 0;
+    }
+
+    /* Ô nhập dữ liệu bo tròn có icon */
+    .input-label {
+        display: block;
+        font-size: 14px;
+        font-weight: 700;
+        color: #1E293B;
+        margin-bottom: 8px;
+    }
+
+    .input-field-wrap {
+        display: flex;
+        align-items: center;
+        background: #F8FAFC;
+        border: 1.5px solid #E2E8F0;
+        border-radius: 12px;
+        height: 52px;
+        padding: 0 16px;
+        transition: all 0.2s ease;
+    }
+
+    .input-field-wrap:focus-within {
+        border-color: #2563EB;
+        background: #FFFFFF;
+        box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.1);
+    }
+
+    .input-field-icon {
+        color: #94A3B8;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+
+    .custom-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        font-size: 15px;
+        color: #0F172A;
+        padding: 0 12px;
+        outline: none;
+        width: 100%;
+    }
+
+    .custom-input::placeholder {
+        color: #94A3B8;
+        font-size: 14px;
+    }
+
+    /* Nút mắt bật/tắt mật khẩu */
+    .eye-toggle-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        color: #64748B;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: color 0.15s ease;
+    }
+
+    .eye-toggle-btn:hover {
+        color: #1E293B;
+    }
+
+    /* Checkbox duy trì đăng nhập */
+    .remember-wrap {
+        display: flex;
+        align-items: center;
+        margin: 20px 0 24px 0;
+    }
+
+    .custom-checkbox {
+        width: 18px;
+        height: 18px;
+        border-radius: 5px;
+        border: 1.5px solid #CBD5E1;
+        cursor: pointer;
+        accent-color: #2563EB;
+    }
+
+    .remember-label {
+        margin-left: 10px;
+        font-size: 14px;
+        font-weight: 500;
+        color: #475569;
+        cursor: pointer;
+        user-select: none;
+        margin-bottom: 0;
+    }
+
+    /* Nút Đăng nhập bo tròn dạng viên thuốc */
+    .btn-submit-login {
+        display: block;
+        width: 100%;
+        height: 50px;
+        background: #1D68FE;
+        color: #FFFFFF;
+        border: none;
+        border-radius: 9999px;
+        font-size: 16px;
+        font-weight: 600;
+        cursor: pointer;
+        box-shadow: 0 6px 18px -2px rgba(29, 104, 254, 0.4);
+        transition: all 0.2s ease;
+    }
+
+    .btn-submit-login:hover {
+        background: #1557E0;
+        box-shadow: 0 8px 22px -2px rgba(29, 104, 254, 0.5);
+        transform: translateY(-1px);
+    }
+
+    .btn-submit-login:active {
+        transform: translateY(0);
+    }
+
+    /* Ghi chú dưới cùng */
+    .card-footer-divider {
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid #F1F5F9;
+        text-align: center;
+    }
+
+    .card-footer-text {
+        font-size: 13px;
+        color: #64748B;
+        margin: 0;
+    }
+
+    /* Chuyển bố cục trên màn hình nhỏ */
+    @@media (max-width: 991px) {
+        .login-container-split {
+            flex-direction: column;
+        }
+
+        .login-banner-panel {
+            width: 100%;
+            min-height: 260px;
+            padding: 40px 20px;
+            flex: initial;
+        }
+
+        .login-form-panel {
+            width: 100%;
+            padding: 30px 16px;
+        }
+
+        .bh-logo {
+            font-size: 54px;
+            margin-bottom: 16px;
+        }
+
+        .brand-title {
+            font-size: 26px;
+        }
+
+        .auth-card {
+            padding: 32px 24px;
+        }
+    }
+</style>
+
+<script>
+    function toggleMatKhau() {
+        var input = document.getElementById('Input_MatKhau');
+        var btn = document.getElementById('btn-toggle-mat-khau');
+        var eyeOpen = document.getElementById('svg-eye-open');
+        var eyeClosed = document.getElementById('svg-eye-closed');
+        if (!input || !btn) return;
+
+        if (input.type === 'password') {
+            input.type = 'text';
+            btn.setAttribute('aria-label', 'Ẩn mật khẩu');
+            btn.setAttribute('title', 'Ẩn mật khẩu');
+            if (eyeOpen) eyeOpen.style.display = 'none';
+            if (eyeClosed) eyeClosed.style.display = 'inline';
+        } else {
+            input.type = 'password';
+            btn.setAttribute('aria-label', 'Hiện mật khẩu');
+            btn.setAttribute('title', 'Hiện mật khẩu');
+            if (eyeOpen) eyeOpen.style.display = 'inline';
+            if (eyeClosed) eyeClosed.style.display = 'none';
+        }
+    }
+</script>

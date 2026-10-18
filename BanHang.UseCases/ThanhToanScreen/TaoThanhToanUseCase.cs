@@ -18,6 +18,11 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
     }
 
+    public Task<string> LayMaPhieuThuTiepTheoAsync()
+    {
+        return _thanhToanRepository.LayMaPhieuThuTiepTheoAsync();
+    }
+
     public async Task<TaoThanhToanResult> ExecuteAsync(TaoThanhToanRequest request)
     {
         await Common.AuthorizeHelper.RequireRoleAsync(_currentUserService, CoreBusiness.VaiTroConstants.KeToanCongNo);
@@ -30,17 +35,8 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
             };
         }
 
-        if (string.IsNullOrWhiteSpace(request.MaPhieuThu))
-        {
-            return new TaoThanhToanResult
-            {
-                ThanhCong = false,
-                ThongBao = "Vui lòng nhập mã phiếu thu."
-            };
-        }
-
-        request.MaPhieuThu = request.MaPhieuThu.Trim();
-        if (request.MaPhieuThu.Length > 20)
+        request.MaPhieuThu = request.MaPhieuThu?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(request.MaPhieuThu) && request.MaPhieuThu.Length > 20)
         {
             return new TaoThanhToanResult
             {

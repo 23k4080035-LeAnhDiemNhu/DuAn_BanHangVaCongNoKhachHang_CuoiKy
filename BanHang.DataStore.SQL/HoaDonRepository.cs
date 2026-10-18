@@ -44,6 +44,20 @@ public class HoaDonRepository : IHoaDonRepository
         return await connection.QueryAsync<HoaDonListItemDto>(sql);
     }
 
+    public async Task<string> LayMaHoaDonTiepTheoAsync()
+    {
+        // Truy vấn số thứ tự lớn nhất hiện có của các mã hóa đơn dạng HD + số
+        const string sql = @"
+            SELECT ISNULL(MAX(TRY_CAST(SUBSTRING(MaHoaDon, 3, 20) AS INT)), 0)
+            FROM dbo.HoaDons
+            WHERE MaHoaDon LIKE 'HD[0-9]%';";
+
+        using var connection = _connectionFactory.CreateConnection();
+        var maxNum = await connection.ExecuteScalarAsync<int>(sql);
+        int nextNum = maxNum + 1;
+        return $"HD{nextNum:D3}";
+    }
+
     public async Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request)
     {
         using var connection = _connectionFactory.CreateConnection();
@@ -91,28 +105,7 @@ public class HoaDonRepository : IHoaDonRepository
                 };
             }
 
-            // 2. Kiểm tra tính duy nhất của Mã hóa đơn trước khi lưu
-            const string sqlCheckMaHoaDon = @"
-                SELECT COUNT(1) 
-                FROM dbo.HoaDons WITH (UPDLOCK, HOLDLOCK) 
-                WHERE MaHoaDon = @MaHoaDon;";
-
-            var countMa = await connection.ExecuteScalarAsync<int>(
-                sqlCheckMaHoaDon,
-                new { request.MaHoaDon },
-                transaction: transaction);
-
-            if (countMa > 0)
-            {
-                transaction.Rollback();
-                return new TaoHoaDonResult
-                {
-                    ThanhCong = false,
-                    ThongBao = $"Mã hóa đơn '{request.MaHoaDon}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
-                };
-            }
-
-            // 3. Đọc lại danh sách sản phẩm trong transaction để lấy giá hiện hành và kiểm tra trạng thái bán
+            // 2. Đọc lại danh sách sản phẩm trong transaction để lấy giá hiện hành và kiểm tra trạng thái bán
             var sanPhamIds = request.ChiTietHoaDons.Select(c => c.SanPhamId).Distinct().ToList();
             const string sqlSanPhams = @"
                 SELECT SanPhamId, MaSanPham, TenSanPham, DonViTinh, DonGia, TrangThai
@@ -160,7 +153,7 @@ public class HoaDonRepository : IHoaDonRepository
                 }
             }
 
-            // 4. Máy chủ tính tổng tiền hóa đơn bằng decimal từ đơn giá DB snapshot
+            // 3. Máy chủ tính tổng tiền hóa đơn bằng decimal từ đơn giá DB snapshot
             decimal tongTienMoi = 0;
             foreach (var item in request.ChiTietHoaDons)
             {
@@ -168,7 +161,7 @@ public class HoaDonRepository : IHoaDonRepository
                 tongTienMoi += sp.DonGia * item.SoLuong;
             }
 
-            // 5. Tính công nợ hiện tại của khách hàng trong transaction
+            // 4. Tính công nợ hiện tại của khách hàng trong transaction
             const string sqlCongNoHienTai = @"
                 SELECT ISNULL(SUM(TongTien - DaThanhToan), 0)
                 FROM dbo.HoaDons
@@ -179,7 +172,7 @@ public class HoaDonRepository : IHoaDonRepository
                 new { request.KhachHangId },
                 transaction: transaction);
 
-            // 6. Kiểm tra quy tắc hạn mức tín dụng: CongNoHienTai + TongHoaDonMoi <= HanMucCongNo
+            // 5. Kiểm tra quy tắc hạn mức tín dụng: CongNoHienTai + TongHoaDonMoi <= HanMucCongNo
             // Bằng hạn mức được phép; vượt hạn mức bị từ chối
             if (congNoHienTai + tongTienMoi > khachHang.HanMucCongNo)
             {
@@ -202,6 +195,60 @@ public class HoaDonRepository : IHoaDonRepository
                 };
             }
 
+            // 6. Đồng bộ hóa việc cấp mã hóa đơn trong transaction
+            // Dùng sp_getapplock Exclusive ở phạm vi transaction để tuần tự hóa việc chốt mã hóa đơn.
+            // Thứ tự khóa: KhachHangs -> SanPhams -> sp_getapplock('QuanLyBanHang_CapMaHoaDon') -> HoaDons.
+            // Đảm bảo: 2 người tạo hóa đơn đồng thời (kể cả 2 khách hàng khác nhau) không thể nhận cùng 1 mã,
+            // không gây deadlock vì thứ tự khóa luôn thống nhất một chiều.
+            await connection.ExecuteAsync(
+                "EXEC sp_getapplock @Resource = 'QuanLyBanHang_CapMaHoaDon', @LockMode = 'Exclusive', @LockOwner = 'Transaction';",
+                transaction: transaction);
+
+            string maHoaDonThucTe;
+
+            // Kiểm tra xem request có truyền mã tùy chỉnh (không phải dạng HD + số, ví dụ mã kiểm thử đặc biệt HD_FIFO_01)
+            bool laMaTuyChinh = !string.IsNullOrWhiteSpace(request.MaHoaDon) 
+                && !(System.Text.RegularExpressions.Regex.IsMatch(request.MaHoaDon.Trim(), @"^HD\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
+
+            if (laMaTuyChinh)
+            {
+                maHoaDonThucTe = request.MaHoaDon.Trim();
+                // Kiểm tra trùng lặp cho mã tùy chỉnh
+                const string sqlCheckCustom = @"SELECT COUNT(1) FROM dbo.HoaDons WITH (UPDLOCK, HOLDLOCK) WHERE MaHoaDon = @maHoaDonThucTe;";
+                var countCustom = await connection.ExecuteScalarAsync<int>(sqlCheckCustom, new { maHoaDonThucTe }, transaction: transaction);
+                if (countCustom > 0)
+                {
+                    transaction.Rollback();
+                    return new TaoHoaDonResult
+                    {
+                        ThanhCong = false,
+                        ThongBao = $"Mã hóa đơn '{maHoaDonThucTe}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+                    };
+                }
+            }
+            else
+            {
+                // Máy chủ tự động cấp số tuần tự tiếp theo từ dữ liệu thực tế, không tin tưởng mã do client gửi lên
+                const string sqlMaxNum = @"
+                    SELECT ISNULL(MAX(TRY_CAST(SUBSTRING(MaHoaDon, 3, 20) AS INT)), 0)
+                    FROM dbo.HoaDons WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MaHoaDon LIKE 'HD[0-9]%';";
+
+                var maxNum = await connection.ExecuteScalarAsync<int>(sqlMaxNum, transaction: transaction);
+                int nextNum = maxNum + 1;
+                maHoaDonThucTe = $"HD{nextNum:D3}";
+
+                // Vòng lặp an toàn bảo đảm mã chưa bị chiếm dụng
+                while (await connection.ExecuteScalarAsync<int>(
+                    "SELECT COUNT(1) FROM dbo.HoaDons WITH (UPDLOCK, HOLDLOCK) WHERE MaHoaDon = @maHoaDonThucTe;",
+                    new { maHoaDonThucTe },
+                    transaction: transaction) > 0)
+                {
+                    nextNum++;
+                    maHoaDonThucTe = $"HD{nextNum:D3}";
+                }
+            }
+
             // 7. Ghi nhận Header hóa đơn
             // Lưu ý: Tuyệt đối không chèn cột ConLai vì đây là computed column PERSISTED
             const string sqlInsertHoaDon = @"
@@ -215,7 +262,7 @@ public class HoaDonRepository : IHoaDonRepository
                 sqlInsertHoaDon,
                 new
                 {
-                    request.MaHoaDon,
+                    MaHoaDon = maHoaDonThucTe,
                     request.KhachHangId,
                     request.NgayLap,
                     HanThanhToan = request.HanThanhToan.Value,
@@ -256,8 +303,9 @@ public class HoaDonRepository : IHoaDonRepository
             {
                 ThanhCong = true,
                 HoaDonIdMoi = hoaDonId,
+                MaHoaDonMoi = maHoaDonThucTe,
                 TongTien = tongTienMoi,
-                ThongBao = "Tạo hóa đơn bán chịu thành công."
+                ThongBao = $"Tạo hóa đơn {maHoaDonThucTe} thành công."
             };
         }
         catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (sqlEx.Number == 2627 || sqlEx.Number == 2601)
@@ -266,7 +314,7 @@ public class HoaDonRepository : IHoaDonRepository
             return new TaoHoaDonResult
             {
                 ThanhCong = false,
-                ThongBao = $"Mã hóa đơn '{request.MaHoaDon}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+                ThongBao = "Mã hóa đơn bị trùng lặp trong hệ thống (vi phạm Unique Constraint). Vui lòng thử lại."
             };
         }
         catch (Exception)

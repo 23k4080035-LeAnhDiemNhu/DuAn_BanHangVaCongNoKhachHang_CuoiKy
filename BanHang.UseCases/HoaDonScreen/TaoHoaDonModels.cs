@@ -31,6 +31,7 @@ public class TaoHoaDonResult
     public bool ThanhCong { get; set; }
     public string ThongBao { get; set; } = string.Empty;
     public int? HoaDonIdMoi { get; set; }
+    public string? MaHoaDonMoi { get; set; }
     public decimal? TongTien { get; set; }
     public bool GiaBiThayDoi { get; set; }
 }

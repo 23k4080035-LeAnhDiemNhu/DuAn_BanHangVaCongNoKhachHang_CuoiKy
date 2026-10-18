@@ -99,6 +99,20 @@ public class KhachHangRepository : IKhachHangRepository
         return await connection.ExecuteScalarAsync<decimal>(sql, new { khachHangId });
     }
 
+    public async Task<string> LayMaKhachHangTiepTheoAsync()
+    {
+        const string sql = @"
+            SELECT ISNULL(MAX(CAST(SUBSTRING(MaKhachHang, 3, LEN(MaKhachHang) - 2) AS INT)), 0) + 1
+            FROM dbo.KhachHangs
+            WHERE MaKhachHang LIKE 'KH[0-9]%' 
+              AND ISNUMERIC(SUBSTRING(MaKhachHang, 3, LEN(MaKhachHang) - 2)) = 1;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        var nextNum = await connection.ExecuteScalarAsync<int>(sql);
+        if (nextNum <= 0) nextNum = 1;
+        return $"KH{nextNum:D3}";
+    }
+
     public async Task<TaoKhachHangResult> ThemKhachHangAsync(TaoKhachHangRequest request)
     {
         using var connection = _connectionFactory.CreateConnection();
@@ -111,39 +125,86 @@ public class KhachHangRepository : IKhachHangRepository
             connection.Open();
         }
 
-        const string sql = @"
-            INSERT INTO dbo.KhachHangs 
-                (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiaChi, HanMucCongNo, TrangThai, NgayTao)
-            VALUES 
-                (@MaKhachHang, @TenKhachHang, @SoDienThoai, @Email, @DiaChi, @HanMucCongNo, @TrangThai, GETDATE());
-            SELECT CAST(SCOPE_IDENTITY() AS INT);";
+        using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
 
         try
         {
+            // 1. Khóa ứng dụng cấp mã khách hàng để tránh đụng độ đồng thời
+            const string sqlAppLock = @"
+                EXEC sp_getapplock 
+                    @Resource = 'QuanLyBanHang_CapMaKhachHang', 
+                    @LockMode = 'Exclusive', 
+                    @LockOwner = 'Transaction', 
+                    @DbPrincipal = 'public';";
+            await connection.ExecuteAsync(sqlAppLock, transaction: transaction);
+
+            // 2. Xác định mã khách hàng thực tế
+            string maThucTe = request.MaKhachHang?.Trim() ?? string.Empty;
+
+            bool canCapMaMoi = false;
+            if (string.IsNullOrWhiteSpace(maThucTe))
+            {
+                canCapMaMoi = true;
+            }
+            else
+            {
+                // Kiểm tra xem mã yêu cầu đã tồn tại chưa
+                const string sqlCheckTonTai = "SELECT COUNT(1) FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK) WHERE MaKhachHang = @MaKhachHang;";
+                var daCo = await connection.ExecuteScalarAsync<int>(sqlCheckTonTai, new { MaKhachHang = maThucTe }, transaction: transaction);
+                if (daCo > 0)
+                {
+                    canCapMaMoi = true;
+                }
+            }
+
+            if (canCapMaMoi)
+            {
+                const string sqlMaxNum = @"
+                    SELECT ISNULL(MAX(CAST(SUBSTRING(MaKhachHang, 3, LEN(MaKhachHang) - 2) AS INT)), 0) + 1
+                    FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK)
+                    WHERE MaKhachHang LIKE 'KH[0-9]%' 
+                      AND ISNUMERIC(SUBSTRING(MaKhachHang, 3, LEN(MaKhachHang) - 2)) = 1;";
+
+                var nextNum = await connection.ExecuteScalarAsync<int>(sqlMaxNum, transaction: transaction);
+                if (nextNum <= 0) nextNum = 1;
+                maThucTe = $"KH{nextNum:D3}";
+            }
+
+            const string sql = @"
+                INSERT INTO dbo.KhachHangs 
+                    (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiaChi, HanMucCongNo, TrangThai, NgayTao)
+                VALUES 
+                    (@MaKhachHang, @TenKhachHang, @SoDienThoai, @Email, @DiaChi, @HanMucCongNo, @TrangThai, GETDATE());
+                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
             var idMoi = await connection.ExecuteScalarAsync<int>(sql, new
             {
-                request.MaKhachHang,
+                MaKhachHang = maThucTe,
                 request.TenKhachHang,
                 request.SoDienThoai,
                 request.Email,
                 request.DiaChi,
                 request.HanMucCongNo,
                 request.TrangThai
-            });
+            }, transaction: transaction);
+
+            transaction.Commit();
 
             return new TaoKhachHangResult
             {
                 ThanhCong = true,
                 KhachHangIdMoi = idMoi,
-                ThongBao = $"Thêm mới khách hàng '{request.TenKhachHang}' (Mã: {request.MaKhachHang}) thành công."
+                MaKhachHangMoi = maThucTe,
+                ThongBao = $"Thêm mới khách hàng '{request.TenKhachHang}' (Mã: {maThucTe}) thành công."
             };
         }
-        catch (SqlException ex) when (ex.Number == 2627 || ex.Number == 2601)
+        catch (Exception ex)
         {
+            try { transaction.Rollback(); } catch { }
             return new TaoKhachHangResult
             {
                 ThanhCong = false,
-                ThongBao = $"Mã khách hàng '{request.MaKhachHang}' đã tồn tại trong hệ thống. Vui lòng nhập mã khác."
+                ThongBao = $"Lỗi khi thêm mới khách hàng: {ex.Message}"
             };
         }
     }

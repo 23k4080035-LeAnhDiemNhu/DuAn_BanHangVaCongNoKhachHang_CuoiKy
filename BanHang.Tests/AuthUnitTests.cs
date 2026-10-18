@@ -582,6 +582,7 @@ public class AuthUnitTests
         public Task<TaoKhachHangResult> ThemKhachHangAsync(TaoKhachHangRequest request) => Task.FromResult(new TaoKhachHangResult { ThanhCong = true });
         public Task<CapNhatKhachHangResult> CapNhatKhachHangAsync(CapNhatKhachHangRequest request) => Task.FromResult(new CapNhatKhachHangResult { ThanhCong = true });
         public Task<DoiTrangThaiKhachHangResult> DoiTrangThaiKhachHangAsync(int khachHangId, bool trangThaiMoi) => Task.FromResult(new DoiTrangThaiKhachHangResult { ThanhCong = true });
+        public Task<string> LayMaKhachHangTiepTheoAsync() => Task.FromResult("KH001");
     }
 
     private class FakeSanPhamRepoMock : ISanPhamRepository
@@ -593,6 +594,7 @@ public class AuthUnitTests
         public Task<TaoSanPhamResult> ThemSanPhamAsync(TaoSanPhamRequest request) => Task.FromResult(new TaoSanPhamResult { ThanhCong = true });
         public Task<CapNhatSanPhamResult> CapNhatSanPhamAsync(CapNhatSanPhamRequest request) => Task.FromResult(new CapNhatSanPhamResult { ThanhCong = true });
         public Task<DoiTrangThaiSanPhamResult> DoiTrangThaiSanPhamAsync(int sanPhamId, bool trangThaiMoi) => Task.FromResult(new DoiTrangThaiSanPhamResult { ThanhCong = true });
+        public Task<string> LayMaSanPhamTiepTheoAsync() => Task.FromResult("SP001");
     }
 
     private class FakeHoaDonRepoMock : IHoaDonRepository
@@ -600,6 +602,7 @@ public class AuthUnitTests
         public Task<IEnumerable<HoaDonListItemDto>> LayDanhSachHoaDonAsync() => Task.FromResult(Enumerable.Empty<HoaDonListItemDto>());
         public Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request) => Task.FromResult(new TaoHoaDonResult { ThanhCong = true });
         public Task<ChiTietHoaDonDto?> LayChiTietHoaDonAsync(int hoaDonId) => Task.FromResult<ChiTietHoaDonDto?>(null);
+        public Task<string> LayMaHoaDonTiepTheoAsync() => Task.FromResult("HD011");
     }
 
     private class FakeThanhToanRepoMock : IThanhToanRepository
@@ -607,6 +610,7 @@ public class AuthUnitTests
         public Task<IEnumerable<ThanhToanListItemDto>> LayDanhSachThanhToanAsync() => Task.FromResult(Enumerable.Empty<ThanhToanListItemDto>());
         public Task<IEnumerable<HoaDonNoModel>> LayDanhSachHoaDonConNoTheoKhachHangAsync(int khachHangId) => Task.FromResult(Enumerable.Empty<HoaDonNoModel>());
         public Task<TaoThanhToanResult> GhiNhanThanhToanAsync(TaoThanhToanRequest request) => Task.FromResult(new TaoThanhToanResult { ThanhCong = true });
+        public Task<string> LayMaPhieuThuTiepTheoAsync() => Task.FromResult("PT001");
     }
 
     private class FakeBaoCaoTuoiNoRepoMock : IBaoCaoTuoiNoRepository
