@@ -276,6 +276,105 @@ public class HoaDonRepository : IHoaDonRepository
         }
     }
 
+    public async Task<ChiTietHoaDonDto?> LayChiTietHoaDonAsync(int hoaDonId)
+    {
+        if (hoaDonId <= 0) return null;
+
+        // Đọc 3 tập dữ liệu độc lập qua 1 lệnh truy vấn QueryMultipleAsync:
+        // 1. Thông tin hóa đơn & khách hàng
+        // 2. Dòng hàng sản phẩm (snapshot từ ChiTietHoaDons)
+        // 3. Lịch sử phân bổ từ các phiếu thu
+        // Tuyệt đối không JOIN trực tiếp giữa ChiTietHoaDons và PhanBoThanhToans để tránh nhân đôi tiền.
+        const string sql = @"
+            -- 1. Thông tin hóa đơn + khách hàng
+            SELECT 
+                h.HoaDonId,
+                h.MaHoaDon,
+                h.KhachHangId,
+                k.MaKhachHang,
+                k.TenKhachHang,
+                k.SoDienThoai,
+                k.DiaChi,
+                h.NgayLap,
+                h.HanThanhToan,
+                h.TongTien,
+                h.DaThanhToan,
+                h.ConLai,
+                h.TrangThai,
+                h.GhiChu,
+                h.NgayTao
+            FROM dbo.HoaDons h
+            INNER JOIN dbo.KhachHangs k ON h.KhachHangId = k.KhachHangId
+            WHERE h.HoaDonId = @HoaDonId;
+
+            -- 2. Dòng hàng sản phẩm (snapshot từ bảng ChiTietHoaDons)
+            SELECT 
+                c.ChiTietHoaDonId,
+                c.HoaDonId,
+                c.SanPhamId,
+                c.TenSanPham,
+                c.DonViTinh,
+                c.SoLuong,
+                c.DonGia,
+                c.ThanhTien
+            FROM dbo.ChiTietHoaDons c
+            WHERE c.HoaDonId = @HoaDonId
+            ORDER BY c.ChiTietHoaDonId ASC;
+
+            -- 3. Lịch sử phân bổ thanh toán vào hóa đơn
+            SELECT 
+                p.PhanBoThanhToanId,
+                p.ThanhToanId,
+                t.MaPhieuThu,
+                t.NgayThanhToan,
+                p.NgayPhanBo,
+                p.SoTienPhanBo,
+                t.PhuongThuc
+            FROM dbo.PhanBoThanhToans p
+            INNER JOIN dbo.ThanhToans t ON p.ThanhToanId = t.ThanhToanId
+            WHERE p.HoaDonId = @HoaDonId
+            ORDER BY p.NgayPhanBo ASC, p.PhanBoThanhToanId ASC;";
+
+        using var connection = _connectionFactory.CreateConnection();
+        if (connection is System.Data.Common.DbConnection dbConnection)
+        {
+            await dbConnection.OpenAsync();
+        }
+        else
+        {
+            connection.Open();
+        }
+
+        using var transaction = connection.BeginTransaction(IsolationLevel.Serializable);
+        try
+        {
+            using var multi = await connection.QueryMultipleAsync(
+                sql,
+                new { HoaDonId = hoaDonId },
+                transaction: transaction);
+
+            var hoaDon = await multi.ReadSingleOrDefaultAsync<ChiTietHoaDonDto>();
+            var dongHangs = (await multi.ReadAsync<DongHangChiTietHoaDonDto>()).ToList();
+            var phanBos = (await multi.ReadAsync<LichSuPhanBoHoaDonDto>()).ToList();
+
+            transaction.Commit();
+
+            if (hoaDon == null)
+            {
+                return null;
+            }
+
+            hoaDon.DanhSachDongHang = dongHangs;
+            hoaDon.DanhSachPhanBo = phanBos;
+            return hoaDon;
+        }
+        catch
+        {
+            try { transaction.Rollback(); } catch { }
+            throw;
+        }
+    }
+
     private sealed class KhachHangDbDto
     {
         public int KhachHangId { get; set; }

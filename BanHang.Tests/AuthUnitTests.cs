@@ -599,6 +599,7 @@ public class AuthUnitTests
     {
         public Task<IEnumerable<HoaDonListItemDto>> LayDanhSachHoaDonAsync() => Task.FromResult(Enumerable.Empty<HoaDonListItemDto>());
         public Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request) => Task.FromResult(new TaoHoaDonResult { ThanhCong = true });
+        public Task<ChiTietHoaDonDto?> LayChiTietHoaDonAsync(int hoaDonId) => Task.FromResult<ChiTietHoaDonDto?>(null);
     }
 
     private class FakeThanhToanRepoMock : IThanhToanRepository

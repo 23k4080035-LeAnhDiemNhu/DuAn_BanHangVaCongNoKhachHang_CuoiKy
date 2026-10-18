@@ -16,4 +16,10 @@ public interface IHoaDonRepository
     /// Tạo hóa đơn bán chịu mới trong một transaction nguyên tử với khóa chống xung đột đồng thời
     /// </summary>
     Task<TaoHoaDonResult> TaoHoaDonBanChiuAsync(TaoHoaDonRequest request);
+
+    /// <summary>
+    /// Lấy chi tiết một hóa đơn theo HoaDonId, gồm thông tin hóa đơn, danh sách dòng hàng và lịch sử phân bổ
+    /// Đọc nhất quán từ các tập dữ liệu độc lập, ngăn ngừa hoàn toàn lỗi nhân đôi số tiền
+    /// </summary>
+    Task<ChiTietHoaDonDto?> LayChiTietHoaDonAsync(int hoaDonId);
 }

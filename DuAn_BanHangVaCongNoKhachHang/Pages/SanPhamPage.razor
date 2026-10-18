@@ -12,12 +12,12 @@
 
 <PageTitle>Danh sách sản phẩm</PageTitle>
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h3 class="mb-1 text-primary fw-bold">Quản lý Sản phẩm & Đơn giá</h3>
         <p class="text-muted mb-0 small">Theo dõi danh mục hàng hóa, đơn giá bán niêm yết và trạng thái kinh doanh.</p>
     </div>
-    <button class="btn btn-primary" id="btn-them-san-pham" @onclick="MoModalThemSanPham">
+    <button class="btn btn-primary text-nowrap" id="btn-them-san-pham" @onclick="MoModalThemSanPham">
         <span class="bi bi-plus-circle me-1"></span> + Thêm sản phẩm
     </button>
 </div>
@@ -57,24 +57,24 @@ else if (danhSachSanPham == null || !danhSachSanPham.Any())
 else
 {
     <div class="table-responsive">
-        <table class="table table-striped table-hover align-middle border" id="table-san-pham">
+        <table class="table table-striped table-hover align-middle border mb-0" style="min-width: 950px;" id="table-san-pham">
             <thead class="table-dark">
                 <tr>
-                    <th scope="col" style="width: 110px;">Mã SP</th>
-                    <th scope="col" style="width: 80px;" class="text-center">Hình ảnh</th>
-                    <th scope="col">Tên sản phẩm</th>
-                    <th scope="col" style="width: 100px;" class="text-center">ĐVT</th>
-                    <th scope="col" class="text-end" style="width: 160px;">Đơn giá</th>
-                    <th scope="col" class="text-end" style="width: 110px;">Tồn kho</th>
-                    <th scope="col" class="text-center" style="width: 140px;">Trạng thái</th>
-                    <th scope="col" class="text-center" style="width: 180px;">Thao tác</th>
+                    <th scope="col" style="width: 110px;" class="text-nowrap">Mã SP</th>
+                    <th scope="col" style="width: 80px;" class="text-center text-nowrap">Hình ảnh</th>
+                    <th scope="col" style="min-width: 240px;">Tên sản phẩm</th>
+                    <th scope="col" style="width: 100px;" class="text-center text-nowrap">ĐVT</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 160px;">Đơn giá</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 110px;">Tồn kho</th>
+                    <th scope="col" class="text-center text-nowrap" style="width: 140px;">Trạng thái</th>
+                    <th scope="col" class="text-center text-nowrap" style="width: 180px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach (var sp in danhSachSanPham)
                 {
                     <tr>
-                        <td class="fw-bold text-primary">@sp.MaSanPham</td>
+                        <td class="fw-bold text-primary text-nowrap">@sp.MaSanPham</td>
                         <td class="text-center">
                             @if (!string.IsNullOrEmpty(sp.HinhAnh))
                             {
@@ -97,14 +97,14 @@ else
                                 </small>
                             }
                         </td>
-                        <td class="text-center">@sp.DonViTinh</td>
-                        <td class="text-end fw-bold text-success">
+                        <td class="text-center text-nowrap">@sp.DonViTinh</td>
+                        <td class="text-end text-nowrap fw-bold text-success">
                             @sp.DonGia.ToString("N0", viCulture) đ
                         </td>
-                        <td class="text-end">
+                        <td class="text-end text-nowrap">
                             @sp.SoLuongTon.ToString("N0", viCulture)
                         </td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
                             @if (sp.TrangThai)
                             {
                                 <span class="badge bg-success">Đang bán</span>
@@ -114,7 +114,7 @@ else
                                 <span class="badge bg-secondary">Ngừng bán</span>
                             }
                         </td>
-                        <td class="text-center">
+                        <td class="text-center text-nowrap">
                             <button class="btn btn-sm btn-outline-primary me-1" 
                                     @onclick="() => MoModalSuaSanPham(sp)" title="Sửa thông tin sản phẩm">
                                 Sửa
@@ -145,7 +145,7 @@ else
 @if (hienThiModalForm)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content shadow">
                 <div class="modal-header bg-primary text-white">
                     <h5 class="modal-title">
@@ -163,7 +163,7 @@ else
 
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Mã sản phẩm <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-nowrap">Mã sản phẩm <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @(CoLoi("MaSanPham") ? "is-invalid" : "")"
                                    @bind="formModel.MaSanPham" disabled="@isEditing" maxlength="20" placeholder="VD: SP009" />
                             @if (CoLoi("MaSanPham"))
@@ -172,7 +172,7 @@ else
                             }
                         </div>
                         <div class="col-md-8">
-                            <label class="form-label fw-semibold">Tên sản phẩm <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-nowrap">Tên sản phẩm <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @(CoLoi("TenSanPham") ? "is-invalid" : "")"
                                    @bind="formModel.TenSanPham" maxlength="200" placeholder="VD: Màn hình LG 27 inch 4K" />
                             @if (CoLoi("TenSanPham"))
@@ -182,7 +182,7 @@ else
                         </div>
 
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Đơn vị tính <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-nowrap">Đơn vị tính <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @(CoLoi("DonViTinh") ? "is-invalid" : "")"
                                    @bind="formModel.DonViTinh" maxlength="50" placeholder="VD: Cái, Hộp, Bộ" />
                             @if (CoLoi("DonViTinh"))
@@ -191,7 +191,7 @@ else
                             }
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label fw-semibold">Đơn giá bán (VNĐ) <span class="text-danger">*</span></label>
+                            <label class="form-label fw-semibold text-nowrap">Đơn giá (VNĐ) <span class="text-danger">*</span></label>
                             <input type="number" step="1000" min="0" class="form-control @(CoLoi("DonGia") ? "is-invalid" : "")"
                                    @bind="formModel.DonGia" />
                             @if (CoLoi("DonGia"))
@@ -252,7 +252,7 @@ else
 @if (hienThiModalXacNhanTrangThai && sanPhamDoiTrangThai != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
-        <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content shadow">
                 <div class="modal-header @(trangThaiMoiDuKien ? "bg-success" : "bg-warning") text-white">
                     <h5 class="modal-title">

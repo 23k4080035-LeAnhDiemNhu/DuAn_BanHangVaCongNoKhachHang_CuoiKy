@@ -14,14 +14,14 @@
 <PageTitle>Lập phiếu thu tiền & Phân bổ FIFO</PageTitle>
 
 <div class="container-fluid px-0">
-    <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
         <div>
-            <h3 class="mb-1 text-success fw-bold">Lập Phiếu Thu Tiền & Phân Bổ FIFO</h3>
+            <h3 class="mb-1 text-primary fw-bold">Lập Phiếu Thu Tiền & Phân Bổ FIFO</h3>
             <p class="text-muted mb-0 small">
                 Ghi nhận chứng từ thu tiền và tự động cấn trừ công nợ theo thứ tự hóa đơn từ cũ đến mới (FIFO).
             </p>
         </div>
-        <a href="/thanh-toan" class="btn btn-outline-secondary btn-sm">
+        <a href="/thanh-toan" class="btn btn-outline-secondary btn-sm text-nowrap">
             &larr; Quay lại danh sách
         </a>
     </div>
@@ -202,16 +202,16 @@
                             }
 
                             <div class="table-responsive">
-                                <table class="table table-bordered table-hover align-middle mb-0">
+                                <table class="table table-bordered table-hover align-middle mb-0" style="min-width: 650px;">
                                     <thead class="table-light text-center small">
                                         <tr>
-                                            <th style="width: 40px;">#</th>
-                                            <th>Mã hóa đơn</th>
-                                            <th style="width: 110px;">Ngày lập</th>
-                                            <th style="width: 130px;" class="text-end">Nợ ban đầu</th>
-                                            <th style="width: 140px;" class="text-end">Tiền cấn trừ</th>
-                                            <th style="width: 130px;" class="text-end">Nợ còn lại</th>
-                                            <th style="width: 140px;" class="text-center">Trạng thái sau thu</th>
+                                            <th style="width: 40px;" class="text-nowrap">#</th>
+                                            <th class="text-nowrap">Mã hóa đơn</th>
+                                            <th style="width: 110px;" class="text-nowrap">Ngày lập</th>
+                                            <th style="width: 130px;" class="text-end text-nowrap">Nợ ban đầu</th>
+                                            <th style="width: 140px;" class="text-end text-nowrap">Tiền cấn trừ</th>
+                                            <th style="width: 130px;" class="text-end text-nowrap">Nợ còn lại</th>
+                                            <th style="width: 140px;" class="text-center text-nowrap">Trạng thái sau thu</th>
                                         </tr>
                                     </thead>
                                     <tbody>

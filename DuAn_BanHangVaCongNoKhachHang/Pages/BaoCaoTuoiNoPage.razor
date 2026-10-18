@@ -9,23 +9,21 @@
 
 <PageTitle>Báo cáo tuổi nợ khách hàng</PageTitle>
 
-<div class="mb-3">
-    <h3 class="mb-1 text-primary fw-bold">Báo Cáo Phân Tích Tuổi Nợ Khách Hàng</h3>
-    <p class="text-muted mb-0 small">Theo dõi công nợ theo 4 nhóm hạn nợ (Aging Schedule): 0–30, 31–60, 61–90 và trên 90 ngày.</p>
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+    <div>
+        <h3 class="mb-1 text-primary fw-bold">Báo Cáo Phân Tích Tuổi Nợ Khách Hàng</h3>
+        <p class="text-muted mb-0 small">Theo dõi công nợ theo 4 nhóm hạn nợ (Aging Schedule): 0–30, 31–60, 61–90 và trên 90 ngày.</p>
+    </div>
 </div>
 
 <!-- Bộ lọc chọn ngày chốt báo cáo -->
 <div class="card mb-3 shadow-sm border-0 bg-light">
     <div class="card-body py-3">
-        <div class="row g-2 align-items-center">
-            <div class="col-auto">
-                <label for="input-ngay-bao-cao" class="col-form-label fw-semibold">Ngày chốt báo cáo:</label>
-            </div>
-            <div class="col-auto">
-                <input type="date" id="input-ngay-bao-cao" class="form-control" @bind="ngayBaoCaoInput" />
-            </div>
-            <div class="col-auto">
-                <button class="btn btn-primary" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@isLoading">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <label for="input-ngay-bao-cao" class="col-form-label fw-semibold text-nowrap mb-0">Ngày chốt báo cáo:</label>
+                <input type="date" id="input-ngay-bao-cao" class="form-control" style="width: auto;" @bind="ngayBaoCaoInput" />
+                <button class="btn btn-primary text-nowrap" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@isLoading">
                     @if (isLoading)
                     {
                         <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -38,8 +36,8 @@
                     }
                 </button>
             </div>
-            <div class="col-auto ms-auto">
-                <span class="badge bg-secondary p-2 fs-6">
+            <div>
+                <span class="badge bg-secondary p-2 fs-6 text-wrap">
                     Số liệu áp dụng ngày: <strong id="lbl-ngay-ap-dung">@ngayBaoCaoApDung.ToString("dd/MM/yyyy")</strong>
                 </span>
             </div>
@@ -81,29 +79,29 @@ else
 {
     @if (baoCaoResult.TienThuChuaPhanBo > 0)
     {
-        <div class="alert alert-warning py-2 mb-3 d-flex justify-content-between align-items-center" role="alert">
+        <div class="alert alert-warning py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" role="alert">
             <div>
                 <strong>Tiền thu chưa phân bổ:</strong>
                 Tổng số tiền phiếu thu còn dư chưa cấn trừ tính đến ngày @ngayBaoCaoApDung.ToString("dd/MM/yyyy") là:
-                <strong class="text-danger">@baoCaoResult.TienThuChuaPhanBo.ToString("N0", cultureVi) ₫</strong>
+                <strong class="text-danger text-nowrap">@baoCaoResult.TienThuChuaPhanBo.ToString("N0", cultureVi) đ</strong>
             </div>
-            <span class="badge bg-light text-dark border">Lưu riêng trên phiếu thu, không tự trừ vào dư nợ hóa đơn</span>
+            <span class="badge bg-light text-dark border text-nowrap">Lưu riêng trên phiếu thu, không tự trừ vào dư nợ hóa đơn</span>
         </div>
     }
 
-    <div class="table-responsive">
-        <table class="table table-bordered table-hover align-middle mb-0" id="table-tuoi-no">
+    <div class="table-responsive shadow-sm rounded">
+        <table class="table table-bordered table-hover align-middle mb-0" id="table-tuoi-no" style="min-width: 1100px;">
             <thead class="table-dark text-center">
                 <tr>
-                    <th scope="col" style="width: 50px;">STT</th>
-                    <th scope="col" style="width: 100px;">Mã KH</th>
-                    <th scope="col">Tên khách hàng</th>
-                    <th scope="col" class="text-end" style="width: 130px;">Hạn mức</th>
-                    <th scope="col" class="text-end text-info" style="width: 130px;">0–30 ngày</th>
-                    <th scope="col" class="text-end text-warning" style="width: 130px;">31–60 ngày</th>
-                    <th scope="col" class="text-end text-danger" style="width: 130px;">61–90 ngày</th>
-                    <th scope="col" class="text-end text-danger" style="width: 130px;">Trên 90 ngày</th>
-                    <th scope="col" class="text-end" style="width: 140px;">Tổng công nợ</th>
+                    <th scope="col" style="width: 50px;" class="text-nowrap">STT</th>
+                    <th scope="col" style="width: 100px;" class="text-nowrap">Mã KH</th>
+                    <th scope="col" style="min-width: 240px;" class="text-start">Tên khách hàng</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 130px;">Hạn mức</th>
+                    <th scope="col" class="text-end text-info text-nowrap" style="width: 130px;">0–30 ngày</th>
+                    <th scope="col" class="text-end text-warning text-nowrap" style="width: 130px;">31–60 ngày</th>
+                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 130px;">61–90 ngày</th>
+                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 130px;">Trên 90 ngày</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 140px;">Tổng công nợ</th>
                 </tr>
             </thead>
             <tbody>
@@ -113,42 +111,42 @@ else
                 @foreach (var item in baoCaoResult.DanhSach)
                 {
                     <tr>
-                        <td class="text-center">@(stt++)</td>
-                        <td class="fw-semibold">@item.MaKhachHang</td>
+                        <td class="text-center text-nowrap">@(stt++)</td>
+                        <td class="fw-semibold text-nowrap">@item.MaKhachHang</td>
                         <td>
-                            <div>@item.TenKhachHang</div>
+                            <div class="fw-semibold">@item.TenKhachHang</div>
                             @if (!string.IsNullOrEmpty(item.SoDienThoai))
                             {
-                                <small class="text-muted">SĐT: @item.SoDienThoai</small>
+                                <small class="text-muted text-nowrap">SĐT: @item.SoDienThoai</small>
                             }
                         </td>
-                        <td class="text-end text-muted">@item.HanMucCongNo.ToString("N0", cultureVi) ₫</td>
-                        <td class="text-end @(item.TuoiNo_0_30 > 0 ? "fw-semibold text-info" : "text-muted")">
-                            @item.TuoiNo_0_30.ToString("N0", cultureVi) ₫
+                        <td class="text-end text-muted text-nowrap">@item.HanMucCongNo.ToString("N0", cultureVi) đ</td>
+                        <td class="text-end text-nowrap @(item.TuoiNo_0_30 > 0 ? "fw-semibold text-info" : "text-muted")">
+                            @item.TuoiNo_0_30.ToString("N0", cultureVi) đ
                         </td>
-                        <td class="text-end @(item.TuoiNo_31_60 > 0 ? "fw-semibold text-warning" : "text-muted")">
-                            @item.TuoiNo_31_60.ToString("N0", cultureVi) ₫
+                        <td class="text-end text-nowrap @(item.TuoiNo_31_60 > 0 ? "fw-semibold text-warning" : "text-muted")">
+                            @item.TuoiNo_31_60.ToString("N0", cultureVi) đ
                         </td>
-                        <td class="text-end @(item.TuoiNo_61_90 > 0 ? "fw-semibold text-danger" : "text-muted")">
-                            @item.TuoiNo_61_90.ToString("N0", cultureVi) ₫
+                        <td class="text-end text-nowrap @(item.TuoiNo_61_90 > 0 ? "fw-semibold text-danger" : "text-muted")">
+                            @item.TuoiNo_61_90.ToString("N0", cultureVi) đ
                         </td>
-                        <td class="text-end @(item.TuoiNo_Tren_90 > 0 ? "fw-bold text-danger" : "text-muted")">
-                            @item.TuoiNo_Tren_90.ToString("N0", cultureVi) ₫
+                        <td class="text-end text-nowrap @(item.TuoiNo_Tren_90 > 0 ? "fw-bold text-danger" : "text-muted")">
+                            @item.TuoiNo_Tren_90.ToString("N0", cultureVi) đ
                         </td>
-                        <td class="text-end fw-bold @(item.TongCongNo > 0 ? "text-dark" : "text-muted")">
-                            @item.TongCongNo.ToString("N0", cultureVi) ₫
+                        <td class="text-end fw-bold text-nowrap @(item.TongCongNo > 0 ? "text-dark" : "text-muted")">
+                            @item.TongCongNo.ToString("N0", cultureVi) đ
                         </td>
                     </tr>
                 }
             </tbody>
-            <tfoot class="table-light border-top border-2 fw-bold text-end">
+            <tfoot class="table-light border-top border-2 fw-bold text-end text-nowrap">
                 <tr>
-                    <td colspan="4" class="text-center text-uppercase">Tổng cộng</td>
-                    <td class="text-info">@baoCaoResult.Tong_TuoiNo_0_30.ToString("N0", cultureVi) ₫</td>
-                    <td class="text-warning">@baoCaoResult.Tong_TuoiNo_31_60.ToString("N0", cultureVi) ₫</td>
-                    <td class="text-danger">@baoCaoResult.Tong_TuoiNo_61_90.ToString("N0", cultureVi) ₫</td>
-                    <td class="text-danger">@baoCaoResult.Tong_TuoiNo_Tren_90.ToString("N0", cultureVi) ₫</td>
-                    <td class="fs-6 text-primary">@baoCaoResult.Tong_CongNo.ToString("N0", cultureVi) ₫</td>
+                    <td colspan="4" class="text-center text-uppercase text-nowrap">Tổng cộng</td>
+                    <td class="text-info text-nowrap">@baoCaoResult.Tong_TuoiNo_0_30.ToString("N0", cultureVi) đ</td>
+                    <td class="text-warning text-nowrap">@baoCaoResult.Tong_TuoiNo_31_60.ToString("N0", cultureVi) đ</td>
+                    <td class="text-danger text-nowrap">@baoCaoResult.Tong_TuoiNo_61_90.ToString("N0", cultureVi) đ</td>
+                    <td class="text-danger text-nowrap">@baoCaoResult.Tong_TuoiNo_Tren_90.ToString("N0", cultureVi) đ</td>
+                    <td class="fs-6 text-primary text-nowrap">@baoCaoResult.Tong_CongNo.ToString("N0", cultureVi) đ</td>
                 </tr>
             </tfoot>
         </table>

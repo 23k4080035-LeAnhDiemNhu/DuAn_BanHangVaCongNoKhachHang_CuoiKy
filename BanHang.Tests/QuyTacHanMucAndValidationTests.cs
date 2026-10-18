@@ -23,6 +23,11 @@ public class QuyTacHanMucAndValidationTests
                 ThongBao = "Thành công (Fake)"
             });
         }
+
+        public Task<ChiTietHoaDonDto?> LayChiTietHoaDonAsync(int hoaDonId)
+        {
+            return Task.FromResult<ChiTietHoaDonDto?>(null);
+        }
     }
 
     [Theory]

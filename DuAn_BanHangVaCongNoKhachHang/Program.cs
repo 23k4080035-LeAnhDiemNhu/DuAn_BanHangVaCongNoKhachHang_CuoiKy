@@ -113,6 +113,7 @@ builder.Services.AddScoped<IDoiTrangThaiSanPhamUseCase, DoiTrangThaiSanPhamUseCa
 
 builder.Services.AddScoped<IHoaDonRepository, HoaDonRepository>();
 builder.Services.AddScoped<IXemDanhSachHoaDonUseCase, XemDanhSachHoaDonUseCase>();
+builder.Services.AddScoped<IXemChiTietHoaDonUseCase, XemChiTietHoaDonUseCase>();
 builder.Services.AddScoped<ITaoHoaDonBanChiuUseCase, TaoHoaDonBanChiuUseCase>();
 
 builder.Services.AddScoped<IThanhToanRepository, ThanhToanRepository>();
