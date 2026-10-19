@@ -1,0 +1,82 @@
+@startuml Sequence_TaoHoaDon_Phan1_KiemTra
+title Sơ đồ Tuần tự: Lập Hóa đơn Bán chịu - Phần 1: Nhập liệu, Lưu nháp & Kiểm tra Giao diện (Bản Báo cáo A4)
+
+autonumber "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Nhân viên bán hàng" as NVBH
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoHoaDonPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "IHoaDonNhapStateService\n(Scoped Draft State)" as DraftState
+    control "TaoHoaDonBanChiuUseCase" as UseCase
+    participant "AuthorizeHelper" as Auth
+end box
+
+note over NVBH, UseCase #FEFFDD
+  <b>LUỒNG LẬP HÓA ĐƠN BÁN CHỊU (PHẦN 1 / 2):</b>
+  Bao gồm các bước nhập liệu, tự động lưu nháp trong circuit,
+  và kiểm tra validation giao diện phía Blazor Server.
+  <b>Tiếp nối:</b> Xem <i>Phần 2: Khóa Dữ liệu Tuần tự & Transaction CSDL</i> (Bước [15] trở đi).
+end note
+
+== 1. Tự động Lưu tạm Dữ liệu Nháp trong Circuit ==
+NVBH -> Page : Nhập liệu form (Khách hàng, Ngày lập, Hạn thanh toán, Sản phẩm, Số lượng)
+Page -> DraftState : CapNhatNhap(khachHangId, ngayLap, hanThanhToan, ghiChu, chiTiets)
+note over DraftState
+  Service Scoped tự động lưu tạm dữ liệu nhập
+  tránh mất dữ liệu khi chuyển trang nội bộ trong circuit.
+end note
+
+== 2. Bấm Lưu & Kiểm tra Phía Giao diện Blazor Server ==
+NVBH -> Page : Bấm nút "Lưu hóa đơn" (id="btn-luu-hoa-don")
+Page -> Page : EditContext.Validate() (Validation giao diện trong Blazor Server)
+Page -> Page : Kiểm tra hạn thanh toán, dòng hàng, số lượng, chống trùng sản phẩm
+
+alt Validation giao diện thất bại (Dữ liệu không hợp lệ / Thiếu dòng hàng / Hạn thanh toán sai)
+    break Dừng tại giao diện (Không gọi UseCase)
+        Page --> NVBH : Hiển thị lỗi cạnh trường nhập liệu / banner cảnh báo
+    end
+end
+
+== 3. Chuyển tiếp sang Tầng UseCase & Kiểm tra Cơ sở ==
+Page -> UseCase : ExecuteAsync(TaoHoaDonRequest)
+
+UseCase -> Auth : RequireRoleAsync(currentUser, "NhanVienBanHang")
+alt Người dùng không đủ quyền
+    break Dừng xử lý phân quyền
+        Auth --> UseCase : Ném UnauthorizedAccessException
+        UseCase --> Page : Chặn xử lý (Không đủ quyền vai trò)
+        Page --> NVBH : Hiển thị giao diện Không có quyền truy cập
+    end
+end
+
+UseCase -> UseCase : Kiểm tra hợp lệ dữ liệu cơ sở:\n- KhachHangId > 0\n- HanThanhToan >= NgayLap\n- ChiTietHoaDons không rỗng và SoLuong > 0\n- Không trùng lặp SanPhamId giữa các dòng
+alt Dữ liệu cơ sở không hợp lệ
+    break Dừng xử lý do dữ liệu nhập sai
+        UseCase --> Page : return TaoHoaDonResult { ThanhCong = false, ThongBao = "..." }
+        Page --> NVBH : Hiển thị lỗi cạnh trường nhập liệu tương ứng
+    end
+end
+
+note over Page, UseCase
+  <b>KẾT THÚC PHẦN 1:</b> Dữ liệu giao diện và UseCase cơ sở đã hợp lệ 100%.
+  Luồng nghiệp vụ chuyển tiếp sang <b>PHẦN 2 (Bước [15] trở đi):</b> Bắt đầu Database Transaction, Khóa dữ liệu tuần tự và Commit CSDL.
+end note
+
+@enduml

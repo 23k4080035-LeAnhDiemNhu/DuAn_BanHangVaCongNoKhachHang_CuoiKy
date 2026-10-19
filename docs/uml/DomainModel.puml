@@ -1,0 +1,165 @@
+@startuml DomainModel
+title Sơ đồ Thực thể Miền Nghiệp vụ (Domain Model - Sơ đồ rút gọn)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+}
+
+note as N_Domain
+  <b>GHI CHÚ SƠ ĐỒ THỰC THỂ RÚT GỌN:</b>
+  Sơ đồ tập trung vào 6 thực thể nghiệp vụ cốt lõi và 1 thực thể tài khoản.
+  Phân biệt rõ ràng giữa <b>Cột lưu CSDL SQL</b>, <b>Giá trị tổng hợp nạp khi truy vấn</b> và <b>Thuộc tính/cột tính toán (computed)</b>.
+end note
+
+enum TrangThaiHoaDon {
+    ChuaThanhToan = 0
+    ThanhToanMotPhan = 1
+    DaThanhToan = 2
+}
+
+class KhachHang {
+    -- Cột lưu CSDL SQL (dbo.KhachHangs) --
+    + int KhachHangId [PK]
+    + string MaKhachHang
+    + string TenKhachHang
+    + string? SoDienThoai
+    + string? Email
+    + string? DiaChi
+    + bool TrangThai
+    + decimal HanMucCongNo
+    -- Giá trị tổng hợp nạp khi truy vấn (không lưu trong dbo.KhachHangs) --
+    + decimal SoDuCongNo <<tổng hợp khi truy vấn>>
+    -- Thuộc tính tính toán C# (không lưu cột CSDL) --
+    + decimal ConDuocMuaNo <<computed C#>>
+    + bool DaVuotHanMuc <<computed C#>>
+    -- Phương thức nghiệp vụ CoreBusiness --
+    + bool KiemTraVuotHanMucKhiMua(decimal soTienDonHangMoi)
+}
+
+note right of KhachHang
+  <b>Lưu ý đối chiếu Đề 18 & CSDL:</b>
+  - <b>HanMucCongNo</b>: Cột lưu CSDL trong dbo.KhachHangs.
+  - <b>SoDuCongNo</b>: Giá trị tổng hợp từ các hóa đơn chưa thanh toán,
+    được nạp khi truy vấn, không phải cột lưu hay computed column của dbo.KhachHangs.
+  - <b>Thời hạn tín dụng khách hàng</b> (Credit Terms, quy định số ngày
+    cho phép nợ theo chính sách khách hàng, ví dụ 30 ngày) hiện
+    <b>chưa có cột tĩnh trong CSDL</b>.
+  - <b>Phân biệt:</b> 'Thời hạn tín dụng khách hàng' là chính sách nợ,
+    khác hoàn toàn với 'Số ngày quá hạn của hóa đơn' (tính động tại ngày chốt).
+end note
+
+class SanPham {
+    -- Cột lưu CSDL SQL (dbo.SanPhams) --
+    + int SanPhamId [PK]
+    + string MaSanPham
+    + string TenSanPham
+    + string DonViTinh
+    + decimal DonGia
+    + int SoLuongTon
+    + string? MoTa
+    + string? HinhAnh
+    + DateTime NgayTao
+    + bool TrangThai
+    -- Phương thức nghiệp vụ CoreBusiness --
+    + bool CoDuTonKho(int soLuongCan)
+}
+
+class HoaDon {
+    -- Cột lưu CSDL SQL (dbo.HoaDons) --
+    + int HoaDonId [PK]
+    + string MaHoaDon [UK]
+    + int KhachHangId [FK]
+    + DateTime NgayLap
+    + DateTime HanThanhToan
+    + decimal TongTien
+    + decimal DaThanhToan
+    + TrangThaiHoaDon TrangThai
+    + string? GhiChu
+    + DateTime NgayTao
+    -- Cột tính toán SQL PERSISTED (không chèn thủ công) --
+    + decimal ConLai <<computed SQL: (TongTien - DaThanhToan) PERSISTED>>
+    -- Phương thức nghiệp vụ CoreBusiness --
+    + CapNhatTongTien() : void
+    + CapNhatTrangThai() : void
+}
+
+class ChiTietHoaDon {
+    -- Cột lưu CSDL SQL (dbo.ChiTietHoaDons) --
+    + int ChiTietHoaDonId [PK]
+    + int HoaDonId [FK]
+    + int SanPhamId [FK]
+    + string TenSanPham
+    + string DonViTinh
+    + int SoLuong
+    + decimal DonGia
+    -- Cột tính toán SQL PERSISTED (không chèn thủ công) --
+    + decimal ThanhTien <<computed SQL: (SoLuong * DonGia) PERSISTED>>
+}
+
+class ThanhToan {
+    -- Cột lưu CSDL SQL (dbo.ThanhToans) --
+    + int ThanhToanId [PK]
+    + string MaPhieuThu [UK]
+    + int KhachHangId [FK]
+    + DateTime NgayThanhToan
+    + decimal SoTien
+    + string PhuongThuc
+    + string? GhiChu
+    + DateTime NgayTao
+}
+
+class PhanBoThanhToan {
+    -- Cột lưu CSDL SQL (dbo.PhanBoThanhToans) --
+    + int PhanBoThanhToanId [PK]
+    + int ThanhToanId [FK]
+    + int HoaDonId [FK]
+    + decimal SoTienPhanBo
+    + DateTime NgayPhanBo
+    -- Thuộc tính phụ trợ hiển thị --
+    + string MaHoaDon <<display only>>
+}
+
+class NguoiDung {
+    -- Cột lưu CSDL SQL (dbo.NguoiDungs) --
+    + int NguoiDungId [PK]
+    + string TenDangNhap [UK]
+    + string MatKhauHash
+    + string HoTen
+    + string VaiTro
+    + bool TrangThai
+}
+
+' Quan hệ giữa các Entity
+KhachHang "1" <-- "0..*" HoaDon : mua chịu (KhachHangId)
+KhachHang "1" <-- "0..*" ThanhToan : nộp tiền (KhachHangId)
+
+HoaDon "1" *-- "1..*" ChiTietHoaDon : Header - Line (HoaDonId)
+SanPham "1" <-- "0..*" ChiTietHoaDon : tham chiếu (SanPhamId)
+
+ThanhToan "1" *-- "0..*" PhanBoThanhToan : Header - Line (ThanhToanId)
+HoaDon "1" <-- "0..*" PhanBoThanhToan : cấn trừ nợ (HoaDonId)
+
+HoaDon --> TrangThaiHoaDon : có trạng thái
+
+' Bố trí NguoiDung và ghi chú sát cụm chính (giảm khoảng trắng)
+N_Domain -[hidden]down- SanPham
+ThanhToan -[hidden]down- NguoiDung
+
+note bottom of PhanBoThanhToan
+  <b>Luật nghiệp vụ 2 (Đề 18):</b>
+  Số tiền thanh toán được phân bổ tự động vào
+  các hóa đơn có ngày lập cũ nhất trước (FIFO).
+  Tổng tiền phân bổ <= Số tiền thu.
+  Tiền dư được giữ lại (TienChuaPhanBo).
+end note
+
+@enduml

@@ -1,0 +1,302 @@
+@startuml ClassDiagram
+title Sơ đồ Lớp Kiến trúc (Architecture Class Diagram - Sơ đồ rút gọn)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+}
+
+note as NoteRutGon
+  <b>GHI CHÚ SƠ ĐỒ RÚT GỌN (Architectural Summary):</b>
+  Sơ đồ tập trung thể hiện các lớp, interface tiêu biểu của 4 tầng Clean Architecture
+  và giải thích Dependency Inversion Rule. Một số DTO chi tiết và phương thức phụ trợ
+  được lược bớt để đảm bảo tính trực quan và khả năng đọc của sơ đồ.
+end note
+
+' ===================================================================
+' TẦNG 1: CORE BUSINESS (Enterprise Domain & Rules)
+' ===================================================================
+package "Project: BanHang.CoreBusiness\n(0 ProjectReference - Độc lập tuyệt đối)" #EBF8FF {
+    class KhachHang {
+        + int KhachHangId [PK]
+        + string MaKhachHang
+        + string TenKhachHang
+        + string? SoDienThoai
+        + string? DiaChi
+        + decimal HanMucCongNo
+        + decimal SoDuCongNo <<tổng hợp khi truy vấn>>
+        + bool TrangThai
+        -- Thuộc tính tính toán C# (không lưu cột tĩnh SQL) --
+        + decimal ConDuocMuaNo <<computed C#>>
+        + bool DaVuotHanMuc <<computed C#>>
+        -- Phương thức nghiệp vụ --
+        + bool KiemTraVuotHanMucKhiMua(decimal soTienDonHangMoi)
+    }
+
+    class SanPham {
+        + int SanPhamId [PK]
+        + string MaSanPham
+        + string TenSanPham
+        + string DonViTinh
+        + decimal DonGia
+        + int SoLuongTon
+        + bool TrangThai
+        -- Phương thức nghiệp vụ --
+        + bool CoDuTonKho(int soLuongCan)
+    }
+
+    class HoaDon {
+        + int HoaDonId [PK]
+        + string MaHoaDon
+        + int KhachHangId [FK]
+        + DateTime NgayLap
+        + DateTime HanThanhToan
+        + decimal TongTien
+        + decimal DaThanhToan
+        + TrangThaiHoaDon TrangThai
+        -- Cột tính toán SQL PERSISTED --
+        + decimal ConLai <<computed SQL PERSISTED>>
+        -- Phương thức nghiệp vụ --
+        + CapNhatTongTien() : void
+        + CapNhatTrangThai() : void
+    }
+
+    class ChiTietHoaDon {
+        + int ChiTietHoaDonId [PK]
+        + int HoaDonId [FK]
+        + int SanPhamId [FK]
+        + string TenSanPham
+        + string DonViTinh
+        + int SoLuong
+        + decimal DonGia
+        -- Cột tính toán SQL PERSISTED --
+        + decimal ThanhTien <<computed SQL PERSISTED>>
+    }
+
+    class ThanhToan {
+        + int ThanhToanId [PK]
+        + string MaPhieuThu
+        + int KhachHangId [FK]
+        + DateTime NgayThanhToan
+        + decimal SoTien
+        + string PhuongThuc
+        + string? GhiChu
+    }
+
+    class PhanBoThanhToan {
+        + int PhanBoThanhToanId [PK]
+        + int ThanhToanId [FK]
+        + int HoaDonId [FK]
+        + string MaHoaDon
+        + decimal SoTienPhanBo
+        + DateTime NgayPhanBo
+    }
+
+    class ThuatToanFIFO <<DomainService>> {
+        + {static} PhanBo(IEnumerable<HoaDonNoModel> danhSach, decimal soTien, DateTime ngayThu) : KetQuaPhanBoFifo
+    }
+
+    class PhanTichTuoiNoService <<DomainService>> {
+        + {static} PhanBoVaoNhomTuoiNo(BaoCaoTuoiNoItem item, IEnumerable<HoaDonTuoiNoInput> hoaDons, DateTime ngayBaoCao) : void
+        + {static} TinhSoNgayQuaHan(DateTime hanThanhToan, DateTime ngayBaoCao) : int
+    }
+}
+
+' ===================================================================
+' TẦNG 2: USE CASES (Application Business Rules)
+' ===================================================================
+package "Project: BanHang.UseCases\n(Chỉ tham chiếu CoreBusiness)" #FEFCBF {
+    package "PluginInterfaces (Định nghĩa hợp đồng)" {
+        interface IHoaDonRepository {
+            + LayDanhSachHoaDonAsync() : Task<IEnumerable<HoaDonListItemDto>>
+            + LayMaHoaDonTiepTheoAsync() : Task<string>
+            + TaoHoaDonBanChiuAsync(TaoHoaDonRequest request) : Task<TaoHoaDonResult>
+            + LayChiTietHoaDonAsync(int hoaDonId) : Task<ChiTietHoaDonDto?>
+        }
+
+        interface IThanhToanRepository {
+            + LayDanhSachThanhToanAsync() : Task<IEnumerable<ThanhToanListItemDto>>
+            + LayDanhSachHoaDonConNoTheoKhachHangAsync(int khachHangId) : Task<IEnumerable<HoaDonNoModel>>
+            + GhiNhanThanhToanAsync(TaoThanhToanRequest request) : Task<TaoThanhToanResult>
+            + LayMaPhieuThuTiepTheoAsync() : Task<string>
+        }
+
+        interface IBaoCaoTuoiNoRepository {
+            + LayDuLieuBaoCaoAsync(DateTime ngayBaoCao) : Task<DuLieuBaoCaoTuoiNoDto>
+            + LayDuLieuTuoiNoRawAsync(DateTime ngayBaoCao) : Task<IEnumerable<KhachHangHoaDonTuoiNoRawDto>>
+            + LayTongTienThuChuaPhanBoAsync(DateTime ngayBaoCao) : Task<decimal>
+        }
+
+        interface IBaoCaoTuoiNoExcelExporter {
+            + ExportBaoCaoTuoiNo(BaoCaoTuoiNoResult baoCao) : byte[]
+        }
+    }
+
+    package "Scoped Draft State Service" {
+        interface IHoaDonNhapStateService {
+            + bool CoDuLieuNhap
+            + LayDuLieuNhap() : HoaDonNhapDto
+            + CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets) : void
+            + XoaNhap() : void
+        }
+
+        class HoaDonNhapStateService {
+            - HoaDonNhapDto _draft
+            + bool CoDuLieuNhap
+            + LayDuLieuNhap() : HoaDonNhapDto
+            + CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets) : void
+            + XoaNhap() : void
+        }
+        IHoaDonNhapStateService <|.. HoaDonNhapStateService
+    }
+
+    package "Use Cases Điều Phối" {
+        interface ITaoHoaDonBanChiuUseCase {
+            + ExecuteAsync(TaoHoaDonRequest request) : Task<TaoHoaDonResult>
+            + LayMaHoaDonTiepTheoAsync() : Task<string>
+        }
+
+        class TaoHoaDonBanChiuUseCase {
+            - readonly IHoaDonRepository _hoaDonRepository
+            - readonly ICurrentUserService _currentUserService
+            + ExecuteAsync(TaoHoaDonRequest request) : Task<TaoHoaDonResult>
+            + LayMaHoaDonTiepTheoAsync() : Task<string>
+        }
+        ITaoHoaDonBanChiuUseCase <|.. TaoHoaDonBanChiuUseCase
+        TaoHoaDonBanChiuUseCase --> IHoaDonRepository : gọi interface
+
+        interface ITaoThanhToanUseCase {
+            + ExecuteAsync(TaoThanhToanRequest request) : Task<TaoThanhToanResult>
+            + LayMaPhieuThuTiepTheoAsync() : Task<string>
+        }
+
+        class TaoThanhToanUseCase {
+            - readonly IThanhToanRepository _thanhToanRepository
+            - readonly ICurrentUserService _currentUserService
+            + ExecuteAsync(TaoThanhToanRequest request) : Task<TaoThanhToanResult>
+            + LayMaPhieuThuTiepTheoAsync() : Task<string>
+        }
+        ITaoThanhToanUseCase <|.. TaoThanhToanUseCase
+        TaoThanhToanUseCase --> IThanhToanRepository : gọi interface
+
+        interface IXuatBaoCaoTuoiNoExcelUseCase {
+            + ExecuteAsync(XuatBaoCaoTuoiNoExcelRequest request) : Task<XuatBaoCaoTuoiNoExcelResult>
+        }
+
+        class XuatBaoCaoTuoiNoExcelUseCase {
+            - readonly IXemBaoCaoTuoiNoUseCase _xemBaoCaoTuoiNoUseCase
+            - readonly IBaoCaoTuoiNoExcelExporter _excelExporter
+            + ExecuteAsync(XuatBaoCaoTuoiNoExcelRequest request) : Task<XuatBaoCaoTuoiNoExcelResult>
+        }
+        IXuatBaoCaoTuoiNoExcelUseCase <|.. XuatBaoCaoTuoiNoExcelUseCase
+        XuatBaoCaoTuoiNoExcelUseCase --> IBaoCaoTuoiNoExcelExporter : gọi interface
+    }
+}
+
+' ===================================================================
+' TẦNG 3: PLUGINS / INFRASTRUCTURE (Interface Adapters)
+' ===================================================================
+package "Project: BanHang.DataStore.SQL\n(Tham chiếu UseCases, CoreBusiness)" #EDF2F7 {
+    class HoaDonRepository {
+        - readonly ISqlConnectionFactory _connectionFactory
+        + LayDanhSachHoaDonAsync() : Task<IEnumerable<HoaDonListItemDto>>
+        + LayMaHoaDonTiepTheoAsync() : Task<string>
+        + TaoHoaDonBanChiuAsync(TaoHoaDonRequest request) : Task<TaoHoaDonResult>
+        + LayChiTietHoaDonAsync(int hoaDonId) : Task<ChiTietHoaDonDto?>
+    }
+
+    class ThanhToanRepository {
+        - readonly ISqlConnectionFactory _connectionFactory
+        + LayDanhSachThanhToanAsync() : Task<IEnumerable<ThanhToanListItemDto>>
+        + LayDanhSachHoaDonConNoTheoKhachHangAsync(int khachHangId) : Task<IEnumerable<HoaDonNoModel>>
+        + GhiNhanThanhToanAsync(TaoThanhToanRequest request) : Task<TaoThanhToanResult>
+        + LayMaPhieuThuTiepTheoAsync() : Task<string>
+    }
+
+    class BaoCaoTuoiNoRepository {
+        - readonly ISqlConnectionFactory _connectionFactory
+        + LayDuLieuBaoCaoAsync(DateTime ngayBaoCao) : Task<DuLieuBaoCaoTuoiNoDto>
+        + LayDuLieuTuoiNoRawAsync(DateTime ngayBaoCao) : Task<IEnumerable<KhachHangHoaDonTuoiNoRawDto>>
+        + LayTongTienThuChuaPhanBoAsync(DateTime ngayBaoCao) : Task<decimal>
+    }
+
+    ' Dependency Inversion: Plugin triển khai interface của UseCases
+    IHoaDonRepository <|.. HoaDonRepository : <<implements>>
+    IThanhToanRepository <|.. ThanhToanRepository : <<implements>>
+    IBaoCaoTuoiNoRepository <|.. BaoCaoTuoiNoRepository : <<implements>>
+}
+
+package "Project: BanHang.Reports.Excel\n(Tham chiếu UseCases, CoreBusiness)" #F0FFF4 {
+    class ClosedXmlBaoCaoTuoiNoExcelExporter {
+        + ExportBaoCaoTuoiNo(BaoCaoTuoiNoResult baoCao) : byte[]
+        - SanitizeText(string? text) : string
+    }
+
+    IBaoCaoTuoiNoExcelExporter <|.. ClosedXmlBaoCaoTuoiNoExcelExporter : <<implements>>
+}
+
+' ===================================================================
+' TẦNG 4: PRESENTATION (Blazor Server Web Application)
+' ===================================================================
+package "Project: DuAn_BanHangVaCongNoKhachHang\n(Tham chiếu UseCases, CoreBusiness, Plugins tại Program.cs)" #FFF5F5 {
+    class Program <<CompositionRoot>> {
+        + {static} Main(string[] args) : void
+        note: Đăng ký liên kết giữa Interfaces và Plugins
+    }
+
+    class TaoHoaDonPage <<Razor Component>> {
+        - ITaoHoaDonBanChiuUseCase TaoHoaDonBanChiuUseCase
+        - IHoaDonNhapStateService HoaDonNhapStateService
+        + LuuHoaDonAsync() : Task
+    }
+
+    class TaoThanhToanPage <<Razor Component>> {
+        - ITaoThanhToanUseCase TaoThanhToanUseCase
+        - IXemTruocPhanBoFifoUseCase XemTruocPhanBoFifoUseCase
+        + LuuThanhToanAsync() : Task
+    }
+
+    class BaoCaoTuoiNoPage <<Razor Component>> {
+        - IXemBaoCaoTuoiNoUseCase XemBaoCaoTuoiNoUseCase
+        - IXuatBaoCaoTuoiNoExcelUseCase XuatBaoCaoTuoiNoExcelUseCase
+        + XuatExcelAsync() : Task
+    }
+
+    TaoHoaDonPage --> ITaoHoaDonBanChiuUseCase : inject interface
+    TaoHoaDonPage --> IHoaDonNhapStateService : inject Scoped state
+    TaoThanhToanPage --> ITaoThanhToanUseCase : inject interface
+    BaoCaoTuoiNoPage --> IXuatBaoCaoTuoiNoExcelUseCase : inject interface
+
+    Program ..> HoaDonRepository : đăng ký DI
+    Program ..> ThanhToanRepository : đăng ký DI
+    Program ..> BaoCaoTuoiNoRepository : đăng ký DI
+    Program ..> ClosedXmlBaoCaoTuoiNoExcelExporter : đăng ký DI
+}
+
+' ===================================================================
+' QUY TẮC PHỤ THUỘC & CHIỀU THỰC THI (Legend / Notes)
+' ===================================================================
+note as N1
+  <b>PHÂN BIỆT 2 CHIỀU TRONG KIẾN TRÚC:</b>
+  1. <b>Chiều phụ thuộc mã nguồn (Compile-time Dependency Rule):</b>
+     Tầng Presentation & Plugins ..> Tầng UseCases ..> Tầng CoreBusiness (hướng vào trong).
+     CoreBusiness độc lập 100%; UseCases không tham chiếu các lớp cụ thể của Plugins.
+  2. <b>Chiều gọi thực thi lúc chạy (Runtime Control Flow):</b>
+     UI Page -> gọi Interface UseCase -> UseCase gọi Interface Repository
+     -> Lớp cụ thể Repository (SQL Server / ClosedXML) thực thi truy vấn.
+end note
+
+package "Project Phụ / Công cụ (Không nằm trong luồng chạy chính của web)" #CBD5E0 {
+    class "BanHang.Tests\n(xUnit Test Suite)" as Tests
+    class "BanHang.InitTool\n(Console App khởi tạo CSDL)" as InitTool
+}
+
+@enduml

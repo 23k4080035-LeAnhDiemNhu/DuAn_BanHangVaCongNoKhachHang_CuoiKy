@@ -4,6 +4,7 @@
     <ProjectReference Include="..\BanHang.CoreBusiness\BanHang.CoreBusiness.csproj" />
     <ProjectReference Include="..\BanHang.UseCases\BanHang.UseCases.csproj" />
     <ProjectReference Include="..\BanHang.DataStore.SQL\BanHang.DataStore.SQL.csproj" />
+    <ProjectReference Include="..\BanHang.Reports.Excel\BanHang.Reports.Excel.csproj" />
   </ItemGroup>
 
   <PropertyGroup>

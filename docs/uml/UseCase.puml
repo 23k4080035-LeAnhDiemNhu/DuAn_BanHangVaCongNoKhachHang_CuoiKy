@@ -1,0 +1,113 @@
+@startuml UseCase
+title Sơ đồ Use Case - Hệ thống Bán hàng & Công nợ Khách hàng (Đề 18)
+
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 8
+
+skinparam actor {
+    BackgroundColor #EDF2F7
+    BorderColor #2D3748
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #3182CE
+    ArrowColor #2B6CB0
+}
+
+actor "Nhân viên bán hàng" as NVBH <<Role: NhanVienBanHang>>
+actor "Kế toán công nợ" as KTCN <<Role: KeToanCongNo>>
+
+rectangle "Hệ thống Bán hàng & Quản lý Công nợ Khách hàng" {
+    ' Xác thực hệ thống
+    package "Xác thực & Phiên làm việc" #F7FAFC {
+        usecase "Đăng nhập hệ thống\n(/login)" as UC_Login
+        usecase "Đăng xuất\n(/logout)" as UC_Logout
+    }
+
+    ' Nghiệp vụ Hóa đơn Bán hàng
+    package "Phân hệ Hóa đơn & Bán hàng" #EBF8FF {
+        usecase "Lập hóa đơn bán chịu\n(/hoa-don/tao)" as UC_LapHoaDon
+        usecase "Kiểm soát hạn mức tín dụng\n(CoreBusiness Luật 1)" as UC_KiemSoatHanMuc
+        usecase "Tra cứu công nợ khách hàng\n(Trước khi bán)" as UC_TraCuuCongNo
+        usecase "Xem danh sách hóa đơn\n(/hoa-don)" as UC_XemHoaDon
+        usecase "Xem chi tiết hóa đơn\n(/hoa-don/{id})" as UC_XemChiTietHoaDon
+    }
+
+    ' Nghiệp vụ Thu tiền & Báo cáo công nợ
+    package "Phân hệ Thu tiền & Báo cáo Công nợ" #FEFCBF {
+        usecase "Lập phiếu thu tiền\n(/thanh-toan/tao)" as UC_LapPhieuThu
+        usecase "Phân bổ thanh toán FIFO\n(CoreBusiness Luật 2)" as UC_PhanBoFIFO
+        usecase "Xem trước phân bổ FIFO\n(Đối soát dự kiến)" as UC_XemTruocFIFO
+        usecase "Xem danh sách phiếu thu\n(/thanh-toan)" as UC_XemPhieuThu
+        usecase "Xem Báo cáo tuổi nợ khách hàng\n(/bao-cao-tuoi-no)" as UC_XemBaoCaoTuoiNo
+        usecase "Xuất báo cáo tuổi nợ ra Excel\n(Tệp .xlsx theo ngày chốt)" as UC_XuatExcel
+    }
+
+    ' Quản trị Danh mục (Chỉ dành cho Kế toán công nợ)
+    package "Phân hệ Quản trị Danh mục (Chỉ KeToanCongNo)" #F0FFF4 {
+        usecase "Quản lý khách hàng\n(/khach-hang: Xem, Thêm, Sửa, Tạm khóa / Mở lại)" as UC_QLKhachHang
+        usecase "Quản trị sản phẩm & giá\n(/san-pham: Xem, Thêm, Sửa, Ngừng bán / Mở bán)" as UC_QLSanPham
+    }
+}
+
+' =========================================================
+' LIÊN KẾT TÁC NHÂN: NHÂN VIÊN BÁN HÀNG
+' =========================================================
+NVBH --> UC_Login
+NVBH --> UC_Logout
+NVBH --> UC_LapHoaDon
+NVBH --> UC_TraCuuCongNo
+NVBH --> UC_XemHoaDon
+NVBH --> UC_XemChiTietHoaDon
+
+' =========================================================
+' LIÊN KẾT TÁC NHÂN: KẾ TOÁN CÔNG NỢ
+' =========================================================
+KTCN --> UC_Login
+KTCN --> UC_Logout
+KTCN --> UC_LapPhieuThu
+KTCN --> UC_XemPhieuThu
+KTCN --> UC_XemHoaDon
+KTCN --> UC_XemChiTietHoaDon
+KTCN --> UC_XemBaoCaoTuoiNo
+KTCN --> UC_QLKhachHang
+KTCN --> UC_QLSanPham
+
+' =========================================================
+' QUAN HỆ INCLUDE & EXTEND CHUẨN MỰC
+' =========================================================
+UC_LapHoaDon .down.> UC_KiemSoatHanMuc : <<include>>
+UC_LapPhieuThu .down.> UC_PhanBoFIFO : <<include>>
+UC_XemTruocFIFO .left.> UC_LapPhieuThu : <<extend>>
+UC_XuatExcel .left.> UC_XemBaoCaoTuoiNo : <<extend>>
+
+' =========================================================
+' GHI CHÚ QUY TẮC & ĐỐI CHIẾU MÃ NGUỒN
+' =========================================================
+note as N_Rules
+  <b>QUY TẮC NGHIỆP VỤ & ĐIỀU KIỆN MỞ RỘNG:</b>
+  - <b><<include>> Luật 1:</b> (SoDuCongNo + TongTienMoi) > HanMucCongNo -> Bắt buộc kiểm tra, từ chối nếu vượt hạn mức.
+  - <b><<include>> Luật 2:</b> Phân bổ tự động vào hóa đơn cũ nhất trước (FIFO); Tổng phân bổ <= Số tiền thu.
+  - <b><<extend>> Xem trước phân bổ:</b> Mở rộng khi Kế toán muốn xem trước bảng đối soát trước khi bấm lưu.
+  - <b><<extend>> Xuất Excel:</b> Mở rộng khi Kế toán có nhu cầu tải báo cáo tuổi nợ ra file .xlsx theo ngày chốt.
+end note
+
+note bottom of NVBH
+  <b>Phân quyền Nhân viên bán hàng:</b>
+  - Không truy cập trang /san-pham (chọn sản phẩm trực tiếp trên form hóa đơn).
+  - Có quyền lập hóa đơn, tra cứu nợ, xem danh sách và chi tiết hóa đơn.
+end note
+
+note bottom of KTCN
+  <b>Phân quyền Kế toán công nợ:</b>
+  - Quản trị danh mục Khách hàng, Sản phẩm (không có Xóa vật lý).
+  - Lập phiếu thu, phân bổ FIFO, xem báo cáo tuổi nợ và xuất Excel.
+  - Xem danh sách và chi tiết hóa đơn để đối soát công nợ.
+end note
+
+@enduml

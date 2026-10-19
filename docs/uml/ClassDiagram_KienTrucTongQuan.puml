@@ -1,0 +1,137 @@
+@startuml ClassDiagram_KienTrucTongQuan
+title Sơ đồ Lớp Kiến trúc Tổng quan (Clean Architecture Overview - Bản Báo cáo A4)
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+}
+
+note as NoteArch
+  <b>KIẾN TRÚC TỔNG QUAN 4 TẦNG (Bản gọn Báo cáo A4):</b>
+  Lược bỏ thuộc tính chi tiết & chữ ký dài (đã có bản ClassDiagram đầy đủ).
+  Làm nổi bật <b>Dependency Inversion Principle</b>:
+  UseCase phụ thuộc Interface; Plugins (SQL) hiện thực hóa Interface.
+end note
+
+' ===================================================================
+' TẦNG 1: PRESENTATION LAYER (Blazor Server Web App)
+' ===================================================================
+package "1. Tầng Presentation (Blazor Server)" as PkgPresentation #FFF5F5 {
+    class Program <<CompositionRoot>> {
+        + {static} Main(args)
+    }
+
+    class TaoHoaDonPage <<Razor Component>> {
+        + LuuHoaDonAsync() : Task
+    }
+
+    class TaoThanhToanPage <<Razor Component>> {
+        + LuuThanhToanAsync() : Task
+    }
+
+    Program -down[hidden]- TaoHoaDonPage
+    TaoHoaDonPage -right[hidden]- TaoThanhToanPage
+}
+
+' ===================================================================
+' TẦNG 2: USE CASES LAYER (Application Business Rules)
+' ===================================================================
+package "2. Tầng UseCases (Application Business Rules)" as PkgUseCases #FEFCBF {
+    class TaoHoaDonBanChiuUseCase {
+        - readonly IHoaDonRepository _repo
+        + ExecuteAsync(request) : Task
+    }
+
+    class TaoThanhToanUseCase {
+        - readonly IThanhToanRepository _repo
+        + ExecuteAsync(request) : Task
+    }
+
+    interface IHoaDonRepository <<Interface>> {
+        + TaoHoaDonBanChiuAsync(request) : Task
+        + LayDanhSachHoaDonAsync() : Task
+    }
+
+    interface IThanhToanRepository <<Interface>> {
+        + GhiNhanThanhToanAsync(request) : Task
+        + LayDanhSachHoaDonConNoTheoKhachHangAsync(...) : Task
+    }
+
+    TaoHoaDonBanChiuUseCase -right[hidden]- TaoThanhToanUseCase
+    TaoHoaDonBanChiuUseCase -down[hidden]- IHoaDonRepository
+    TaoThanhToanUseCase -down[hidden]- IThanhToanRepository
+    IHoaDonRepository -right[hidden]- IThanhToanRepository
+}
+
+' ===================================================================
+' TẦNG 3: CORE BUSINESS LAYER (Enterprise Domain Rules)
+' ===================================================================
+package "3. Tầng CoreBusiness (0 Phụ thuộc bên ngoài)" as PkgCore #EBF8FF {
+    class KhachHang {
+        + HanMucCongNo : decimal
+        + SoDuCongNo : decimal <<tổng hợp khi truy vấn>>
+        + KiemTraVuotHanMucKhiMua(soTienMoi) : bool
+    }
+
+    class ThuatToanFIFO <<DomainService>> {
+        + {static} PhanBo(danhSach, soTien, ngayThu) : KetQuaPhanBoFifo
+    }
+
+    KhachHang -right[hidden]- ThuatToanFIFO
+}
+
+' ===================================================================
+' TẦNG 4: PLUGINS LAYER (Interface Adapters / SQL DataStore)
+' ===================================================================
+package "4. Tầng Plugins (DataStore.SQL)" as PkgPlugins #EDF2F7 {
+    class HoaDonRepository {
+        + TaoHoaDonBanChiuAsync(request) : Task
+    }
+
+    class ThanhToanRepository {
+        + GhiNhanThanhToanAsync(request) : Task
+    }
+
+    HoaDonRepository -right[hidden]- ThanhToanRepository
+}
+
+' Ràng buộc dọc giữa các class để ép 4 tầng thành 1 cột dọc duy nhất:
+TaoHoaDonPage -down[hidden]- TaoHoaDonBanChiuUseCase
+TaoThanhToanPage -down[hidden]- TaoThanhToanUseCase
+IHoaDonRepository -down[hidden]- KhachHang
+IThanhToanRepository -down[hidden]- ThuatToanFIFO
+KhachHang -down[hidden]- HoaDonRepository
+ThuatToanFIFO -down[hidden]- ThanhToanRepository
+
+' ===================================================================
+' LIÊN KẾT PHỤ THUỘC & DEPENDENCY INVERSION (Bố cục 2 nhánh dọc)
+' ===================================================================
+' 1. Presentation -> UseCases
+TaoHoaDonPage -down-> TaoHoaDonBanChiuUseCase : gọi UseCase
+TaoThanhToanPage -down-> TaoThanhToanUseCase : gọi UseCase
+
+' 2. UseCases -> CoreBusiness (Kiểm tra luật nghiệp vụ)
+TaoHoaDonBanChiuUseCase -down-> KhachHang : kiểm tra Luật 1
+TaoThanhToanUseCase -down-> ThuatToanFIFO : phân bổ Luật 2
+
+' 3. UseCases -> Interfaces Repository
+TaoHoaDonBanChiuUseCase -down-> IHoaDonRepository : phụ thuộc interface
+TaoThanhToanUseCase -down-> IThanhToanRepository : phụ thuộc interface
+
+' 4. Plugins -> Hiện thực hóa Interfaces (DIP)
+HoaDonRepository .up.|> IHoaDonRepository : <<implements>>
+ThanhToanRepository .up.|> IThanhToanRepository : <<implements>>
+
+' 5. Program cấu hình DI
+Program ..> HoaDonRepository : cấu hình DI
+Program ..> ThanhToanRepository : cấu hình DI
+
+@enduml

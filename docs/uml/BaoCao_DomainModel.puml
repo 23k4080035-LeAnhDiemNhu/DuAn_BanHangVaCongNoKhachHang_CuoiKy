@@ -1,0 +1,82 @@
+@startuml BaoCao_DomainModel
+title Sơ đồ Miền Thực thể Nghiệp vụ
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 16
+skinparam roundCorner 6
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+    FontSize 16
+}
+
+class KhachHang <<Entity>> #EBF8FF {
+    + KhachHangId : int
+    + MaKhachHang : string
+    + TenKhachHang : string
+    + HanMucCongNo : decimal
+    + SoDuCongNo : decimal <<tổng hợp nạp khi truy vấn>>
+    + KiemTraVuotHanMucKhiMua(soTien) : bool
+}
+
+class HoaDon <<AggregateRoot>> #FEFCBF {
+    + HoaDonId : int
+    + MaHoaDon : string
+    + KhachHangId : int
+    + NgayLap : DateTime
+    + TongTien : decimal
+    + DaThanhToan : decimal
+    + ConLai : decimal <<cột tính toán PERSISTED>>
+    + TrangThai : int
+}
+
+class ChiTietHoaDon <<Entity>> #FEFCBF {
+    + ChiTietHoaDonId : int
+    + HoaDonId : int
+    + SanPhamId : int
+    + SoLuong : int
+    + DonGia : decimal
+    + ThanhTien : decimal <<PERSISTED>>
+}
+
+class SanPham <<Entity>> #EDF2F7 {
+    + SanPhamId : int
+    + MaSanPham : string
+    + TenSanPham : string
+    + DonGia : decimal
+    + SoLuongTon : int
+}
+
+class ThanhToan <<AggregateRoot>> #FFF5F5 {
+    + ThanhToanId : int
+    + MaPhieuThu : string
+    + KhachHangId : int
+    + NgayThanhToan : DateTime
+    + SoTien : decimal
+    + PhuongThuc : string
+    + GhiChu : string?
+}
+
+class PhanBoThanhToan <<Entity>> #FFF5F5 {
+    + PhanBoId : int
+    + ThanhToanId : int
+    + HoaDonId : int
+    + SoTienPhanBo : decimal
+    + NgayPhanBo : DateTime
+}
+
+' Quan hệ Header - Line & Nghiệp vụ
+KhachHang "1" -- "0..*" HoaDon : mua chịu >
+HoaDon "1" *-- "1..*" ChiTietHoaDon : chứa dòng >
+ChiTietHoaDon "0..*" -- "1" SanPham : chọn >
+
+KhachHang "1" -- "0..*" ThanhToan : nộp tiền >
+ThanhToan "1" *-- "0..*" PhanBoThanhToan : phân bổ (0..* do có thể còn tiền thu trước) >
+HoaDon "1" -- "0..*" PhanBoThanhToan : được trả (FIFO) >
+
+@enduml

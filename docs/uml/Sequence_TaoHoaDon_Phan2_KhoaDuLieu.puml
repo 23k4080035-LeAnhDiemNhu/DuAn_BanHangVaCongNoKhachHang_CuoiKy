@@ -1,0 +1,107 @@
+@startuml Sequence_TaoHoaDon_Phan2_KhoaDuLieu
+title Sơ đồ Tuần tự: Lập Hóa đơn Bán chịu - Phần 2: Khóa Dữ liệu Tuần tự & Luật Hạn mức (Bản Báo cáo A4)
+
+autonumber 15 "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Nhân viên bán hàng" as NVBH
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoHoaDonPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "TaoHoaDonBanChiuUseCase" as UseCase
+end box
+
+box "Domain Layer (CoreBusiness)" #EBF8FF
+    entity "khachHang: KhachHang" as EntityKH
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "HoaDonRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+note over NVBH, DB #FEFFDD
+  <b>LUỒNG LẬP HÓA ĐƠN BÁN CHỊU (PHẦN 2 / 3 - BẢN BÁO CÁO A4):</b>
+  Tiếp nối từ <i>Phần 1: Nhập liệu, Lưu nháp & Kiểm tra Giao diện (Bước [01]-[14])</i>.
+  Đánh số bước tiếp tục từ <b>Bước [15]</b>.
+  Nội dung: Mở Transaction CSDL, Khóa khách hàng & sản phẩm tuần tự (UPDLOCK), Tái sử dụng Luật 1 CoreBusiness.
+end note
+
+== 4. Bắt đầu Database Transaction & Khóa Dữ liệu Tuần tự ==
+UseCase -> Repo : TaoHoaDonBanChiuAsync(request)
+Repo -> DB : Mở kết nối & BeginTransaction(ReadCommitted)
+
+' Bước 1: Khóa khách hàng
+Repo -> DB : Khóa hàng KhachHangs (UPDLOCK, HOLDLOCK) theo KhachHangId
+DB --> Repo : Trả thông tin khách hàng
+
+alt Khách hàng không tồn tại HOẶC TrangThai == false (Tạm khóa)
+    break Rollback hủy giao dịch
+        Repo -> DB : transaction.Rollback()
+        Repo --> UseCase : return TaoHoaDonResult { ThanhCong = false, ThongBao = "Khách hàng tạm khóa..." }
+        UseCase --> Page : return TaoHoaDonResult
+        Page --> NVBH : Báo lỗi: Khách hàng hiện đang bị tạm khóa
+    end
+end
+
+' Bước 2: Khóa danh mục sản phẩm
+Repo -> DB : Khóa hàng SanPhams (UPDLOCK, HOLDLOCK) theo danh sách SanPhamId
+DB --> Repo : Trả danh sách sản phẩm snapshot
+
+Repo -> Repo : Kiểm tra từng sản phẩm:\n1. TrangThai bán (ngừng kinh doanh?)\n2. DonGia == DonGiaHienThi (đơn giá có đổi?)\n3. SoLuongTon >= SoLuongYeuCau (đủ tồn kho?)
+
+alt Có sản phẩm ngừng bán / Đơn giá bị thay đổi / Tồn kho không đủ
+    break Rollback hủy giao dịch
+        Repo -> DB : transaction.Rollback()
+        Repo --> UseCase : return TaoHoaDonResult { ThanhCong = false, GiaBiThayDoi = true/false, ThongBao = "..." }
+        UseCase --> Page : return TaoHoaDonResult
+        Page --> NVBH : Báo lỗi tương ứng (Đổi giá / Thiếu tồn / Ngừng bán)
+    end
+end
+
+== 5. Tái sử dụng Luật Hạn mức CoreBusiness (Luật 1) ==
+Repo -> Repo : Tính TongTienMoi = SUM(DonGia_Snapshot * SoLuong)
+Repo -> DB : Đọc tổng dư nợ hiện tại của khách hàng trong transaction
+DB --> Repo : Trả congNoHienTai
+
+Repo -> EntityKH : Gán khachHang.SoDuCongNo = congNoHienTai
+Repo -> EntityKH : Gọi khachHang.KiemTraVuotHanMucKhiMua(tongTienMoi)
+note over EntityKH
+  **Cài đặt tại CoreBusiness/KhachHang.cs:60-63:**
+  public bool KiemTraVuotHanMucKhiMua(decimal soTienDonHangMoi)
+      => (SoDuCongNo + soTienDonHangMoi) > HanMucCongNo;
+end note
+
+alt (congNoHienTai + tongTienMoi) > khachHang.HanMucCongNo (VƯỢT HẠN MỨC)
+    break Rollback do vi phạm Luật hạn mức tín dụng
+        EntityKH --> Repo : return true (Vi phạm hạn mức)
+        Repo -> DB : transaction.Rollback()
+        Repo --> UseCase : return TaoHoaDonResult { ThanhCong = false, ThongBao = "Vượt hạn mức..." }
+        UseCase --> Page : return TaoHoaDonResult
+        Page --> NVBH : Hiển thị lỗi thân thiện: Công nợ hiện tại + Đơn mới > Hạn mức
+    end
+else Đạt hạn mức (HỢP LỆ)
+    EntityKH --> Repo : return false (Hợp lệ, tiếp tục xử lý)
+end
+
+note over NVBH, DB #FEFFDD
+  <b>KẾT THÚC PHẦN 2:</b> Dữ liệu đã được khóa an toàn và thỏa mãn Luật hạn mức tín dụng.
+  Luồng nghiệp vụ chuyển tiếp sang <b>PHẦN 3 (Bước [39] trở đi):</b> Cấp mã qua Application Lock, Ghi CSDL, Trừ tồn kho & Commit.
+end note
+
+@enduml

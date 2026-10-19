@@ -5,6 +5,8 @@
 @using BanHang.UseCases.BaoCaoTuoiNoScreen
 @using Microsoft.Extensions.Logging
 @inject IXemBaoCaoTuoiNoUseCase XemBaoCaoTuoiNoUseCase
+@inject IXuatBaoCaoTuoiNoExcelUseCase XuatBaoCaoTuoiNoExcelUseCase
+@inject IJSRuntime JSRuntime
 @inject ILogger<BaoCaoTuoiNoPage> Logger
 
 <PageTitle>Báo cáo tuổi nợ khách hàng</PageTitle>
@@ -23,7 +25,7 @@
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <label for="input-ngay-bao-cao" class="col-form-label fw-semibold text-nowrap mb-0">Ngày chốt báo cáo:</label>
                 <input type="date" id="input-ngay-bao-cao" class="form-control" style="width: auto;" @bind="ngayBaoCaoInput" />
-                <button class="btn btn-primary text-nowrap" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@isLoading">
+                <button class="btn btn-primary text-nowrap" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@(isLoading || isExporting)">
                     @if (isLoading)
                     {
                         <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -36,10 +38,22 @@
                     }
                 </button>
             </div>
-            <div>
+            <div class="d-flex align-items-center flex-wrap gap-2">
                 <span class="badge bg-secondary p-2 fs-6 text-wrap">
                     Số liệu áp dụng ngày: <strong id="lbl-ngay-ap-dung">@ngayBaoCaoApDung.ToString("dd/MM/yyyy")</strong>
                 </span>
+                <button class="btn btn-success text-nowrap fw-semibold shadow-sm" id="btn-xuat-excel" @onclick="XuatExcelAsync" disabled="@(isExporting || isLoading)">
+                    @if (isExporting)
+                    {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span>Đang xuất Excel...</span>
+                    }
+                    else
+                    {
+                        <span class="bi bi-file-earmark-excel me-1"></span>
+                        <span>Xuất Excel</span>
+                    }
+                </button>
             </div>
         </div>
     </div>
@@ -190,6 +204,49 @@ else
         finally
         {
             isLoading = false;
+        }
+    }
+
+    private bool isExporting = false;
+
+    private async Task XuatExcelAsync()
+    {
+        if (isExporting || isLoading) return;
+
+        try
+        {
+            isExporting = true;
+            hasError = false;
+            errorMessage = string.Empty;
+
+            Logger.LogInformation("Bắt đầu xuất Báo cáo tuổi nợ ra Excel theo ngày áp dụng {NgayApDung}", ngayBaoCaoApDung.ToString("yyyy-MM-dd"));
+
+            // Luôn xuất theo NGÀY ĐÃ ÁP DỤNG của báo cáo đang hiển thị, không lấy ngày mới nhập nhưng chưa bấm 'Xem báo cáo'
+            var result = await XuatBaoCaoTuoiNoExcelUseCase.ExecuteAsync(ngayBaoCaoApDung, baoCaoResult);
+
+            if (!result.ThanhCong)
+            {
+                hasError = true;
+                errorMessage = result.ThongBaoLoi ?? "Xuất file Excel thất bại.";
+                return;
+            }
+
+            if (result.FileBytes != null && result.FileBytes.Length > 0)
+            {
+                using var stream = new MemoryStream(result.FileBytes);
+                using var streamRef = new DotNetStreamReference(stream);
+                await JSRuntime.InvokeVoidAsync("downloadFileFromStream", result.TenFile, streamRef);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi xuất Báo cáo tuổi nợ ra Excel cho ngày {NgayApDung}", ngayBaoCaoApDung.ToString("yyyy-MM-dd"));
+            hasError = true;
+            errorMessage = $"Không thể xuất file Excel: {ex.Message}";
+        }
+        finally
+        {
+            isExporting = false;
         }
     }
 }

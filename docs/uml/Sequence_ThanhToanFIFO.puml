@@ -1,0 +1,175 @@
+@startuml Sequence_ThanhToanFIFO
+title Sơ đồ Tuần tự: Lập Phiếu Thu Tiền & Phân bổ Công nợ FIFO (Xem trước & Lưu Transaction)
+
+autonumber "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Kế toán công nợ" as KTCN
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoThanhToanPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "XemTruocPhanBoFifoUseCase" as XemTruocUC
+    control "TaoThanhToanUseCase" as TaoUC
+    participant "AuthorizeHelper" as Auth
+end box
+
+box "Domain Layer (CoreBusiness)" #EBF8FF
+    participant "ThuatToanFIFO\n(Domain Service)" as FIFO
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "ThanhToanRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+== GIAI ĐOẠN 1: XEM TRƯỚC PHÂN BỔ FIFO (Preview Flow) ==
+KTCN -> Page : Chọn Khách hàng, nhập Số tiền thu, Ngày thanh toán, Phương thức
+KTCN -> Page : Bấm nút "Xem trước phân bổ" (id="btn-xem-truoc-phan-bo")
+Page -> Page : EditContext.Validate() (Validation giao diện trong Blazor Server)
+alt Validation giao diện thất bại (Chưa chọn khách hàng / Số tiền <= 0 / Sai định dạng)
+    break Dừng tại giao diện (Không gọi UseCase)
+        Page --> KTCN : Hiển thị lỗi nhập liệu cạnh trường dữ liệu và dừng
+    end
+end
+
+Page -> XemTruocUC : ExecuteAsync(XemTruocPhanBoRequest)
+XemTruocUC -> Auth : RequireRoleAsync(currentUser, "KeToanCongNo")
+
+XemTruocUC -> Repo : LayDanhSachHoaDonConNoTheoKhachHangAsync(khachHangId)
+Repo -> DB : Đọc danh sách hóa đơn còn nợ (ConLai > 0) sắp xếp FIFO (NgayLap ASC, HoaDonId ASC)
+DB --> Repo : Trả danh sách hóa đơn còn nợ
+Repo --> XemTruocUC : return IEnumerable<HoaDonNoModel>
+
+XemTruocUC -> FIFO : ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan)
+note over FIFO
+  **Nguyên tắc thuật toán FIFO (CoreBusiness/ThuatToanFIFO.cs):**
+  1. Hóa đơn cũ hơn (NgayLap nhỏ hơn) được thanh toán trước.
+  2. Trùng ngày: HoaDonId nhỏ hơn thanh toán trước.
+  3. Bỏ qua hóa đơn lập sau NgayThanhToan (nộp lùi ngày).
+  4. Số tiền tối đa 2 chữ số thập phân, không làm tròn âm thầm.
+  5. Nếu tiền thu > Tổng nợ: giữ TienChuaPhanBo, không tạo nợ âm.
+end note
+FIFO --> XemTruocUC : return KetQuaPhanBoFifo (DanhSachPhanBo, TongDaPhanBo, TienChuaPhanBo)
+
+XemTruocUC --> Page : return XemTruocPhanBoResult
+Page -> Page : Lưu snapshot danhSachXemTruoc vào component state
+Page --> KTCN : Hiển thị bảng phân bổ dự kiến để kế toán đối soát
+
+== GIAI ĐOẠN 2: LƯU THỰC TẾ TRONG TRANSACTION NGUYÊN TỬ (Save Flow) ==
+KTCN -> Page : Bấm nút "Lưu phiếu thu" (id="btn-luu-thanh-toan")
+Page -> Page : EditContext.Validate() (Validation giao diện trong Blazor Server)
+Page -> Page : Kiểm tra chọn khách hàng, số tiền > 0, phương thức thanh toán
+
+alt Validation giao diện thất bại (Chưa chọn khách hàng / Số tiền <= 0 / Sai định dạng)
+    break Dừng tại giao diện (Không gọi UseCase)
+        Page --> KTCN : Hiển thị lỗi cạnh trường nhập liệu và dừng
+    end
+end
+
+Page -> TaoUC : ExecuteAsync(TaoThanhToanRequest { ..., DanhSachXemTruoc })
+
+TaoUC -> Auth : RequireRoleAsync(currentUser, "KeToanCongNo")
+alt Người dùng không đủ quyền vai trò
+    break Dừng xử lý phân quyền
+        Auth --> TaoUC : Ném UnauthorizedAccessException
+        TaoUC --> Page : Chặn xử lý (Không đủ quyền vai trò)
+        Page --> KTCN : Hiển thị thông báo Không có quyền truy cập
+    end
+end
+
+TaoUC -> TaoUC : Kiểm tra hợp lệ dữ liệu cơ sở (SoTien > 0, KhachHangId > 0, PhuongThuc)
+alt Dữ liệu cơ sở không hợp lệ
+    break Dừng xử lý do dữ liệu nhập sai
+        TaoUC --> Page : return TaoThanhToanResult { ThanhCong = false, ThongBao = "..." }
+        Page --> KTCN : Hiển thị thông báo lỗi nhập liệu
+    end
+end
+
+TaoUC -> Repo : GhiNhanThanhToanAsync(request)
+Repo -> DB : Mở kết nối & BeginTransaction(ReadCommitted)
+
+' 1. Khóa Application Lock cấp mã phiếu thu
+Repo -> DB : Nhận Application Lock độc quyền 'QuanLyBanHang_CapMaPhieuThu' (sp_getapplock, timeout 5s)
+DB --> Repo : Trả lockResult
+alt lockResult < 0 (Tranh chấp khóa: timeout hoặc deadlock victim)
+    break Rollback khi tranh chấp khóa cấp mã
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = false, ThongBao = "Hệ thống bận cấp mã..." }
+        TaoUC --> Page : return TaoThanhToanResult
+        Page --> KTCN : Thông báo hệ thống bận, vui lòng thử lại
+    end
+end
+
+' 2. Khóa khách hàng theo hàng
+Repo -> DB : Khóa hàng KhachHangs (UPDLOCK, HOLDLOCK) theo KhachHangId
+DB --> Repo : Trả thông tin khách hàng
+alt Khách hàng không tồn tại
+    break Rollback hủy giao dịch
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = false, ThongBao = "Khách hàng không tồn tại..." }
+        TaoUC --> Page : return TaoThanhToanResult
+        Page --> KTCN : Báo lỗi khách hàng không tồn tại
+    end
+end
+
+' 3. Sinh mã phiếu thu tuần tự
+Repo -> DB : Đọc số thứ tự phiếu thu lớn nhất từ dbo.ThanhToans
+DB --> Repo : Trả nextNum
+Repo -> Repo : Sinh maThucTe = $"PT{nextNum:D3}"
+
+' 4. Đọc lại danh sách hóa đơn có khóa hàng
+Repo -> DB : Đọc lại danh sách HoaDons còn nợ có khóa hàng (UPDLOCK, HOLDLOCK)
+DB --> Repo : Trả danh sách hóa đơn còn nợ thực tế có khóa
+
+Repo -> FIFO : ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan)
+FIFO --> Repo : return ketQuaFifo mới nhất
+
+Repo -> Repo : So sánh kết quả FIFO với request.DanhSachXemTruoc
+alt Dữ liệu công nợ đã thay đổi so với bản xem trước (khopXemTruoc == false)
+    break Rollback do phát hiện thay đổi dữ liệu công nợ
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult {\n  ThanhCong = false,\n  DuLieuThayDoiSoVoiXemTruoc = true,\n  ThongBao = "Dữ liệu công nợ đã thay đổi so với bản xem trước..."\n}
+        TaoUC --> Page : return TaoThanhToanResult kèm danh sách phân bổ mới
+        Page --> KTCN : Cảnh báo: Dữ liệu công nợ đã thay đổi, cập nhật bảng phân bổ mới, yêu cầu xác nhận lại
+    end
+else Dữ liệu khớp bản xem trước (Hoặc không có bản xem trước)
+    == 3. Ghi Header Phiếu thu, Phân bổ & Cập nhật Dư nợ ==
+    Repo -> DB : Ghi nhận Header phiếu thu vào dbo.ThanhToans (INSERT)
+    DB --> Repo : Trả thanhToanId vừa tạo
+
+    loop Cho từng dòng phân bổ trong ketQuaFifo.DanhSachPhanBo
+        Repo -> DB : Ghi nhận dòng phân bổ vào dbo.PhanBoThanhToans (INSERT)
+        Repo -> DB : Cập nhật DaThanhToan và TrangThai trong dbo.HoaDons (UPDATE)
+    end
+
+    alt Ngoại lệ phát sinh ngoài ý muốn (SqlException / Exception)
+        break Rollback an toàn khi gặp sự cố ngoại lệ
+            Repo -> DB : transaction.Rollback()
+            Repo --> TaoUC : Ném ngoại lệ / return TaoThanhToanResult thất bại
+            TaoUC --> Page : Báo lỗi hệ thống
+            Page --> KTCN : Hiển thị cảnh báo sự cố kỹ thuật
+        end
+    end
+
+    Repo -> DB : transaction.Commit() (Giao dịch hoàn tất thành công trên CSDL)
+    Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = true, MaPhieuThu = maThucTe, ... }
+    TaoUC --> Page : return TaoThanhToanResult
+    Page --> KTCN : Hiển thị thông báo "Ghi nhận phiếu thu PTxxx thành công" và chuyển hướng về /thanh-toan
+end
+
+@enduml

@@ -28,5 +28,18 @@
     </div>
 
     <script src="_framework/blazor.server.js"></script>
+    <script>
+        window.downloadFileFromStream = async function (fileName, contentStreamReference) {
+            const arrayBuffer = await contentStreamReference.arrayBuffer();
+            const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            const url = URL.createObjectURL(blob);
+            const anchorElement = document.createElement('a');
+            anchorElement.href = url;
+            anchorElement.download = fileName ?? 'BaoCaoTuoiNo.xlsx';
+            anchorElement.click();
+            anchorElement.remove();
+            URL.revokeObjectURL(url);
+        };
+    </script>
 </body>
 </html>

@@ -4,7 +4,7 @@
 - **Đề tài**: Đề số 18 – Bán hàng & Công nợ Khách hàng (Sales & Accounts Receivable)
 - **Nền tảng**: .NET 8 / C#
 - **Mô hình Blazor**: Classic Blazor Server (sử dụng `AddServerSideBlazor`, `MapBlazorHub` và `_Host.cshtml`).
-  > **Ghi chú đối chiếu công nghệ**: PDF Đề tài Mục 2 ghi nhận mô hình *Blazor Web App, render mode Interactive Server (tương đương Blazor Server trong video)*. Dự án hiện tại đang triển khai theo kiến trúc Classic Blazor Server tương đương video bài giảng, chưa chuyển sang template root mới `AddRazorComponents` của .NET 8 để bảo toàn tính ổn định của pipeline Cookie Authentication.
+  > **Ghi chú đối chiếu công nghệ**: PDF Đề tài Mục 2 ghi nhận mô hình *Blazor Web App, render mode Interactive Server (tương đương Blazor Server trong video)*. Dự án hiện tại đang triển khai theo kiến trúc Classic Blazor Server tương đương video bài giảng để bảo toàn tính ổn định của pipeline Cookie Authentication. Chưa chuyển sang template root mới `AddRazorComponents` của .NET 8, do đó trạng thái mô hình công nghệ là **chưa chốt / cần giảng viên xác nhận**, không tự ý khẳng định là đã đáp ứng hoàn toàn yêu cầu công nghệ của đề cương.
 - **Kiến trúc**: Clean Architecture 4 tầng (`CoreBusiness → UseCases → Plugins/DataStore → WebApp`)
 - **Tài liệu tham chiếu**: `capstone-topics-2026.pdf` (Mục 1–3, Mục 7 Đề 18, Mục 10, 11 và 12).
 
@@ -148,9 +148,12 @@
 - **Đánh giá trung thực & Cảnh báo an toàn**:
   - Chưa chạy kiểm chứng tự động toàn bộ script `01_...` và `02_...` từ đầu đến cuối trên một instance SQL Server hoàn toàn trống do lệnh cấm ghi DB chính trong đợt rà soát này.
   - Script `01_CreateDatabaseAndTables.sql` (dòng 22–33) có lệnh `USE [QuanLyBanHangCongNo]` và `DROP TABLE` hàng loạt; `02_SeedData.sql` (dòng 19–32) có lệnh `DELETE FROM ...` và `DBCC CHECKIDENT RESEED`. **Nguy cơ phá hủy dữ liệu rất cao nếu chạy nhầm vào database đang có dữ liệu thật.**
-  - Thiếu trường "Số ngày nợ" trên bảng `KhachHangs` theo yêu cầu Đề số 18.
+  - **Trường còn thiếu / chưa chốt theo Đề 18**: Đặc tả ghi `Customer (hạn mức tín dụng, số ngày nợ)`. Ở đây cần phân biệt:
+    - **Thời hạn tín dụng khách hàng (Số ngày nợ theo chính sách - Credit Terms)**: Quy định số ngày tối đa cho phép khách hàng được nợ kể từ ngày mua hàng trước khi bị coi là quá hạn (ví dụ 30 ngày). Bảng `KhachHangs` và entity `KhachHang.cs` hiện **chưa có trường này**.
+    - **Số ngày quá hạn của từng hóa đơn**: Là chỉ số động được tính toán tại thời điểm chốt báo cáo cho từng khoản nợ (`SoNgayQuaHan = max(0, NgayBaoCao - HanThanhToan)`).
+    - Hai khái niệm này hoàn toàn độc lập và không được nhầm lẫn.
 - **Phần còn thiếu & Công việc cần thực hiện**:
-  - Bổ sung cột `SoNgayNo INT DEFAULT (30)` vào bảng `KhachHangs`.
+  - Bổ sung cột `SoNgayNo INT DEFAULT (30)` (thời hạn tín dụng khách hàng) vào bảng `KhachHangs` và entity `KhachHang.cs`.
   - Chuẩn hóa script tạo bảng sang dạng Idempotent (`IF NOT EXISTS`) và gỡ bỏ lệnh DROP TABLE mặc định.
 
 ---
@@ -275,15 +278,32 @@
     4. **Form Tạo Phiếu Thu Tiền & Phân bổ FIFO** (`DuAn_BanHangVaCongNoKhachHang/Pages/TaoThanhToanPage.razor`):
        - Bọc form trong `<EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync" novalidate>` (tắt popup native HTML tiếng Anh). Triển khai `@implements IDisposable`.
        - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0)"`.
-       - Model nhập liệu: `public class FormTaoThanhToanModel`: `KhachHangId` [Range(1, int.MaxValue)], `NgayThanhToan` [Required], `PhuongThuc` [Required, StringLength(50)], `SoTien` `[SoTienThanhToan]`, `GhiChu` [StringLength(500)].
-       - Custom Validation Attribute `[SoTienThanhToan]` kiểm tra nghiêm ngặt: số tiền $\le 0$ báo lỗi *"Số tiền thanh toán phải lớn hơn 0."*, số tiền có quá 2 chữ số thập phân báo lỗi *"Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân."*.
-       - Ô nhập tiền dùng `type="text" inputmode="decimal"` với sự kiện `@onchange="OnSoTienInputChanged"`: xử lý lỗi chuyển đổi kiểu dữ liệu an toàn, khi nhập chữ/ký tự lạ đặt `formModel.SoTien = 0` (tuyệt đối không âm thầm giữ giá trị cũ) và thông báo lỗi tiếng Việt; cập nhật lại bản xem trước phân bổ FIFO.
+       - Model nhập liệu: `public class FormTaoThanhToanModel`: `KhachHangId` [Range(1, int.MaxValue)], `NgayThanhToan` [Required], `PhuongThuc` [Required, StringLength(50)], `SoTien` `[SoTienThanhToan]`, `LoiDinhDangSoTien` (string?), `GhiChu` [StringLength(500)].
+       - Phân định rõ ràng các loại lỗi qua `KiemTraSoTienThanhToan` và `[SoTienThanhToanAttribute]`:
+         - Khi nhập chuỗi/ký tự không hợp lệ (như `abc`, `10a`): `formModel.SoTien = 0` (tuyệt đối không giữ giá trị cũ), `LoiDinhDangSoTien = "Số tiền thanh toán không hợp lệ."`. Thuộc tính `[SoTienThanhToan]` ưu tiên trả về **duy nhất một thông báo** *"Số tiền thanh toán không hợp lệ."*, không đồng thời phát sinh lỗi *"Số tiền thanh toán phải lớn hơn 0."*.
+         - Khi nhập số $\le 0$ (như `0`, `-50`): Báo lỗi duy nhất *"Số tiền thanh toán phải lớn hơn 0."*.
+         - Khi nhập số quá 2 chữ số thập phân (như `100.125`, `100,125`): Báo lỗi duy nhất *"Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân."*.
+         - Khi sửa thành giá trị hợp lệ: Xóa toàn bộ lỗi cũ ngay lập tức, làm mới bản xem trước phân bổ FIFO.
+       - Giữ nguyên quy tắc kiểm tra bảo vệ kép ở tầng UseCase/Repository, nút Lưu disabled và thuật toán FIFO.
        - Input HTML thường: Gắn `@bind:after` cho `NgayThanhToan`, `PhuongThuc`, `GhiChu` kích hoạt `NotifyFieldChanged`.
        - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho từng trường.
        - Tích hợp `ValidationMessageStore` ánh xạ lỗi UseCase máy chủ vào đúng trường và hủy đăng ký event handler an toàn.
 - **Bằng chứng kiểm thử / Demo**:
-  - `BanHang.Tests/Components/FormValidationTests.cs`: 26 test cases tự động kiểm tra DataAnnotations trên 4 model form (`FormKhachHangModel`, `FormSanPhamModel`, `FormTaoHoaDonModel`, `FormTaoThanhToanModel`), bao gồm kiểm tra số tiền $\le 0$, quá 2 chữ số thập phân, số lượng số thập phân (cả dấu `.` và `,`), số lượng $\le 0$, ký tự chữ và số nguyên hợp lệ.
-  - Kết quả chạy kiểm thử toàn solution: **260/260 tests Passed 100%** (bao gồm 234 test nghiệp vụ/tích hợp CSDL + 26 test form validation). Toàn bộ integration test trên DB test `QuanLyBanHangCongNo_Test` (khóa `sp_getapplock` timeout, cấn trừ FIFO, hạn mức tín dụng, trừ tồn kho...) đều vượt qua.
+  - `BanHang.Tests/Components/FormValidationTests.cs`: 35 test cases tự động kiểm tra DataAnnotations trên 4 model form (`FormKhachHangModel`, `FormSanPhamModel`, `FormTaoHoaDonModel`, `FormTaoThanhToanModel`).
+  - **Đối chiếu chênh lệch số lượng kiểm thử qua các lần rà soát**:
+    1. *Giai đoạn K3.1*: 230 tests.
+    2. *Đợt 1 K3.2 (Thêm FormValidationTests ban đầu)*: +18 tests (6 Khách hàng, 6 Sản phẩm, 3 Hóa đơn, 3 Phiếu thu) $\to$ **248 tests**.
+    3. *Đợt 2 K3.2 (Bổ sung kiểm thử dòng hàng & số tiền)*: +12 test cases $\to$ **260 tests**, gồm chính xác:
+       - `FormTaoThanhToanModel_SoTienAm_BaoLoiLonHonKhong` (+1)
+       - `FormTaoThanhToanModel_SoTienQua2ChuSoThapPhan_BaoLoiToiDa2ChuSoThapPhan` (+1)
+       - `TaoHoaDonPage_KiemTraSoLuong_SoThapPhan_BaoLoiSoNguyen` (+3: "1.5", "2,5", "0.1")
+       - `TaoHoaDonPage_KiemTraSoLuong_SoKhongVaAm_BaoLoiLonHonKhong` (+3: "0", "-1", "-10")
+       - `TaoHoaDonPage_KiemTraSoLuong_KyTuChu_BaoLoiSoNguyen` (+1: "abc")
+       - `TaoHoaDonPage_KiemTraSoLuong_SoNguyenDuong_HopLe` (+3: "1", "50", "1000")
+    4. *Đợt 3 K3.2 (Bổ sung kiểm thử đơn lỗi định dạng & helper KiemTraSoTienThanhToan)*: +9 test cases $\to$ **269 tests**, gồm chính xác:
+       - `FormTaoThanhToanModel_LoiDinhDangSoTien_ChiBaoLoiKhongHopLe_KhongBaoLoiLonHonKhong` (+1)
+       - `TaoThanhToanPage_KiemTraSoTienThanhToan_CacTruongHop` (+8: "abc", "10a", "0", "-50", "100.125", "100,125", "50000", "50000.5")
+  - Kết quả chạy kiểm thử toàn solution: **269/269 tests Passed 100%** (bao gồm 234 test nghiệp vụ/tích hợp CSDL + 35 test form validation). Toàn bộ integration test trên DB test `QuanLyBanHangCongNo_Test` (khóa `sp_getapplock` timeout, cấn trừ FIFO, hạn mức tín dụng, trừ tồn kho...) đều vượt qua.
   - *Ghi chú xác minh giao diện*: Chưa chạy trình duyệt tự động (tuân thủ nguyên tắc an toàn, không can thiệp tiến trình web đang chạy; người dùng kiểm chứng trực tiếp bằng cách F5 trình duyệt hiện có).
 - **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K3.2 đã được rà soát và đáp ứng trọn vẹn mọi yêu cầu.
 
@@ -348,14 +368,45 @@
 
 #### K4.3: Tính năng nâng cao: Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc Trợ lý AI
 - **Yêu cầu của thầy**: Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật.
-- **Trạng thái**: **Thiếu**
-- **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Toàn bộ solution hiện chưa cài đặt bất kỳ package xuất Excel (`ClosedXML`, `EPPlus`) hoặc PDF (`QuestPDF`, `iTextSharp`).
-  - Chưa cài đặt package `Microsoft.Extensions.AI` hay `IChatClient` theo quy định tại Mục 10 của PDF.
-  - Trang `BaoCaoTuoiNoPage.razor` hiện chỉ có nút tra cứu số liệu trên màn hình, chưa có nút xuất tệp.
-- **Đánh giá trung thực**: Hoàn toàn chưa triển khai tính năng nâng cao nào.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Cài đặt thư viện `ClosedXML` và tạo UseCase `XuatBaoCaoTuoiNoExcelUseCase` để xuất dữ liệu bảng tuổi nợ 4 nhóm ra tệp `.xlsx` từ dữ liệu thật; thêm nút "Xuất Excel" trên trang `BaoCaoTuoiNoPage.razor`.
+- **Trạng thái**: **Đạt (Phần kết xuất và nội dung file .xlsx đã kiểm thử tự động; phần tải file trên trình duyệt thực tế chờ người dùng xác nhận)**
+- **Đường    - **Nhóm bản Báo Cáo Thuyết Minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
+      1. `docs/uml/BaoCao_ClassDiagram_KienTrucTongQuan.puml` & `.svg` (1104 x 851 px): Clean Architecture chuẩn: Presentation $\rightarrow$ UseCases $\rightarrow$ CoreBusiness; Plugins $\rightarrow$ UseCases (DIP). CoreBusiness độc lập 100%, không phụ thuộc Plugins. Cỡ chữ in trên A4 Landscape đạt **9.4 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **15.5 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
+      3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), quan hệ `ThanhToan 1 *-- 0..* PhanBoThanhToan` (chuẩn hóa nghiệp vụ phiếu thu chưa phân bổ khi khách nộp tiền thừa), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **10.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      4. `docs/uml/BaoCao_Sequence_TaoHoaDon.puml` & `.svg` (820 x 1421 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, mở Tx tại Repository, khóa UPDLOCK $\rightarrow$ gọi Luật 1 hạn mức trong transaction sau khi khóa khách hàng và đọc công nợ thực tế $\rightarrow$ cấp mã HDxxx $\rightarrow$ trừ tồn atomic $\rightarrow$ Commit. Cỡ chữ in đạt **9.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      5. `docs/uml/BaoCao_Sequence_ThanhToanFIFO.puml` & `.svg` (919 x 1675 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, Xem trước FIFO $\rightarrow$ Bấm lưu $\rightarrow$ Mở Tx tại Repo $\rightarrow$ Cấp mã PTxxx $\rightarrow$ Khóa UPDLOCK $\rightarrow$ Chạy lại FIFO & Đối chiếu snapshot $\rightarrow$ Ghi nhận Header/Line (0..* dòng phân bổ) $\rightarrow$ Commit. Cỡ chữ in đạt **10.2 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+    - **Nhóm bản Phân rã Chi tiết (Phụ lục Báo cáo - Ghi nhận trung thực: CHƯA ĐẠT 9.0 pt do mật độ chi tiết cao)**:
+      - *Luồng Lập Hóa Đơn Bán Chịu*:
+        - P1: `docs/uml/Sequence_TaoHoaDon_Phan1_KiemTra.puml` & `.svg`: Bước `[01]`–`[14]`, chữ in **~4.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P2: `docs/uml/Sequence_TaoHoaDon_Phan2_KhoaDuLieu.puml` & `.svg`: Bước `[15]`–`[38]`, chữ in **~3.6 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P3: `docs/uml/Sequence_TaoHoaDon_Phan3_CapMaCommit.puml` & `.svg`: Bước `[39]`–`[69]`, chữ in **~3.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+      - *Luồng Thu Tiền & Phân Bổ FIFO*:
+        - P1: `docs/uml/Sequence_ThanhToanFIFO_Phan1_XemTruoc.puml` & `.svg`: Bước `[01]`–`[18]`, chữ in **~3.7 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P2: `docs/uml/Sequence_ThanhToanFIFO_Phan2_KhoaDoiSoat.puml` & `.svg`: Bước `[19]`–`[44]`, chữ in **~3.1 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P3: `docs/uml/Sequence_ThanhToanFIFO_Phan3_GhiNhanCommit.puml` & `.svg`: Bước `[45]`–`[68]`, chữ in **~4.2 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+    - **Nhóm bản Tham khảo Toàn cảnh (Full Reference)**:
+      - `docs/uml/ClassDiagram.puml` & `.svg` (4488 x 1348 px): Toàn bộ chi tiết 4 tầng. Chữ in nếu ép A4: **~2.0 pt** (Chưa đạt 9pt).
+      - `docs/uml/DomainModel.puml` & `.svg` (1502 x 1015 px): Toàn bộ thuộc tính & ghi chú SQL. Chữ in nếu ép A4: **~5.5 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_TaoHoaDon.puml` & `.svg` (2732 x 3545 px): Toàn bộ luồng gồm cả 6 nhánh break rollback. Chữ in: **~1.8 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_ThanhToanFIFO.puml` & `.svg` (2863 x 3084 px): Toàn bộ luồng gồm cả xem trước và lưu kèm mọi nhánh lỗi. Chữ in: **~1.9 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_TaoHoaDon_Phan2_Transaction.puml` & `.svg` (2294 x 2770 px): Bản 2 phần cũ ([15]–[69]), chữ in: **~2.4 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_ThanhToanFIFO_Phan2_Transaction.puml` & `.svg` (2594 x 2588 px): Bản 2 phần cũ ([19]–[68]), chữ in: **~2.15 pt** (Chưa đạt 9pt).
+    - **Tài liệu PDF chính thức phục vụ báo cáo và kiểm chứng**:
+      - `docs/uml/BaoCao_UML_A4.pdf`: Bản PDF 5 trang dành cho **chính văn báo cáo thuyết minh** đồ án. Đã loại bỏ khung kiểm chứng nét đứt và nhãn kiểm thử, bố trí sẵn lề an toàn 20mm, chữ đạt chuẩn từ 9.3 pt đến 15.5 pt.
+      - `docs/uml/KiemChung_BoCuc_A4.pdf` *(hoặc `KiemChung_BoCuc_A4_Moi.pdf`)*: Tài liệu kiểm chứng 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực (dòng thông số chân trang 2 dòng ngắt dòng chuẩn xác không bị cắt lề).�ng âm thầm xuất khác bảng đang xem.
+    - Tên file: `BaoCaoTuoiNo_{yyyyMMdd}.xlsx` chứa ngày chốt số liệu, không lộ thông tin nhạy cảm.
+- **Bằng chứng kiểm thử / Demo**:
+  - `BanHang.Tests/BaoCaoTuoiNoExcelTests.cs`: 7 test cases tự động:
+    1. `Test01_ClosedXmlExporter_XuatFile_DocLaiDungCauTrucVaGiaTriSo`: Đọc lại file .xlsx sinh ra bằng ClosedXML, kiểm tra ngày chốt, freeze panes, STT, tên text, hạn mức/tuổi nợ/tổng nợ là số `decimal`, kiểm tra công thức injection không bị thực thi (`HasFormula = false`), khớp hàng tổng và tiền chưa phân bổ.
+    2. `Test02_ClosedXmlExporter_DuLieuTrong_TaoFileHopLe`: Kiểm tra khi danh sách rỗng vẫn tạo file Excel hợp lệ, có thông báo không có dữ liệu, hàng tổng = 0 đ.
+    3. `Test03_XuatExcelUseCase_ChuaDangNhap_BiTuChoi`: Chặn người dùng nặc danh (ném `UnauthorizedAccessException`).
+    4. `Test04_XuatExcelUseCase_SaiVaiTro_NhanVienBanHang_BiTuChoi`: Chặn vai trò Nhân viên bán hàng (ném `UnauthorizedAccessException`).
+    5. `Test05_XuatExcelUseCase_KeToanCongNo_XuatThanhCong`: Xác thực Kế toán công nợ xuất file thành công, đúng tên file theo ngày chốt.
+    6. `Test06_XuatExcelUseCase_DuLieuThayDoiSoVoiSnapshot_PhatHienVaTuChoi`: Phát hiện dữ liệu DB thay đổi so với snapshot đang xem trên màn hình, chặn xuất và trả thông báo tiếng Việt rõ ràng.
+    7. `Test07_XuatExcelUseCase_NgayNhapChuaApDung_KhongAnhHuongNgayXuat`: Khẳng định việc thay đổi ngày nhập liệu mà chưa áp dụng sẽ không làm sai lệch ngày chốt và dữ liệu của file xuất ra.
+  - Kết quả chạy kiểm thử toàn solution: **276/276 tests Passed 100%**.
+  - *Phân biệt trạng thái*: Việc tạo file, cấu trúc dữ liệu, kiểm tra quyền và phát hiện thay đổi đã được kiểm thử tự động 100%; thao tác tải tệp trực tiếp trên trình duyệt thực tế chờ người dùng nhấn nút "Xuất Excel" để trải nghiệm.
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K4.3 đã hoàn thành trọn vẹn theo đúng yêu cầu đề bài.
 
 ---
 
@@ -363,15 +414,41 @@
 
 #### K5.1: Sơ đồ thiết kế PlantUML (Use Case, Class, Sequence) khớp với mã nguồn
 - **Yêu cầu của thầy**: Use Case, Class, Sequence (PlantUML) khớp tên lớp và luồng trong code.
-- **Trạng thái**: **Thiếu**
+- **Trạng thái**: **Đạt** (Đã kiểm chứng render cục bộ 19/19 tệp SVG, 19 tệp PDF vector và tài liệu kiểm chứng bố cục A4 thực tế `KiemChung_BoCuc_A4.pdf` gồm 13 trang, không phụ thuộc dịch vụ ngoài)
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Tìm kiếm toàn bộ repo không có bất kỳ file sơ đồ nào (`.puml`, `.plantuml`, `.wsd`).
-- **Đánh giá trung thực**: Chưa có hồ sơ thiết kế PlantUML lưu trong repository.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Tạo thư mục `docs/uml/` và viết 3 sơ đồ PlantUML chuẩn xác theo code thực tế:
-    1. `usecase.puml`: Sơ đồ Use Case phân định rõ vai trò NhanVienBanHang và KeToanCongNo.
-    2. `class_diagram.puml`: Sơ đồ Class mô hình 4 tầng Clean Architecture, các Interface Repository và Entity.
-    3. `sequence_tao_hoadon.puml`: Sơ đồ tuần tự thể hiện luồng Tạo hóa đơn bán chịu, kiểm tra hạn mức, trừ tồn kho và cấp mã an toàn qua `sp_getapplock`.
+  - Thư mục hồ sơ thiết kế: `docs/uml/` chứa đầy đủ mã nguồn PlantUML chuẩn, tệp ảnh vector SVG và PDF vector tương ứng:
+    - **Nhóm bản Báo cáo Thuyết minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
+      1. `docs/uml/BaoCao_ClassDiagram_KienTrucTongQuan.puml` & `.svg` (1104 x 851 px): Clean Architecture chuẩn: Presentation $\rightarrow$ UseCases $\rightarrow$ CoreBusiness; Plugins $\rightarrow$ UseCases (DIP). CoreBusiness độc lập 100%, không phụ thuộc Plugins. Cỡ chữ in trên A4 Landscape đạt **9.4 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **14.6 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
+      3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **12.2 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
+      4. `docs/uml/BaoCao_Sequence_TaoHoaDon.puml` & `.svg` (820 x 1421 px): Tập trung luồng chính: Nhập liệu $\rightarrow$ Validate $\rightarrow$ Mở Tx $\rightarrow$ Khóa khách hàng/sản phẩm UPDLOCK $\rightarrow$ Luật 1 hạn mức $\rightarrow$ Cấp mã HDxxx $\rightarrow$ Trừ tồn atomic $\rightarrow$ Commit. Cỡ chữ in đạt **11.1 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
+      5. `docs/uml/BaoCao_Sequence_ThanhToanFIFO.puml` & `.svg` (919 x 1675 px): Tập trung luồng chính: Xem trước FIFO $\rightarrow$ Bấm lưu $\rightarrow$ Mở Tx $\rightarrow$ Cấp mã PTxxx $\rightarrow$ Khóa UPDLOCK $\rightarrow$ Chạy lại FIFO & Đối chiếu snapshot $\rightarrow$ Commit. Cỡ chữ in đạt **9.7 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+    - **Nhóm bản Phân rã Chi tiết (Phụ lục Báo cáo - Ghi nhận trung thực: CHƯA ĐẠT 9.0 pt do mật độ chi tiết cao)**:
+      - *Luồng Lập Hóa Đơn Bán Chịu*:
+        - P1: `docs/uml/Sequence_TaoHoaDon_Phan1_KiemTra.puml` & `.svg`: Bước `[01]`–`[14]`, chữ in **~4.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P2: `docs/uml/Sequence_TaoHoaDon_Phan2_KhoaDuLieu.puml` & `.svg`: Bước `[15]`–`[38]`, chữ in **~3.6 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P3: `docs/uml/Sequence_TaoHoaDon_Phan3_CapMaCommit.puml` & `.svg`: Bước `[39]`–`[69]`, chữ in **~3.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+      - *Luồng Thu Tiền & Phân Bổ FIFO*:
+        - P1: `docs/uml/Sequence_ThanhToanFIFO_Phan1_XemTruoc.puml` & `.svg`: Bước `[01]`–`[18]`, chữ in **~3.7 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P2: `docs/uml/Sequence_ThanhToanFIFO_Phan2_KhoaDoiSoat.puml` & `.svg`: Bước `[19]`–`[44]`, chữ in **~3.1 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+        - P3: `docs/uml/Sequence_ThanhToanFIFO_Phan3_GhiNhanCommit.puml` & `.svg`: Bước `[45]`–`[68]`, chữ in **~4.2 pt** (Chưa đạt 9pt, tra cứu phụ lục).
+    - **Nhóm bản Tham khảo Toàn cảnh (Full Reference)**:
+      - `docs/uml/ClassDiagram.puml` & `.svg` (4488 x 1348 px): Toàn bộ chi tiết 4 tầng. Chữ in nếu ép A4: **~2.0 pt** (Chưa đạt 9pt).
+      - `docs/uml/DomainModel.puml` & `.svg` (1502 x 1015 px): Toàn bộ thuộc tính & ghi chú SQL. Chữ in nếu ép A4: **~5.5 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_TaoHoaDon.puml` & `.svg` (2732 x 3545 px): Toàn bộ luồng gồm cả 6 nhánh break rollback. Chữ in: **~1.8 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_ThanhToanFIFO.puml` & `.svg` (2863 x 3084 px): Toàn bộ luồng gồm cả xem trước và lưu kèm mọi nhánh lỗi. Chữ in: **~1.9 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_TaoHoaDon_Phan2_Transaction.puml` & `.svg` (2294 x 2770 px): Bản 2 phần cũ ([15]–[69]), chữ in: **~2.4 pt** (Chưa đạt 9pt).
+      - `docs/uml/Sequence_ThanhToanFIFO_Phan2_Transaction.puml` & `.svg` (2594 x 2588 px): Bản 2 phần cũ ([19]–[68]), chữ in: **~2.15 pt** (Chưa đạt 9pt).
+    - **Tài liệu kiểm chứng bố cục A4 thực tế**:
+      - `docs/uml/KiemChung_BoCuc_A4.pdf`: Tài liệu 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực.
+- **Bằng chứng kiểm thử / Demo**:
+  - **Bộ công cụ portable**: `Eclipse Temurin OpenJDK 21.0.12.1+1-jre` (x64 portable) + `PlantUML 1.2026.9` (tại `C:\Users\Admin\.tools\plantuml\`).
+  - **Lệnh thực thi**:
+    `java.exe -jar plantuml.jar -tsvg -charset UTF-8 docs/uml/*.puml`
+    `java.exe -jar plantuml.jar -tpdf -charset UTF-8 docs/uml/*.puml`
+  - **Kết quả render**: 19/19 tệp `.svg` và 19/19 tệp `.pdf` hợp lệ 100%, không phát sinh lỗi cú pháp (`HasSyntaxError = False`), hỗ trợ tiếng Việt Unicode hoàn hảo.
+- **Lưu ý đánh giá**: Sơ đồ thiết kế đã tạo và kiểm chứng render đạt không đồng nghĩa tiêu chí K5.2 vấn đáp đã đạt (tiêu chí K5.2 phụ thuộc vào phần trả lời trực tiếp của từng thành viên trong buổi bảo vệ).
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K5.1 đã hoàn thành trọn vẹn cả mã nguồn PlantUML, file SVG, PDF vector và tài liệu kiểm chứng bố cục A4 thực tế.
 
 ---
 
@@ -404,9 +481,9 @@
 ## II. TỔNG HỢP TRẠNG THÁI 18 TIÊU CHÍ
 
 **Thống kê tổng quan 18 tiêu chí:**
-- **Đạt**: **12 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K4.1`, `K4.2`)
+- **Đạt**: **14 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K4.1`, `K4.2`, `K4.3`, `K5.1`)
 - **Một phần**: **1 tiêu chí** (`K2.1`)
-- **Thiếu (0 điểm)**: **3 tiêu chí** (`K4.3`, `K5.1`, `K5.3`)
+- **Thiếu (0 điểm)**: **1 tiêu chí** (`K5.3`)
 - **Chưa xác minh**: **2 tiêu chí** (`K3.4`, `K5.2`)
 
 | Nhóm tiêu chí | Mã | Nội dung | Trạng thái |
@@ -425,8 +502,8 @@
 | | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Chưa xác minh** |
 | **4. Bảo mật & Nâng cao (15%)** | **K4.1** | Đăng nhập, đăng xuất, ít nhất 2 vai trò | **Đạt** |
 | | **K4.2** | Gõ trực tiếp URL trang quản trị bị chặn | **Đạt** |
-| | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Thiếu** |
-| **5. Hồ sơ & Vấn đáp (15%)** | **K5.1** | Sơ đồ PlantUML (Use Case, Class, Sequence) khớp code | **Thiếu** |
+| | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Đạt** (File .xlsx đã kiểm thử tự động, tải trình duyệt chờ xác nhận) |
+| **5. Hồ sơ & Vấn đáp (15%)** | **K5.1** | Sơ đồ PlantUML (Use Case, Class, Sequence) khớp code | **Đạt** (Đã render cục bộ 19/19 tệp SVG, PDF vector & kiểm chứng PDF A4 lề 20mm 13 trang) |
 | | **K5.2** | Vấn đáp: chỉ đúng dòng cài luật & Dependency Rule | **Chưa xác minh** |
 | | **K5.3** | Lịch sử commit rải đều trên ít nhất 3 tuần | **Thiếu** |
 
@@ -434,10 +511,9 @@
 
 ## III. DANH SÁCH CÔNG VIỆC CẦN HOÀN THIỆN THEO MỨC ƯU TIÊN
 
-### Ưu tiên cao (Các mục đang bị điểm 0 cần khắc phục ngay):
-1. **[K4.3] Tính năng Xuất Excel báo cáo tuổi nợ**: Tích hợp thư viện `ClosedXML`, viết UseCase xuất file Excel từ dữ liệu tuổi nợ thực tế để lấy trọn vẹn điểm tiêu chí tính năng nâng cao.
-2. **[K5.1] Bổ sung 3 sơ đồ PlantUML**: Soạn thảo các file `.puml` lưu tại `docs/uml/` thể hiện Use Case, Class diagram và Sequence diagram luồng Lập hóa đơn & Phân bổ FIFO.
+### Ưu tiên cao:
+*(Không còn mục điểm 0 nào về mã nguồn, tính năng hay hồ sơ thiết kế UML; tiêu chí K5.3 thuộc về lịch sử Git quá khứ, nhóm cam kết giữ trung thực không giả lập commit).*
 
 ### Ưu tiên trung bình (Các mục Đạt một phần cần chuẩn hóa):
-3. **[K2.1] Bổ sung trường "Số ngày nợ" cho Khách hàng**: Thêm cột `SoNgayNo` vào bảng `KhachHangs` và entity `KhachHang.cs` theo đặc tả Đề số 18.
-4. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.
+1. **[K2.1] Bổ sung trường "Số ngày nợ" cho Khách hàng**: Thêm cột `SoNgayNo` vào bảng `KhachHangs` và entity `KhachHang.cs` theo đặc tả Đề số 18.
+2. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.

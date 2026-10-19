@@ -1,0 +1,50 @@
+@startuml BaoCao_Sequence_ThanhToanFIFO
+title Sơ đồ Tuần tự: Thu Tiền & Phân bổ FIFO
+
+autonumber "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 20
+skinparam maxMessageSize 120
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    FontSize 20
+}
+
+actor "Kế toán" as KT
+participant "Giao diện" as UI
+participant "Xử lý nghiệp vụ\n(UseCase + Repository)" as Core
+database "SQL Server" as DB
+
+== 1. Xem trước Phân bổ FIFO ==
+KT -> UI : Nhập số tiền & Xem trước
+UI -> Core : XemTruocPhanBoFifo(request)
+Core -> DB : Đọc hóa đơn còn nợ (ConLai > 0)
+Core -> Core : ThuatToanFIFO.PhanBo()
+Core --> UI : Trả bảng đối soát dự kiến
+
+== 2. Bấm Lưu, Mở Transaction & Khóa Tuần tự ==
+KT -> UI : Bấm "Lưu phiếu thu"
+UI -> UI : Validate Form Blazor Server
+UI -> Core : GhiNhanThanhToanAsync(request, snapshot)
+Core -> DB : BeginTransaction(ReadCommitted)
+Core -> DB : sp_getapplock cấp mã PTxxx (Exclusive)
+Core -> DB : Khóa KhachHangs & Đọc lại có khóa (UPDLOCK)
+
+== 3. Chạy lại FIFO có khóa & Commit CSDL ==
+Core -> Core : ThuatToanFIFO.PhanBo() & Đối chiếu snapshot
+Core -> DB : INSERT dbo.ThanhToans
+Core -> DB : INSERT dbo.PhanBoThanhToans (0..* dòng)
+Core -> DB : UPDATE dbo.HoaDons (DaThanhToan, TrangThai)
+Core -> DB : Commit Transaction
+Core --> UI : Trả về mã PTxxx thành công
+UI --> KT : Hiển thị thành công & Điều hướng
+
+@enduml

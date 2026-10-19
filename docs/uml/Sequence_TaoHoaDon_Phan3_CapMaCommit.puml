@@ -1,0 +1,103 @@
+@startuml Sequence_TaoHoaDon_Phan3_CapMaCommit
+title Sơ đồ Tuần tự: Lập Hóa đơn Bán chịu - Phần 3: Cấp mã Tuần tự, Ghi CSDL, Trừ Tồn & Commit (Bản Báo cáo A4)
+
+autonumber 39 "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Nhân viên bán hàng" as NVBH
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoHoaDonPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "IHoaDonNhapStateService\n(Scoped Draft State)" as DraftState
+    control "TaoHoaDonBanChiuUseCase" as UseCase
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "HoaDonRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+note over NVBH, DB #FEFFDD
+  <b>LUỒNG LẬP HÓA ĐƠN BÁN CHỊU (PHẦN 3 / 3 - BẢN BÁO CÁO A4):</b>
+  Tiếp nối từ <i>Phần 2: Khóa Dữ liệu Tuần tự & Luật Hạn mức (Bước [15]-[38])</i>.
+  Đánh số bước tiếp tục từ <b>Bước [39]</b>.
+  Bao gồm: Application Lock cấp mã tuần tự, Insert Header-Line, Trừ tồn kho atomic, Commit và Dọn nháp khi thành công.
+end note
+
+== 6. Tuần tự hóa Cấp mã qua Application Lock (Sau khi đạt hạn mức) ==
+Repo -> DB : Nhận Application Lock độc quyền 'QuanLyBanHang_CapMaHoaDon' (sp_getapplock, timeout 5s)
+DB --> Repo : Trả lockResult
+
+alt lockResult < 0 (Tranh chấp khóa: timeout hoặc deadlock victim)
+    break Rollback khi tranh chấp khóa cấp mã
+        Repo -> DB : transaction.Rollback()
+        Repo --> UseCase : return TaoHoaDonResult { ThanhCong = false, ThongBao = "Hệ thống bận cấp mã..." }
+        UseCase --> Page : return TaoHoaDonResult
+        Page --> NVBH : Thông báo hệ thống bận, vui lòng thử lại
+    end
+else lockResult >= 0 (Nhận khóa thành công)
+    Repo -> DB : Đọc số thứ tự lớn nhất từ dbo.HoaDons để sinh mã tuần tự
+    DB --> Repo : Trả maxNum
+    Repo -> Repo : Sinh maHoaDonThucTe = $"HD{nextNum:D3}"
+end
+
+== 7. Ghi Hóa đơn, Chi tiết, Trừ Tồn & Commit ==
+Repo -> DB : Ghi nhận Header hóa đơn vào dbo.HoaDons (INSERT)
+DB --> Repo : Trả hoaDonId vừa tạo
+
+loop Cho từng dòng chi tiết hóa đơn
+    Repo -> DB : Ghi nhận dòng sản phẩm vào dbo.ChiTietHoaDons (INSERT)
+end
+
+loop Cho từng sản phẩm cần trừ tồn
+    Repo -> DB : Trừ tồn kho dbo.SanPhams (UPDATE SoLuongTon >= SoLuongBan)
+    DB --> Repo : Trả rowsAffected
+    alt rowsAffected != 1 (Hụt tồn kho đồng thời phút chót)
+        break Rollback do hụt tồn kho
+            Repo -> DB : transaction.Rollback()
+            Repo --> UseCase : return TaoHoaDonResult { ThanhCong = false, ThongBao = "Tồn kho không đủ..." }
+            UseCase --> Page : return TaoHoaDonResult
+            Page --> NVBH : Thông báo sản phẩm bị hụt tồn kho
+        end
+    end
+end
+
+alt Ngoại lệ phát sinh ngoài ý muốn (SqlException / Exception)
+    break Rollback an toàn khi gặp sự cố ngoại lệ
+        Repo -> DB : transaction.Rollback()
+        Repo --> UseCase : Ném ngoại lệ / return TaoHoaDonResult thất bại
+        UseCase --> Page : Báo lỗi hệ thống
+        Page --> NVBH : Hiển thị cảnh báo sự cố kỹ thuật
+    end
+end
+
+Repo -> DB : transaction.Commit() (Giao dịch hoàn tất thành công trên CSDL)
+Repo --> UseCase : return TaoHoaDonResult { ThanhCong = true, MaHoaDonMoi = maHoaDonThucTe }
+UseCase --> Page : return TaoHoaDonResult
+
+== 8. Xử lý Giao diện Sau Khi Commit Thành Công ==
+Page -> Page : if (result.ThanhCong)
+Page -> DraftState : XoaNhap() (CHỈ DỌN SẠCH NHÁP KHI ĐÃ COMMIT THÀNH CÔNG)
+DraftState --> Page : Dọn sạch dữ liệu nháp
+Page --> NVBH : Hiển thị thông báo "Tạo hóa đơn HDxxx thành công" và chuyển hướng về /hoa-don
+
+note over NVBH, DB #FEFFDD
+  <b>KẾT THÚC TOÀN BỘ LUỒNG LẬP HÓA ĐƠN:</b> Giao dịch hoàn tất thành công, mã HDxxx được cấp liên tục không thủng số.
+end note
+
+@enduml

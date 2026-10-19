@@ -326,6 +326,52 @@ namespace BanHang.Tests.Components
                                          e.ErrorMessage != null && e.ErrorMessage.Contains("2 chữ số thập phân"));
         }
 
+        [Fact]
+        public void FormTaoThanhToanModel_LoiDinhDangSoTien_ChiBaoLoiKhongHopLe_KhongBaoLoiLonHonKhong()
+        {
+            var model = new TaoThanhToanPage.FormTaoThanhToanModel
+            {
+                KhachHangId = 1,
+                NgayThanhToan = DateTime.Today,
+                PhuongThuc = "ChuyenKhoan",
+                SoTien = 0m,
+                LoiDinhDangSoTien = "Số tiền thanh toán không hợp lệ."
+            };
+
+            var errors = ValidateModel(model);
+            var soTienErrors = new List<ValidationResult>();
+            foreach (var err in errors)
+            {
+                foreach (var member in err.MemberNames)
+                {
+                    if (member == nameof(TaoThanhToanPage.FormTaoThanhToanModel.SoTien))
+                    {
+                        soTienErrors.Add(err);
+                        break;
+                    }
+                }
+            }
+
+            Assert.Single(soTienErrors);
+            Assert.Equal("Số tiền thanh toán không hợp lệ.", soTienErrors[0].ErrorMessage);
+        }
+
+        [Theory]
+        [InlineData("abc", 0, "Số tiền thanh toán không hợp lệ.")]
+        [InlineData("10a", 0, "Số tiền thanh toán không hợp lệ.")]
+        [InlineData("0", 0, "Số tiền thanh toán phải lớn hơn 0.")]
+        [InlineData("-50", -50, "Số tiền thanh toán phải lớn hơn 0.")]
+        [InlineData("100.125", 100.125, "Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân.")]
+        [InlineData("100,125", 100.125, "Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân.")]
+        [InlineData("50000", 50000, null)]
+        [InlineData("50000.5", 50000.5, null)]
+        public void TaoThanhToanPage_KiemTraSoTienThanhToan_CacTruongHop(string input, decimal expectedVal, string? expectedLoi)
+        {
+            var (val, loi) = TaoThanhToanPage.KiemTraSoTienThanhToan(input);
+            Assert.Equal(expectedVal, val);
+            Assert.Equal(expectedLoi, loi);
+        }
+
         // ==========================================
         // 5. TaoHoaDon Line Quantity Validation
         // ==========================================

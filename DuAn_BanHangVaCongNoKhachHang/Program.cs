@@ -1,10 +1,12 @@
 using BanHang.CoreBusiness;
 using BanHang.DataStore.SQL;
+using BanHang.Reports.Excel;
 using BanHang.UseCases.BaoCaoTuoiNoScreen;
 using BanHang.UseCases.Common;
 using BanHang.UseCases.HoaDonScreen;
 using BanHang.UseCases.KhachHangScreen;
 using BanHang.UseCases.PluginInterfaces.DataStore;
+using BanHang.UseCases.PluginInterfaces.Reports;
 using BanHang.UseCases.PluginInterfaces.Security;
 using BanHang.UseCases.SanPhamScreen;
 using BanHang.UseCases.Security;
@@ -124,6 +126,8 @@ builder.Services.AddScoped<ITaoThanhToanUseCase, TaoThanhToanUseCase>();
 
 builder.Services.AddScoped<IBaoCaoTuoiNoRepository, BaoCaoTuoiNoRepository>();
 builder.Services.AddScoped<IXemBaoCaoTuoiNoUseCase, XemBaoCaoTuoiNoUseCase>();
+builder.Services.AddScoped<IBaoCaoTuoiNoExcelExporter, ClosedXmlBaoCaoTuoiNoExcelExporter>();
+builder.Services.AddScoped<IXuatBaoCaoTuoiNoExcelUseCase, XuatBaoCaoTuoiNoExcelUseCase>();
 
 var app = builder.Build();
 

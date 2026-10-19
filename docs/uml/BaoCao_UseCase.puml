@@ -1,0 +1,52 @@
+@startuml BaoCao_UseCase
+title Sơ đồ Use Case Hệ thống
+
+left to right direction
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 18
+skinparam roundCorner 6
+
+skinparam actor {
+    BackgroundColor #FFFFFF
+    BorderColor #2D3748
+    FontSize 18
+}
+
+skinparam usecase {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+    FontSize 17
+}
+
+actor "Nhân viên bán hàng" as NVBH #LightSkyBlue
+actor "Kế toán công nợ" as KTCN #LightGreen
+
+rectangle "Hệ thống Quản lý Bán hàng & Công nợ (Đề 18)" {
+    usecase "Lập hóa đơn bán chịu" as UC_TaoHD
+    usecase "Xem danh sách hóa đơn" as UC_XemDSHD
+    usecase "Xem chi tiết hóa đơn" as UC_XemCTHD
+
+    usecase "Thu tiền & Cấn trừ FIFO" as UC_ThuTien
+    usecase "Xem báo cáo tuổi nợ" as UC_BaoCao
+    usecase "Xuất báo cáo ra Excel" as UC_XuatExcel
+    usecase "Quản lý khách hàng" as UC_QLKH
+    usecase "Quản lý sản phẩm" as UC_QLSP
+}
+
+' Phân quyền NVBH
+NVBH --> UC_TaoHD
+NVBH --> UC_XemDSHD
+NVBH --> UC_XemCTHD
+
+' Phân quyền KTCN
+KTCN --> UC_XemDSHD
+KTCN --> UC_XemCTHD
+KTCN --> UC_ThuTien
+KTCN --> UC_BaoCao
+KTCN --> UC_XuatExcel
+KTCN --> UC_QLKH
+KTCN --> UC_QLSP
+
+@enduml

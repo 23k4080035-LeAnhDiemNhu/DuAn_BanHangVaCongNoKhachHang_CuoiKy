@@ -323,6 +323,8 @@
         [SoTienThanhToan]
         public decimal SoTien { get; set; } = 0;
 
+        public string? LoiDinhDangSoTien { get; set; }
+
         [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự.")]
         public string? GhiChu { get; set; }
     }
@@ -576,6 +578,33 @@
         editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.PhuongThuc)));
     }
 
+    public static (decimal SoTien, string? Loi) KiemTraSoTienThanhToan(string? rawVal)
+    {
+        var raw = rawVal?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            return (0m, "Số tiền thanh toán phải lớn hơn 0.");
+        }
+
+        var normalized = raw.Replace(',', '.');
+        if (!decimal.TryParse(normalized, NumberStyles.Float, CultureInfo.InvariantCulture, out var val))
+        {
+            return (0m, "Số tiền thanh toán không hợp lệ.");
+        }
+
+        if (val <= 0)
+        {
+            return (val, "Số tiền thanh toán phải lớn hơn 0.");
+        }
+
+        if (decimal.Round(val, 2) != val)
+        {
+            return (val, "Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân.");
+        }
+
+        return (val, null);
+    }
+
     private async Task OnSoTienInputChanged(ChangeEventArgs e)
     {
         var raw = e.Value?.ToString()?.Trim() ?? string.Empty;
@@ -584,27 +613,11 @@
         var fieldId = new FieldIdentifier(formModel, nameof(formModel.SoTien));
         messageStoreThanhToan?.Clear(fieldId);
 
-        if (string.IsNullOrWhiteSpace(raw))
-        {
-            formModel.SoTien = 0;
-        }
-        else if (decimal.TryParse(raw.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var val))
-        {
-            formModel.SoTien = val;
-        }
-        else
-        {
-            // Lỗi chuyển đổi kiểu dữ liệu: đặt về 0, tuyệt đối không giữ giá trị cũ
-            formModel.SoTien = 0;
-        }
+        var ketQua = KiemTraSoTienThanhToan(raw);
+        formModel.SoTien = ketQua.SoTien;
+        formModel.LoiDinhDangSoTien = ketQua.Loi == "Số tiền thanh toán không hợp lệ." ? ketQua.Loi : null;
 
         editContextThanhToan?.NotifyFieldChanged(fieldId);
-
-        if (!string.IsNullOrWhiteSpace(raw) && !decimal.TryParse(raw.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out _))
-        {
-            messageStoreThanhToan?.Add(fieldId, "Số tiền thanh toán không hợp lệ.");
-            editContextThanhToan?.NotifyValidationStateChanged();
-        }
 
         await CapNhatXemTruocAsync();
     }
@@ -622,6 +635,11 @@
             var memberNames = !string.IsNullOrEmpty(validationContext?.MemberName) 
                 ? new[] { validationContext.MemberName } 
                 : new[] { "SoTien" };
+
+            if (validationContext?.ObjectInstance is FormTaoThanhToanModel model && !string.IsNullOrEmpty(model.LoiDinhDangSoTien))
+            {
+                return new ValidationResult(model.LoiDinhDangSoTien, memberNames);
+            }
 
             if (value is decimal val)
             {

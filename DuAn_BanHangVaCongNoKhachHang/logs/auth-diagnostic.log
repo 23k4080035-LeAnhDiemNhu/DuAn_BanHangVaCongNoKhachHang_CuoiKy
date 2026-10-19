@@ -1919,3 +1919,170 @@
 [2026-10-19 10:41:02.094] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
 [2026-10-19 10:41:18.516] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
 [2026-10-19 10:41:18.532] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 11:01:47 ===
+[2026-10-19 11:01:50.384] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:01:50.398] [AUTH-DIAG] HTTP GET / | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:01:50.759] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:01:50.950] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:01:50.950] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:01:50.969] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:01:50.970] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:01:50.994] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:01:50.996] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:02:07.968] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:07.975] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:07.995] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:07.999] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:08.015] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:44.463] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:02:44.469] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:40.852] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:40.857] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:40.863] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:40.871] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:41.903] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:41.910] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:44.766] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:44.772] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:23:44.776] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:25:14.423] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:25:14.430] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:25:16.927] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:25:16.928] [AUTH-DIAG] HTTP GET /logout | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:25:19.138] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:25:19.138] [AUTH-DIAG] HTTP POST /logout | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:25:19.183] [AUTH-DIAG] HTTP GET /login | CoAuthCookie=False | IsAuthenticated=False | User='(chua_xac_thuc)' | VaiTro='(khong)'
+[2026-10-19 11:25:19.223] [AUTH-DIAG] GET /login | IsAuthenticated=False | User='' | ReturnUrl=''
+[2026-10-19 11:25:24.078] [AUTH-DIAG] HTTP POST /login | CoAuthCookie=False | IsAuthenticated=False | User='(chua_xac_thuc)' | VaiTro='(khong)'
+[2026-10-19 11:25:24.101] [AUTH-DIAG] [b80e3da8] POST /login nhận request | TenDangNhap='nvbh' | ReturnUrl='' | ModelState.IsValid=True
+[2026-10-19 11:25:24.206] [AUTH-DIAG] [b80e3da8] Đăng nhập THÀNH CÔNG | User='nvbh' | VaiTro='NhanVienBanHang' | Tiến hành SignInAsync...
+[2026-10-19 11:25:24.215] [AUTH-DIAG] CookieEvents.OnSigningIn: Bắt đầu phát Cookie. User='nvbh', Scheme='Cookies'
+[2026-10-19 11:25:24.217] [AUTH-DIAG] CookieEvents.OnSignedIn: Đã phát Cookie thành công cho User='nvbh'
+[2026-10-19 11:25:24.217] [AUTH-DIAG] [b80e3da8] HttpContext.SignInAsync đã hoàn tất | UrlChuyenHuong='/hoa-don' | Chuyển hướng LocalRedirect
+[2026-10-19 11:25:24.236] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:25:24.236] [AUTH-DIAG] HTTP GET /hoa-don | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:25:24.260] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:24.264] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:24.304] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:25:24.327] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:25:24.328] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:25:24.376] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:25:24.398] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:25:24.488] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:25:24.489] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:25:24.542] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:24.547] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.163] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.166] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.170] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.174] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.178] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:25:27.183] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:27:35.665] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+[2026-10-19 11:27:35.675] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'nvbh' từ DB. VaiTro='NhanVienBanHang'.
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 11:38:41 ===
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 11:38:48 ===
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 11:38:53 ===
+[2026-10-19 11:38:56.488] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:38:56.504] [AUTH-DIAG] HTTP GET / | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:38:57.418] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:38:57.595] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:38:57.599] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:38:57.673] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:38:57.674] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:38:57.774] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:38:57.775] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:39:11.843] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:39:11.844] [AUTH-DIAG] HTTP GET /logout | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:39:13.551] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='nvbh'
+[2026-10-19 11:39:13.552] [AUTH-DIAG] HTTP POST /logout | CoAuthCookie=True | IsAuthenticated=True | User='nvbh' | VaiTro='NhanVienBanHang'
+[2026-10-19 11:39:13.601] [AUTH-DIAG] HTTP GET /login | CoAuthCookie=False | IsAuthenticated=False | User='(chua_xac_thuc)' | VaiTro='(khong)'
+[2026-10-19 11:39:13.636] [AUTH-DIAG] GET /login | IsAuthenticated=False | User='' | ReturnUrl=''
+[2026-10-19 11:39:19.485] [AUTH-DIAG] HTTP POST /login | CoAuthCookie=False | IsAuthenticated=False | User='(chua_xac_thuc)' | VaiTro='(khong)'
+[2026-10-19 11:39:19.508] [AUTH-DIAG] [972fab5b] POST /login nhận request | TenDangNhap='ktcn' | ReturnUrl='' | ModelState.IsValid=True
+[2026-10-19 11:39:21.422] [AUTH-DIAG] [972fab5b] Đăng nhập THÀNH CÔNG | User='ktcn' | VaiTro='KeToanCongNo' | Tiến hành SignInAsync...
+[2026-10-19 11:39:21.427] [AUTH-DIAG] CookieEvents.OnSigningIn: Bắt đầu phát Cookie. User='ktcn', Scheme='Cookies'
+[2026-10-19 11:39:21.429] [AUTH-DIAG] CookieEvents.OnSignedIn: Đã phát Cookie thành công cho User='ktcn'
+[2026-10-19 11:39:21.430] [AUTH-DIAG] [972fab5b] HttpContext.SignInAsync đã hoàn tất | UrlChuyenHuong='/hoa-don' | Chuyển hướng LocalRedirect
+[2026-10-19 11:39:21.444] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:39:21.444] [AUTH-DIAG] HTTP GET /hoa-don | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:39:21.478] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:21.483] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:21.485] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:21.542] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:39:21.558] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:39:21.559] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:39:21.623] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:39:21.628] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:39:21.658] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 11:39:21.677] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 11:39:21.803] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:21.813] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:21.819] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:31.534] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:31.543] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:33.991] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:34.034] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:34.041] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:48.382] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:48.386] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:53.894] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 11:39:53.900] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 12:27:39 ===
+[2026-10-19 12:27:41.655] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 12:27:41.665] [AUTH-DIAG] HTTP GET / | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 12:27:41.993] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 12:27:42.106] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 12:27:42.106] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 12:27:42.155] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 12:27:42.156] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 12:27:42.211] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 12:27:42.212] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 12:27:57.077] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:27:57.083] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:00.647] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:00.650] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:06.164] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:06.168] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:06.174] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:28:06.178] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:07.482] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:07.490] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:09.864] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:09.871] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:09.878] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:29:09.883] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:03.537] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:03.540] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:22.202] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:22.207] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:27.781] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:27.783] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:27.785] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:27.787] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:40.819] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:40.828] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:40.832] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 12:31:40.834] [AUTH-DIAG] BlazorCurrentUserService: Xác minh thành công tài khoản 'ktcn' từ DB. VaiTro='KeToanCongNo'.
+[2026-10-19 14:33:01.350] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 14:33:01.359] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 14:33:01.379] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 14:33:01.380] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 14:56:44.173] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 14:56:44.193] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 14:56:44.214] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 14:56:44.214] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 15:21:12.175] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:21:12.178] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 15:21:12.192] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:21:12.193] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+=== BẮT ĐẦU PHIÊN CHẨN ĐOÁN: 2026-10-19 15:34:04 ===
+[2026-10-19 15:34:09.030] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:34:09.047] [AUTH-DIAG] HTTP GET / | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 15:34:09.733] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:34:09.791] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:34:09.792] [AUTH-DIAG] HTTP GET /_blazor/initializers | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 15:34:10.038] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:34:10.039] [AUTH-DIAG] HTTP POST /_blazor/negotiate | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'
+[2026-10-19 15:34:10.113] [AUTH-DIAG] CookieEvents.OnValidatePrincipal: Xác thực Cookie gửi lên. IsAuth=True, User='ktcn'
+[2026-10-19 15:34:10.117] [AUTH-DIAG] HTTP CONNECT /_blazor | CoAuthCookie=True | IsAuthenticated=True | User='ktcn' | VaiTro='KeToanCongNo'

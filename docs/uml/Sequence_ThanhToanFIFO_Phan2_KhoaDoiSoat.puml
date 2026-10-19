@@ -1,0 +1,115 @@
+@startuml Sequence_ThanhToanFIFO_Phan2_KhoaDoiSoat
+title Sơ đồ Tuần tự: Thu Tiền & Phân bổ FIFO - Phần 2: Bấm Lưu, Mở Transaction & Khóa Dữ liệu Đối soát (Bản Báo cáo A4)
+
+autonumber 19 "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Kế toán công nợ" as KTCN
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoThanhToanPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "TaoThanhToanUseCase" as TaoUC
+    participant "AuthorizeHelper" as Auth
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "ThanhToanRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+note over KTCN, DB #FEFFDD
+  <b>LUỒNG THU TIỀN & PHÂN BỔ FIFO (PHẦN 2 / 3 - BẢN BÁO CÁO A4):</b>
+  Tiếp nối từ <i>Phần 1: Kiểm tra Giao diện & Xem trước Phân bổ (Bước [01]-[18])</i>.
+  Đánh số bước tiếp tục từ <b>Bước [19]</b>.
+  Bao gồm: Bấm Lưu phiếu thu, Validation Blazor Server, Phân quyền UseCase, Mở Transaction, Khóa cấp mã, Khóa khách hàng và Nạp lại hóa đơn có khóa.
+end note
+
+== 5. Bấm Lưu Phiếu Thu & Kiểm Tra Phía Giao Diện ==
+KTCN -> Page : Bấm nút "Lưu phiếu thu" (id="btn-luu-thanh-toan")
+Page -> Page : EditContext.Validate() (Validation giao diện trong Blazor Server)
+Page -> Page : Kiểm tra chọn khách hàng, số tiền > 0, phương thức thanh toán
+
+alt Validation giao diện thất bại (Chưa chọn khách hàng / Số tiền <= 0 / Sai định dạng)
+    break Dừng tại giao diện (Không gọi UseCase)
+        Page --> KTCN : Hiển thị lỗi cạnh trường nhập liệu và dừng
+    end
+end
+
+== 6. Chuyển Tiếp Sang Tầng UseCase & Phân Quyền ==
+Page -> TaoUC : ExecuteAsync(TaoThanhToanRequest { ..., DanhSachXemTruoc })
+
+TaoUC -> Auth : RequireRoleAsync(currentUser, "KeToanCongNo")
+alt Người dùng không đủ quyền vai trò
+    break Dừng xử lý phân quyền
+        Auth --> TaoUC : Ném UnauthorizedAccessException
+        TaoUC --> Page : Chặn xử lý (Không đủ quyền vai trò)
+        Page --> KTCN : Hiển thị thông báo Không có quyền truy cập
+    end
+end
+
+TaoUC -> TaoUC : Kiểm tra hợp lệ dữ liệu cơ sở (SoTien > 0, KhachHangId > 0, PhuongThuc)
+alt Dữ liệu cơ sở không hợp lệ
+    break Dừng xử lý do dữ liệu nhập sai
+        TaoUC --> Page : return TaoThanhToanResult { ThanhCong = false, ThongBao = "..." }
+        Page --> KTCN : Hiển thị thông báo lỗi nhập liệu
+    end
+end
+
+== 7. Bắt Đầu Transaction CSDL & Khóa Tuần Tự ==
+TaoUC -> Repo : GhiNhanThanhToanAsync(request)
+Repo -> DB : Mở kết nối & BeginTransaction(ReadCommitted)
+
+' 1. Khóa Application Lock cấp mã phiếu thu
+Repo -> DB : Nhận Application Lock độc quyền 'QuanLyBanHang_CapMaPhieuThu' (sp_getapplock, timeout 5s)
+DB --> Repo : Trả lockResult
+alt lockResult < 0 (Tranh chấp khóa: timeout hoặc deadlock victim)
+    break Rollback khi tranh chấp khóa cấp mã
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = false, ThongBao = "Hệ thống bận cấp mã..." }
+        TaoUC --> Page : return TaoThanhToanResult
+        Page --> KTCN : Thông báo hệ thống bận, vui lòng thử lại
+    end
+end
+
+' 2. Khóa khách hàng theo hàng
+Repo -> DB : Khóa hàng KhachHangs (UPDLOCK, HOLDLOCK) theo KhachHangId
+DB --> Repo : Trả thông tin khách hàng
+alt Khách hàng không tồn tại
+    break Rollback hủy giao dịch
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = false, ThongBao = "Khách hàng không tồn tại..." }
+        TaoUC --> Page : return TaoThanhToanResult
+        Page --> KTCN : Báo lỗi khách hàng không tồn tại
+    end
+end
+
+' 3. Sinh mã phiếu thu tuần tự
+Repo -> DB : Đọc số thứ tự phiếu thu lớn nhất từ dbo.ThanhToans
+DB --> Repo : Trả nextNum
+Repo -> Repo : Sinh maThucTe = $"PT{nextNum:D3}"
+
+' 4. Đọc lại danh sách hóa đơn có khóa hàng
+Repo -> DB : Đọc lại danh sách HoaDons còn nợ có khóa hàng (UPDLOCK, HOLDLOCK)
+DB --> Repo : Trả danh sách hóa đơn còn nợ thực tế có khóa
+
+note over KTCN, DB #FEFFDD
+  <b>KẾT THÚC PHẦN 2:</b> Dữ liệu công nợ đã được nạp lại an toàn kèm khóa độc quyền.
+  Luồng nghiệp vụ chuyển tiếp sang <b>PHẦN 3 (Bước [45] trở đi):</b> Đối chiếu Snapshot FIFO, Ghi nhận CSDL & Commit.
+end note
+
+@enduml

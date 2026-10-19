@@ -1,0 +1,52 @@
+@startuml BaoCao_Sequence_TaoHoaDon
+title Sơ đồ Tuần tự: Lập Hóa đơn Bán chịu
+
+autonumber "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 21
+skinparam maxMessageSize 120
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    FontSize 21
+}
+
+actor "Nhân viên" as NV
+participant "Giao diện" as UI
+participant "Xử lý nghiệp vụ\n(UseCase + Repository)" as Core
+database "SQL Server" as DB
+
+== 1. Tiếp nhận & Mở Transaction CSDL ==
+NV -> UI : Bấm "Lưu hóa đơn"
+UI -> UI : Validate Form Blazor Server & Nháp circuit
+UI -> Core : TaoHoaDonBanChiuAsync(request)
+Core -> Core : Kiểm tra quyền (NVBH) & Dữ liệu cơ sở
+Core -> DB : BeginTransaction(ReadCommitted)
+
+== 2. Khóa Tuần tự & Gọi Luật 1 trong Transaction ==
+Core -> DB : Khóa KhachHangs (UPDLOCK) & Đọc công nợ thực tế
+Core -> DB : Khóa danh mục SanPhams (UPDLOCK)
+Core -> Core : khachHang.SoDuCongNo = congNoThucTe
+Core -> Core : khachHang.KiemTraVuotHanMucKhiMua(tongTien)
+note over Core
+  Gọi Luật 1 trong transaction ở Repository,
+  sau khi khóa khách hàng & nạp công nợ thực tế
+end note
+
+== 3. Cấp mã Độc quyền & Commit CSDL ==
+Core -> DB : sp_getapplock cấp mã HDxxx (Exclusive)
+Core -> DB : INSERT dbo.HoaDons, ChiTietHoaDons
+Core -> DB : UPDATE tồn kho atomic (SoLuongTon >= SoLuong)
+Core -> DB : Commit Transaction
+Core --> UI : Trả về mã HDxxx thành công
+UI -> UI : Xóa nháp Scoped & Điều hướng
+UI --> NV : Thông báo tạo hóa đơn thành công
+
+@enduml

@@ -1,0 +1,85 @@
+@startuml Sequence_ThanhToanFIFO_Phan3_GhiNhanCommit
+title Sơ đồ Tuần tự: Thu Tiền & Phân bổ FIFO - Phần 3: Đối Chiếu Snapshot FIFO, Ghi Nhận & Commit (Bản Báo cáo A4)
+
+autonumber 45 "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Kế toán công nợ" as KTCN
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoThanhToanPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "TaoThanhToanUseCase" as TaoUC
+end box
+
+box "Domain Layer (CoreBusiness)" #EBF8FF
+    participant "ThuatToanFIFO\n(Domain Service)" as FIFO
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "ThanhToanRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+note over KTCN, DB #FEFFDD
+  <b>LUỒNG THU TIỀN & PHÂN BỔ FIFO (PHẦN 3 / 3 - BẢN BÁO CÁO A4):</b>
+  Tiếp nối từ <i>Phần 2: Bấm Lưu, Mở Transaction & Khóa Dữ liệu Đối soát (Bước [19]-[44])</i>.
+  Đánh số bước tiếp tục từ <b>Bước [45]</b>.
+  Bao gồm: Chạy lại FIFO với dữ liệu có khóa, Đối chiếu Snapshot giao diện, Ghi nhận Header-Line, Update nợ hóa đơn và Commit.
+end note
+
+== 8. Đối Chiếu Kết Quả FIFO Với Bản Xem Trước & Ghi Dữ Liệu ==
+Repo -> FIFO : ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan)
+FIFO --> Repo : return ketQuaFifo mới nhất
+
+Repo -> Repo : So sánh kết quả FIFO với request.DanhSachXemTruoc
+alt Dữ liệu công nợ đã thay đổi so với bản xem trước (khopXemTruoc == false)
+    break Rollback do phát hiện thay đổi dữ liệu công nợ
+        Repo -> DB : transaction.Rollback()
+        Repo --> TaoUC : return TaoThanhToanResult {\n  ThanhCong = false,\n  DuLieuThayDoiSoVoiXemTruoc = true,\n  ThongBao = "Dữ liệu công nợ đã thay đổi so với bản xem trước..."\n}
+        TaoUC --> Page : return TaoThanhToanResult kèm danh sách phân bổ mới
+        Page --> KTCN : Cảnh báo: Dữ liệu công nợ đã thay đổi, cập nhật bảng phân bổ mới, yêu cầu xác nhận lại
+    end
+else Dữ liệu khớp bản xem trước (Hoặc không có bản xem trước)
+    Repo -> DB : Ghi nhận Header phiếu thu vào dbo.ThanhToans (INSERT)
+    DB --> Repo : Trả thanhToanId vừa tạo
+
+    loop Cho từng dòng phân bổ trong ketQuaFifo.DanhSachPhanBo
+        Repo -> DB : Ghi nhận dòng phân bổ vào dbo.PhanBoThanhToans (INSERT)
+        Repo -> DB : Cập nhật DaThanhToan và TrangThai trong dbo.HoaDons (UPDATE)
+    end
+
+    alt Ngoại lệ phát sinh ngoài ý muốn (SqlException / Exception)
+        break Rollback an toàn khi gặp sự cố ngoại lệ
+            Repo -> DB : transaction.Rollback()
+            Repo --> TaoUC : Ném ngoại lệ / return TaoThanhToanResult thất bại
+            TaoUC --> Page : Báo lỗi hệ thống
+            Page --> KTCN : Hiển thị cảnh báo sự cố kỹ thuật
+        end
+    end
+
+    Repo -> DB : transaction.Commit() (Giao dịch hoàn tất thành công trên CSDL)
+    Repo --> TaoUC : return TaoThanhToanResult { ThanhCong = true, MaPhieuThu = maThucTe, ... }
+    TaoUC --> Page : return TaoThanhToanResult
+    Page --> KTCN : Hiển thị thông báo "Ghi nhận phiếu thu PTxxx thành công" và chuyển hướng về /thanh-toan
+end
+
+note over KTCN, DB #FEFFDD
+  <b>KẾT THÚC TOÀN BỘ LUỒNG THU TIỀN:</b> Phiếu thu PTxxx và các dòng phân bổ nợ được ghi nhận nguyên tử, bảo toàn tính nhất quán.
+end note
+
+@enduml

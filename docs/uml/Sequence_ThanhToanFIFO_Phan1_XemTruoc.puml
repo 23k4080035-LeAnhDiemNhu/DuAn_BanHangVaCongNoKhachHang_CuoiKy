@@ -1,0 +1,95 @@
+@startuml Sequence_ThanhToanFIFO_Phan1_XemTruoc
+title Sơ đồ Tuần tự: Thu Tiền & Phân bổ FIFO - Phần 1: Kiểm tra Giao diện & Xem trước Phân bổ (Bản Báo cáo A4)
+
+autonumber "<b>[00]</b>"
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 11
+skinparam roundCorner 6
+
+skinparam sequence {
+    ArrowColor #2B6CB0
+    ActorBorderColor #2D3748
+    LifeLineBorderColor #4A5568
+    LifeLineBackgroundColor #EDF2F7
+    ParticipantBorderColor #2B6CB0
+    ParticipantBackgroundColor #EBF8FF
+    BoxBorderColor #A0AEC0
+}
+
+actor "Kế toán công nợ" as KTCN
+box "Presentation Layer (Blazor Server)" #FFF5F5
+    boundary "TaoThanhToanPage.razor" as Page
+end box
+
+box "Application Layer (UseCases)" #FEFCBF
+    control "XemTruocPhanBoFifoUseCase" as XemTruocUC
+    participant "AuthorizeHelper" as Auth
+end box
+
+box "Domain Layer (CoreBusiness)" #EBF8FF
+    participant "ThuatToanFIFO\n(Domain Service)" as FIFO
+end box
+
+box "Infrastructure / Plugins Layer" #EDF2F7
+    participant "ThanhToanRepository\n(Dapper / SQL Plugin)" as Repo
+    database "SQL Server\n(Database Transaction)" as DB
+end box
+
+note over KTCN, DB #FEFFDD
+  <b>LUỒNG THU TIỀN & PHÂN BỔ FIFO (PHẦN 1 / 2):</b>
+  Bao gồm: Kiểm tra giao diện, đọc danh sách hóa đơn còn nợ và phân bổ FIFO dự kiến (Preview Flow).
+  <b>Tiếp nối:</b> Xem <i>Phần 2: Lưu Thực tế trong Transaction CSDL</i> (Bước [19] trở đi).
+end note
+
+== 1. Nhập liệu & Bấm Xem Trước Phân Bổ ==
+KTCN -> Page : Chọn Khách hàng, nhập Số tiền thu, Ngày thanh toán, Phương thức
+KTCN -> Page : Bấm nút "Xem trước phân bổ" (id="btn-xem-truoc-phan-bo")
+
+Page -> Page : EditContext.Validate() (Validation giao diện trong Blazor Server)
+alt Validation giao diện thất bại (Chưa chọn khách hàng / Số tiền <= 0 / Sai định dạng)
+    break Dừng tại giao diện (Không gọi UseCase)
+        Page --> KTCN : Hiển thị lỗi nhập liệu cạnh trường dữ liệu và dừng
+    end
+end
+
+== 2. Gọi UseCase Xem Trước & Phân Quyền ==
+Page -> XemTruocUC : ExecuteAsync(XemTruocPhanBoRequest)
+XemTruocUC -> Auth : RequireRoleAsync(currentUser, "KeToanCongNo")
+
+alt Người dùng không đủ quyền vai trò
+    break Dừng xử lý phân quyền
+        Auth --> XemTruocUC : Ném UnauthorizedAccessException
+        XemTruocUC --> Page : Chặn xử lý (Không đủ quyền)
+        Page --> KTCN : Hiển thị thông báo Không có quyền truy cập
+    end
+end
+
+== 3. Đọc Hóa Đơn Còn Nợ & Thực Thi Thuật Toán FIFO ==
+XemTruocUC -> Repo : LayDanhSachHoaDonConNoTheoKhachHangAsync(khachHangId)
+Repo -> DB : Đọc danh sách hóa đơn còn nợ (ConLai > 0) sắp xếp FIFO (NgayLap ASC, HoaDonId ASC)
+DB --> Repo : Trả danh sách hóa đơn còn nợ
+Repo --> XemTruocUC : return IEnumerable<HoaDonNoModel>
+
+XemTruocUC -> FIFO : ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan)
+note over FIFO
+  **Nguyên tắc thuật toán FIFO (CoreBusiness/ThuatToanFIFO.cs):**
+  1. Hóa đơn cũ hơn (NgayLap nhỏ hơn) được thanh toán trước.
+  2. Trùng ngày: HoaDonId nhỏ hơn thanh toán trước.
+  3. Bỏ qua hóa đơn lập sau NgayThanhToan (nộp lùi ngày).
+  4. Số tiền tối đa 2 chữ số thập phân, không làm tròn âm thầm.
+  5. Nếu tiền thu > Tổng nợ: giữ TienChuaPhanBo, không tạo nợ âm.
+end note
+FIFO --> XemTruocUC : return KetQuaPhanBoFifo (DanhSachPhanBo, TongDaPhanBo, TienChuaPhanBo)
+
+== 4. Hiển Thị Bảng Phân Bổ Dự Kiến Lên Giao Diện ==
+XemTruocUC --> Page : return XemTruocPhanBoResult
+Page -> Page : Lưu snapshot danhSachXemTruoc vào component state
+Page --> KTCN : Hiển thị bảng phân bổ dự kiến để kế toán đối soát
+
+note over Page, DB
+  <b>KẾT THÚC PHẦN 1:</b> Kế toán đã đối soát bảng phân bổ nợ dự kiến.
+  Luồng nghiệp vụ chuyển tiếp sang <b>PHẦN 2 (Bước [19] trở đi):</b> Bấm "Lưu phiếu thu", Khóa dữ liệu và Commit CSDL.
+end note
+
+@enduml

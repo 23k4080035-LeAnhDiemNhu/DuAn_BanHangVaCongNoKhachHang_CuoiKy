@@ -1,0 +1,109 @@
+@startuml BaoCao_ClassDiagram_KienTrucTongQuan
+title Sơ đồ Kiến trúc Tổng quan Clean Architecture
+
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam defaultFontSize 16
+skinparam roundCorner 6
+
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #2B6CB0
+    ArrowColor #2B6CB0
+    FontSize 16
+}
+
+note as NoteRule
+  <b>CHIỀU PHỤ THUỘC CLEAN ARCHITECTURE:</b>
+  Presentation → UseCases → CoreBusiness (0 Phụ thuộc)
+  Plugins (SQL) → UseCases (Dependency Inversion: <<implements>>)
+end note
+
+' ===================================================================
+' TẦNG 1: PRESENTATION (TRÊN CÙNG)
+' ===================================================================
+package "1. Tầng Presentation (Blazor Server)" as PkgUI #FFF5F5 {
+    class TaoHoaDonPage <<Component>> {
+        + LuuHoaDonAsync()
+    }
+    class TaoThanhToanPage <<Component>> {
+        + LuuThanhToanAsync()
+    }
+    TaoHoaDonPage -right[hidden]- TaoThanhToanPage
+}
+
+' ===================================================================
+' TẦNG 2: USE CASES (TRUNG TÂM)
+' ===================================================================
+package "2. Tầng UseCases (Application Rules)" as PkgUC #FEFCBF {
+    class TaoHoaDonBanChiuUseCase {
+        + ExecuteAsync()
+    }
+    class TaoThanhToanUseCase {
+        + ExecuteAsync()
+    }
+    interface IHoaDonRepository <<Interface>> {
+        + TaoHoaDonBanChiuAsync()
+    }
+    interface IThanhToanRepository <<Interface>> {
+        + GhiNhanThanhToanAsync()
+    }
+
+    TaoHoaDonBanChiuUseCase -right[hidden]- TaoThanhToanUseCase
+    TaoThanhToanUseCase -right[hidden]- IHoaDonRepository
+    IHoaDonRepository -right[hidden]- IThanhToanRepository
+}
+
+' ===================================================================
+' TẦNG 3: CORE BUSINESS (DƯỚI TRÁI - 0 PHỤ THUỘC)
+' ===================================================================
+package "3. Tầng CoreBusiness (Domain)" as PkgCore #EBF8FF {
+    class KhachHang <<Entity>> {
+        + HanMucCongNo : decimal
+        + SoDuCongNo : decimal
+        + KiemTraVuotHanMucKhiMua()
+    }
+    class ThuatToanFIFO <<Service>> {
+        + {static} PhanBo()
+    }
+    KhachHang -right[hidden]- ThuatToanFIFO
+}
+
+' ===================================================================
+' TẦNG 4: PLUGINS (DƯỚI PHẢI - IMPLEMENTS INTERFACE)
+' ===================================================================
+package "4. Tầng Plugins (DataStore.SQL)" as PkgPlugins #EDF2F7 {
+    class HoaDonRepository {
+        + TaoHoaDonBanChiuAsync()
+    }
+    class ThanhToanRepository {
+        + GhiNhanThanhToanAsync()
+    }
+    HoaDonRepository -right[hidden]- ThanhToanRepository
+}
+
+' Bố trí layout
+PkgUI -down[hidden]- PkgUC
+PkgUC -down[hidden]- PkgCore
+PkgCore -right[hidden]- PkgPlugins
+
+' ===================================================================
+' QUY TẮC PHỤ THUỘC CHUẨN XÁC:
+' Presentation -> UseCases -> CoreBusiness
+' Plugins -> UseCases (Dependency Inversion)
+' ===================================================================
+TaoHoaDonPage -down-> TaoHoaDonBanChiuUseCase : gọi
+TaoThanhToanPage -down-> TaoThanhToanUseCase : gọi
+
+TaoHoaDonBanChiuUseCase -down-> KhachHang : kiểm tra Luật 1
+TaoThanhToanUseCase -down-> ThuatToanFIFO : phân bổ Luật 2
+
+TaoHoaDonBanChiuUseCase ..> IHoaDonRepository : phụ thuộc
+TaoThanhToanUseCase ..> IThanhToanRepository : phụ thuộc
+
+HoaDonRepository .up.|> IHoaDonRepository : <<implements>>
+ThanhToanRepository .up.|> IThanhToanRepository : <<implements>>
+
+@enduml
