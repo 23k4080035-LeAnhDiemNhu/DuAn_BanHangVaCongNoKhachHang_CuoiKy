@@ -172,8 +172,8 @@
     - `BanHang.DataStore.SQL/Scripts/Migration_Add_SoNgayNo_To_KhachHangs.sql`: Migration chuyên biệt nâng cấp CSDL hiện hữu: bổ sung `SoNgayNo` an toàn bằng SQL động tránh lỗi biên dịch batch trong SSMS, gán giá trị khởi tạo `0`, `NOT NULL`, CHECK `>= 0` (chuẩn hóa kiểm tra đơn biểu thức, enabled & trusted), **BẢO TOÀN 100% dữ liệu cũ và hạn thanh toán của hóa đơn cũ**.
     - `BanHang.DataStore.SQL/Scripts/README.md`: Hướng dẫn phân biệt rõ ràng 3 kịch bản: Cài đặt mới, Nâng cấp CSDL cũ, Nạp dữ liệu mẫu.
 - **Ghi nhận thực thi thực tế của người dùng trên CSDL chính ngày 19/10/2026**:
-  - Người dùng đã thực hiện sao lưu đầy đủ CSDL chính `QuanLyBanHangCongNo` trên SSMS (`BACKUP DATABASE ... WITH CHECKSUM`).
-  - Đã chạy xác minh bản sao lưu thành công với `RESTORE VERIFYONLY FROM DISK = ... WITH CHECKSUM` (kết quả: *"The backup set on file 1 is valid"*).
+  - Người dùng đã thực hiện sao lưu đầy đủ CSDL chính `QuanLyBanHangCongNo` trên SSMS (`BACKUP DATABASE`).
+  - Đã chạy xác minh bản sao lưu thành công với `RESTORE VERIFYONLY FROM DISK = ...` (kết quả: *"The backup set on file 1 is valid"*).
   - Đã mở và thực thi an toàn tệp migration `Migration_Add_SoNgayNo_To_KhachHangs.sql` trên CSDL chính `QuanLyBanHangCongNo` ngày 19/10/2026.
   - Kết quả kiểm tra sau migration trên CSDL chính:
     - Cột `SoNgayNo` là `INT NOT NULL`, giá trị mặc định `DEFAULT 0`.
