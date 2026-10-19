@@ -62,7 +62,7 @@
 
         @if (editContextThanhToan != null)
         {
-            <EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync">
+            <EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync" novalidate>
                 <DataAnnotationsValidator />
                 <div class="row g-3">
                     <!-- Cột trái: Thông tin phiếu thu -->
@@ -141,8 +141,11 @@
 
                                 <div class="mb-3">
                                     <label class="form-label fw-bold">Số tiền nộp (VNĐ) <span class="text-danger">*</span></label>
-                                    <input type="number" step="0.01" min="1" class="form-control form-control-lg fw-bold text-success text-end @(CoLoi("SoTien") ? "is-invalid" : "")" 
-                                           @bind="formModel.SoTien" @bind:after="OnSoTienChanged" placeholder="0" />
+                                    <input type="text" inputmode="decimal" 
+                                           class="form-control form-control-lg fw-bold text-success text-end @(CoLoi("SoTien") ? "is-invalid" : "")" 
+                                           value="@soTienInput" 
+                                           @onchange="OnSoTienInputChanged" 
+                                           placeholder="0" />
                                     <ValidationMessage For="@(() => formModel.SoTien)" class="text-danger small mt-1 d-block" />
                                     <small class="text-muted">Số tiền dương, tối đa 2 chữ số thập phân.</small>
                                 </div>
@@ -317,7 +320,7 @@
         [StringLength(50, ErrorMessage = "Phương thức tối đa 50 ký tự.")]
         public string PhuongThuc { get; set; } = "ChuyenKhoan";
 
-        [Range(0.01, double.MaxValue, ErrorMessage = "Số tiền thanh toán phải lớn hơn 0.")]
+        [SoTienThanhToan]
         public decimal SoTien { get; set; } = 0;
 
         [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự.")]
@@ -327,6 +330,7 @@
     private FormTaoThanhToanModel formModel = new();
     private EditContext? editContextThanhToan;
     private ValidationMessageStore? messageStoreThanhToan;
+    private string soTienInput = string.Empty;
 
     private List<KhachHang> danhSachKhachHang = new();
     private KhachHang? khachHangHienTai;
@@ -572,15 +576,66 @@
         editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.PhuongThuc)));
     }
 
-    private async Task OnSoTienChanged()
+    private async Task OnSoTienInputChanged(ChangeEventArgs e)
     {
-        editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.SoTien)));
+        var raw = e.Value?.ToString()?.Trim() ?? string.Empty;
+        soTienInput = raw;
+
+        var fieldId = new FieldIdentifier(formModel, nameof(formModel.SoTien));
+        messageStoreThanhToan?.Clear(fieldId);
+
+        if (string.IsNullOrWhiteSpace(raw))
+        {
+            formModel.SoTien = 0;
+        }
+        else if (decimal.TryParse(raw.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out var val))
+        {
+            formModel.SoTien = val;
+        }
+        else
+        {
+            // Lỗi chuyển đổi kiểu dữ liệu: đặt về 0, tuyệt đối không giữ giá trị cũ
+            formModel.SoTien = 0;
+        }
+
+        editContextThanhToan?.NotifyFieldChanged(fieldId);
+
+        if (!string.IsNullOrWhiteSpace(raw) && !decimal.TryParse(raw.Replace(',', '.'), NumberStyles.Float, CultureInfo.InvariantCulture, out _))
+        {
+            messageStoreThanhToan?.Add(fieldId, "Số tiền thanh toán không hợp lệ.");
+            editContextThanhToan?.NotifyValidationStateChanged();
+        }
+
         await CapNhatXemTruocAsync();
     }
 
     private void OnGhiChuChanged()
     {
         editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.GhiChu)));
+    }
+
+    [AttributeUsage(AttributeTargets.Property | AttributeTargets.Field, AllowMultiple = false)]
+    public class SoTienThanhToanAttribute : ValidationAttribute
+    {
+        protected override ValidationResult? IsValid(object? value, ValidationContext validationContext)
+        {
+            var memberNames = !string.IsNullOrEmpty(validationContext?.MemberName) 
+                ? new[] { validationContext.MemberName } 
+                : new[] { "SoTien" };
+
+            if (value is decimal val)
+            {
+                if (val <= 0)
+                {
+                    return new ValidationResult("Số tiền thanh toán phải lớn hơn 0.", memberNames);
+                }
+                if (decimal.Round(val, 2) != val)
+                {
+                    return new ValidationResult("Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân.", memberNames);
+                }
+            }
+            return ValidationResult.Success;
+        }
     }
 
     public void Dispose()

@@ -264,27 +264,26 @@
        - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho từng trường tương ứng.
        - Tích hợp `ValidationMessageStore` (Dòng 321–337), hủy đăng ký event handler khi khởi tạo lại hoặc khi `Dispose`.
     3. **Form Tạo Hóa đơn Bán chịu** (`DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`):
-       - Bọc form trong `<EditForm EditContext="@editContextHoaDon" OnValidSubmit="LuuHoaDonAsync">` (Dòng 78–396). Triển khai `@implements IDisposable` (Dòng 15, 696–708).
-       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || VuotHanMucHienTai)"` (Dòng 374).
-       - Model nhập liệu: `public class FormTaoHoaDonModel` (Dòng 401–415): `KhachHangId` [Range(1, int.MaxValue)], `NgayLap` [Required], `HanThanhToan` [Required] (kiểu `DateTime?`, bắt buộc chọn, không mặc định), `GhiChu` [StringLength(500)].
+       - Bọc form trong `<EditForm EditContext="@editContextHoaDon" OnValidSubmit="LuuHoaDonAsync" novalidate>` (tắt popup native HTML tiếng Anh để validation Blazor thể hiện hoàn chỉnh). Triển khai `@implements IDisposable`.
+       - Xóa dòng giải thích dưới Mã hóa đơn (*"Mã xem trước tự động cấp bởi hệ thống khi lưu."*), chỉ giữ nhãn và ô mã readonly theo đúng yêu cầu đã chốt.
+       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || VuotHanMucHienTai)"`.
+       - Model nhập liệu: `public class FormTaoHoaDonModel`: `KhachHangId` [Range(1, int.MaxValue)], `NgayLap` [Required], `HanThanhToan` [Required] (kiểu `DateTime?`, bắt buộc chọn, không mặc định), `GhiChu` [StringLength(500)].
        - Input HTML thường: `NgayLap` `@bind:after="OnNgayLapChanged"`, `HanThanhToan` `@bind:after="OnHanThanhToanChanged"`, `GhiChu` `@bind:after="OnGhiChuChanged"`. Tất cả đều kích hoạt `NotifyFieldChanged` và đồng bộ nháp Scoped.
-       - Đồng bộ với UseCase/schema: Đã bỏ giới hạn 100.000 số lượng tự thêm ở ô nhập HTML (`min="1"`, bỏ `max="100000"`) và trong `LuuHoaDonAsync` (chỉ kiểm tra `line.SoLuong > 0`, đồng bộ đúng quy tắc UseCase).
-       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho `KhachHangId`, `NgayLap`, `HanThanhToan`, `GhiChu`, kèm cảnh báo dòng hàng `loiDanhSachSanPham` trực tiếp dưới bảng hàng hóa.
-       - Tích hợp `ValidationMessageStore` (Dòng 460–476), hủy đăng ký `hoaDonFieldChangedHandler` khi khởi tạo lại và trong `Dispose`.
+       - Kiểm tra số lượng dòng hàng lồng nhau: Đổi ô số lượng sang `type="text" inputmode="numeric"`, sử dụng `KiemTraSoLuongDongHang` chuẩn hóa dấu chấm/phẩy, phát hiện và hiển thị lỗi tiếng Việt cạnh ô nhập cho trường hợp số lượng $\le 0$ ("Số lượng phải lớn hơn 0.") hoặc không phải số nguyên ("Số lượng phải là số nguyên."). Khi nhập sai, không âm thầm giữ giá trị cũ mà cập nhật lỗi tức thì; `TongTienHoaDonMoi` chỉ tính các dòng hợp lệ; nút Lưu và `LuuHoaDonAsync` chặn tuyệt đối nếu còn dòng lỗi.
+       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho `KhachHangId`, `NgayLap`, `HanThanhToan`, `GhiChu`, lỗi tiếng Việt dưới từng ô số lượng chi tiết, kèm cảnh báo dòng hàng `loiDanhSachSanPham` trực tiếp dưới bảng hàng hóa.
+       - Tích hợp `ValidationMessageStore`, hủy đăng ký `hoaDonFieldChangedHandler` khi khởi tạo lại và trong `Dispose`.
     4. **Form Tạo Phiếu Thu Tiền & Phân bổ FIFO** (`DuAn_BanHangVaCongNoKhachHang/Pages/TaoThanhToanPage.razor`):
-       - Bọc form trong `<EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync">` (Dòng 64–301). Triển khai `@implements IDisposable` (Dòng 13, 567–574).
-       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0)"` (Dòng 286).
-       - Model nhập liệu: `public class FormTaoThanhToanModel` (Dòng 307–324): `KhachHangId` [Range(1, int.MaxValue)], `NgayThanhToan` [Required], `PhuongThuc` [Required, StringLength(50)], `SoTien` [Range(0.01, double.MaxValue)], `GhiChu` [StringLength(500)].
-       - Input HTML thường: Gắn `@bind:after` cho `NgayThanhToan`, `PhuongThuc`, `SoTien`, `GhiChu` kích hoạt `NotifyFieldChanged` và cập nhật bản xem trước phân bổ FIFO.
+       - Bọc form trong `<EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync" novalidate>` (tắt popup native HTML tiếng Anh). Triển khai `@implements IDisposable`.
+       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0)"`.
+       - Model nhập liệu: `public class FormTaoThanhToanModel`: `KhachHangId` [Range(1, int.MaxValue)], `NgayThanhToan` [Required], `PhuongThuc` [Required, StringLength(50)], `SoTien` `[SoTienThanhToan]`, `GhiChu` [StringLength(500)].
+       - Custom Validation Attribute `[SoTienThanhToan]` kiểm tra nghiêm ngặt: số tiền $\le 0$ báo lỗi *"Số tiền thanh toán phải lớn hơn 0."*, số tiền có quá 2 chữ số thập phân báo lỗi *"Số tiền thanh toán chỉ được phép có tối đa 2 chữ số thập phân."*.
+       - Ô nhập tiền dùng `type="text" inputmode="decimal"` với sự kiện `@onchange="OnSoTienInputChanged"`: xử lý lỗi chuyển đổi kiểu dữ liệu an toàn, khi nhập chữ/ký tự lạ đặt `formModel.SoTien = 0` (tuyệt đối không âm thầm giữ giá trị cũ) và thông báo lỗi tiếng Việt; cập nhật lại bản xem trước phân bổ FIFO.
+       - Input HTML thường: Gắn `@bind:after` cho `NgayThanhToan`, `PhuongThuc`, `GhiChu` kích hoạt `NotifyFieldChanged`.
        - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho từng trường.
-       - Tích hợp `ValidationMessageStore` (Dòng 345–367, 508–540) ánh xạ lỗi UseCase máy chủ vào đúng trường và hủy đăng ký event handler an toàn.
+       - Tích hợp `ValidationMessageStore` ánh xạ lỗi UseCase máy chủ vào đúng trường và hủy đăng ký event handler an toàn.
 - **Bằng chứng kiểm thử / Demo**:
-  - `BanHang.Tests/Components/FormValidationTests.cs`: 18 test cases tự động kiểm tra DataAnnotations trên 4 model form (`FormKhachHangModel`, `FormSanPhamModel`, `FormTaoHoaDonModel`, `FormTaoThanhToanModel`), bao gồm:
-    - `FormSanPhamModel_DonGiaBangKhong_HopLe`: xác nhận 0 là đơn giá hợp lệ.
-    - `FormSanPhamModel_DonGiaAm_BaoLoiKhongDuocAm`: xác nhận đơn giá âm bị từ chối.
-    - `FormSanPhamModel_HinhAnhQua300KyTu_BaoLoiDoDai`: xác nhận chuỗi ảnh > 300 ký tự bị từ chối đúng schema CSDL.
-    - `FormKhachHangModel_SoDienThoai_KhongSietDinhDangPhone_ChiKiemTraDoDai`: xác nhận định dạng số điện thoại không bị siết chặt bởi `[Phone]`.
-  - Kết quả chạy kiểm thử toàn solution: **248/248 tests Passed 100%** (trong đó có 230 test trước đó + 18 test mới của `FormValidationTests.cs`). Bao gồm toàn bộ integration test trên DB test `QuanLyBanHangCongNo_Test` (khóa `sp_getapplock` timeout, cấn trừ FIFO, hạn mức tín dụng, trừ tồn kho...).
+  - `BanHang.Tests/Components/FormValidationTests.cs`: 26 test cases tự động kiểm tra DataAnnotations trên 4 model form (`FormKhachHangModel`, `FormSanPhamModel`, `FormTaoHoaDonModel`, `FormTaoThanhToanModel`), bao gồm kiểm tra số tiền $\le 0$, quá 2 chữ số thập phân, số lượng số thập phân (cả dấu `.` và `,`), số lượng $\le 0$, ký tự chữ và số nguyên hợp lệ.
+  - Kết quả chạy kiểm thử toàn solution: **260/260 tests Passed 100%** (bao gồm 234 test nghiệp vụ/tích hợp CSDL + 26 test form validation). Toàn bộ integration test trên DB test `QuanLyBanHangCongNo_Test` (khóa `sp_getapplock` timeout, cấn trừ FIFO, hạn mức tín dụng, trừ tồn kho...) đều vượt qua.
   - *Ghi chú xác minh giao diện*: Chưa chạy trình duyệt tự động (tuân thủ nguyên tắc an toàn, không can thiệp tiến trình web đang chạy; người dùng kiểm chứng trực tiếp bằng cách F5 trình duyệt hiện có).
 - **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K3.2 đã được rà soát và đáp ứng trọn vẹn mọi yêu cầu.
 

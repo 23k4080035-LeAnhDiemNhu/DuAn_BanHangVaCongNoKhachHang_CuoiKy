@@ -294,5 +294,79 @@ namespace BanHang.Tests.Components
             var errors = ValidateModel(model);
             Assert.Contains(errors, e => e.MemberNames.Contains(nameof(TaoThanhToanPage.FormTaoThanhToanModel.SoTien)));
         }
+
+        [Fact]
+        public void FormTaoThanhToanModel_SoTienAm_BaoLoiLonHonKhong()
+        {
+            var model = new TaoThanhToanPage.FormTaoThanhToanModel
+            {
+                KhachHangId = 1,
+                NgayThanhToan = DateTime.Today,
+                PhuongThuc = "TienMat",
+                SoTien = -5000m
+            };
+
+            var errors = ValidateModel(model);
+            Assert.Contains(errors, e => e.MemberNames.Contains(nameof(TaoThanhToanPage.FormTaoThanhToanModel.SoTien)));
+        }
+
+        [Fact]
+        public void FormTaoThanhToanModel_SoTienQua2ChuSoThapPhan_BaoLoiToiDa2ChuSoThapPhan()
+        {
+            var model = new TaoThanhToanPage.FormTaoThanhToanModel
+            {
+                KhachHangId = 1,
+                NgayThanhToan = DateTime.Today,
+                PhuongThuc = "ChuyenKhoan",
+                SoTien = 100000.125m // 3 chữ số thập phân
+            };
+
+            var errors = ValidateModel(model);
+            Assert.Contains(errors, e => e.MemberNames.Contains(nameof(TaoThanhToanPage.FormTaoThanhToanModel.SoTien)) &&
+                                         e.ErrorMessage != null && e.ErrorMessage.Contains("2 chữ số thập phân"));
+        }
+
+        // ==========================================
+        // 5. TaoHoaDon Line Quantity Validation
+        // ==========================================
+        [Theory]
+        [InlineData("1.5")]
+        [InlineData("2,5")]
+        [InlineData("0.1")]
+        public void TaoHoaDonPage_KiemTraSoLuong_SoThapPhan_BaoLoiSoNguyen(string input)
+        {
+            var (soLuong, loi) = TaoHoaDonPage.KiemTraSoLuongDongHang(input);
+            Assert.Equal(0, soLuong);
+            Assert.Equal("Số lượng phải là số nguyên.", loi);
+        }
+
+        [Theory]
+        [InlineData("0")]
+        [InlineData("-1")]
+        [InlineData("-10")]
+        public void TaoHoaDonPage_KiemTraSoLuong_SoKhongVaAm_BaoLoiLonHonKhong(string input)
+        {
+            var (_, loi) = TaoHoaDonPage.KiemTraSoLuongDongHang(input);
+            Assert.Equal("Số lượng phải lớn hơn 0.", loi);
+        }
+
+        [Fact]
+        public void TaoHoaDonPage_KiemTraSoLuong_KyTuChu_BaoLoiSoNguyen()
+        {
+            var (soLuong, loi) = TaoHoaDonPage.KiemTraSoLuongDongHang("abc");
+            Assert.Equal(0, soLuong);
+            Assert.Equal("Số lượng phải là số nguyên.", loi);
+        }
+
+        [Theory]
+        [InlineData("1", 1)]
+        [InlineData("50", 50)]
+        [InlineData("1000", 1000)]
+        public void TaoHoaDonPage_KiemTraSoLuong_SoNguyenDuong_HopLe(string input, int expectedSl)
+        {
+            var (soLuong, loi) = TaoHoaDonPage.KiemTraSoLuongDongHang(input);
+            Assert.Null(loi);
+            Assert.Equal(expectedSl, soLuong);
+        }
     }
 }
