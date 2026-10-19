@@ -9,6 +9,7 @@
 @inject ICapNhatKhachHangUseCase CapNhatKhachHangUseCase
 @inject IDoiTrangThaiKhachHangUseCase DoiTrangThaiKhachHangUseCase
 @inject ILogger<KhachHangPage> Logger
+@implements IDisposable
 
 <PageTitle>Danh sách khách hàng</PageTitle>
 
@@ -30,32 +31,13 @@
     </div>
 }
 
-@if (isLoading)
-{
-    <div class="d-flex align-items-center my-4">
-        <div class="spinner-border text-primary me-3" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <span>Đang tải dữ liệu khách hàng từ SQL Server...</span>
-    </div>
-}
-else if (hasError)
-{
-    <div class="alert alert-danger d-flex align-items-center rounded-3 mb-4" role="alert">
-        <div>
-            <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
-            <p class="mb-0">@errorMessage</p>
-        </div>
-    </div>
-}
-else if (danhSachKhachHang == null || !danhSachKhachHang.Any())
-{
-    <div class="alert alert-info rounded-3" role="alert">
-        Chưa có khách hàng nào trong hệ thống.
-    </div>
-}
-else
-{
+<TrangThaiDuLieu DangTai="@isLoading"
+                 ThongBaoDangTai="Đang tải dữ liệu khách hàng từ SQL Server..."
+                 CoLoi="@hasError"
+                 ThongBaoLoi="@errorMessage"
+                 KhongCoDuLieu="@(danhSachKhachHang == null || !danhSachKhachHang.Any())"
+                 ThongBaoTrong="Chưa có khách hàng nào trong hệ thống."
+                 OnThuLai="TaiDanhSachKhachHangAsync">
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-4">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 custom-page-table" style="min-width: 1050px;" id="table-khach-hang">
@@ -72,7 +54,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var kh in danhSachKhachHang)
+                    @foreach (var kh in danhSachKhachHang!)
                     {
                         <tr>
                             <td class="fw-bold text-primary text-nowrap">@kh.MaKhachHang</td>
@@ -99,25 +81,25 @@ else
                             <td class="text-center text-nowrap">
                                 @if (kh.DaVuotHanMuc)
                                 {
-                                    <span class="status-badge badge-over-limit text-nowrap">Vượt hạn mức</span>
+                                    <BadgeTrangThai Loai="over-limit" Text="Vượt hạn mức" />
                                 }
                                 else if (kh.SoDuCongNo > 0)
                                 {
-                                    <span class="status-badge badge-has-debt text-nowrap">Đang có nợ</span>
+                                    <BadgeTrangThai Loai="has-debt" Text="Đang có nợ" />
                                 }
                                 else
                                 {
-                                    <span class="status-badge badge-no-debt text-nowrap">Không nợ</span>
+                                    <BadgeTrangThai Loai="no-debt" Text="Không nợ" />
                                 }
                             </td>
                             <td class="text-center text-nowrap">
                                 @if (kh.TrangThai)
                                 {
-                                    <span class="status-badge badge-active text-nowrap">Đang hoạt động</span>
+                                    <BadgeTrangThai Loai="active" Text="Đang hoạt động" />
                                 }
                                 else
                                 {
-                                    <span class="status-badge badge-locked text-nowrap">Tạm khóa</span>
+                                    <BadgeTrangThai Loai="locked" Text="Tạm khóa" />
                                 }
                             </td>
                             <td class="text-center text-nowrap">
@@ -145,181 +127,149 @@ else
             </table>
         </div>
     </div>
-}
+</TrangThaiDuLieu>
 
 <!-- Modal Thêm / Sửa Khách Hàng -->
-@if (hienThiModalForm)
+<!-- Modal Thêm / Sửa Khách Hàng -->
+@if (hienThiModalForm && editContextKhachHang != null)
 {
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
-                <div class="modal-header modal-header-enterprise text-white">
-                    <h5 class="modal-title fw-bold fs-5">
-                        @(isEditing ? "Cập Nhật Thông Tin Khách Hàng" : "Thêm Khách Hàng Mới")
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    @if (!string.IsNullOrEmpty(formErrorMessage))
-                    {
-                        <div class="alert alert-danger py-2 mb-3 rounded-3" role="alert">
-                            @formErrorMessage
-                        </div>
-                    }
-
-                    @if (canXacNhanHaHanMuc)
-                    {
-                        <div class="alert alert-warning py-2 mb-3 rounded-3 border-warning" role="alert">
-                            <h6 class="alert-heading fw-bold">Xác nhận giảm hạn mức công nợ:</h6>
-                            <p class="mb-2 small">
-                                Hạn mức mới (<strong>@formModel.HanMucCongNo.ToString("N0", viCulture) đ</strong>) thấp hơn số dư công nợ hiện tại (<strong>@congNoHienTaiCanhBao.ToString("N0", viCulture) đ</strong>).
-                                Khách hàng sẽ bị đánh dấu <strong>Vượt hạn mức</strong> và không thể tiếp tục mua chịu cho đến khi thanh toán bớt nợ.
-                            </p>
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="chkXacNhanHaHanMuc" @bind="formModel.XacNhanHaHanMucDuoiNo" />
-                                <label class="form-check-label fw-bold text-danger" for="chkXacNhanHaHanMuc">
-                                    Tôi xác nhận muốn áp dụng hạn mức thấp hơn dư nợ này.
-                                </label>
+                <EditForm EditContext="@editContextKhachHang" OnValidSubmit="LuuKhachHangAsync">
+                    <DataAnnotationsValidator />
+                    <div class="modal-header modal-header-enterprise text-white">
+                        <h5 class="modal-title fw-bold fs-5">
+                            @(isEditing ? "Cập Nhật Thông Tin Khách Hàng" : "Thêm Khách Hàng Mới")
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white" @onclick="DongModalForm" disabled="@isSaving" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        @if (!string.IsNullOrEmpty(formErrorMessage))
+                        {
+                            <div class="alert alert-danger py-2 mb-3 rounded-3" role="alert">
+                                @formErrorMessage
                             </div>
-                        </div>
-                    }
+                        }
 
-                    <div class="row g-3">
-                        <div class="col-md-4">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Mã khách hàng</label>
-                            <input type="text" class="form-control rounded-3 bg-light @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
-                                   @bind="formModel.MaKhachHang" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: KH001)" />
-                            <small class="text-muted d-block mt-1">Mã được cấp tự động bởi hệ thống</small>
-                            @if (CoLoi("MaKhachHang"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("MaKhachHang")</div>
-                            }
-                        </div>
-                        <div class="col-md-8">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Tên khách hàng <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control rounded-3 @(CoLoi("TenKhachHang") ? "is-invalid" : "")"
-                                   @bind="formModel.TenKhachHang" maxlength="150" placeholder="VD: Công ty TNHH Ánh Dương" />
-                            @if (CoLoi("TenKhachHang"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("TenKhachHang")</div>
-                            }
-                        </div>
+                        @if (canXacNhanHaHanMuc)
+                        {
+                            <div class="alert alert-warning py-2 mb-3 rounded-3 border-warning" role="alert">
+                                <h6 class="alert-heading fw-bold">Xác nhận giảm hạn mức công nợ:</h6>
+                                <p class="mb-2 small">
+                                    Hạn mức mới (<strong>@formModel.HanMucCongNo.ToString("N0", viCulture) đ</strong>) thấp hơn số dư công nợ hiện tại (<strong>@congNoHienTaiCanhBao.ToString("N0", viCulture) đ</strong>).
+                                    Khách hàng sẽ bị đánh dấu <strong>Vượt hạn mức</strong> và không thể tiếp tục mua chịu cho đến khi thanh toán bớt nợ.
+                                </p>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="chkXacNhanHaHanMuc" @bind="formModel.XacNhanHaHanMucDuoiNo" />
+                                    <label class="form-check-label fw-bold text-danger" for="chkXacNhanHaHanMuc">
+                                        Tôi xác nhận muốn áp dụng hạn mức thấp hơn dư nợ này.
+                                    </label>
+                                </div>
+                            </div>
+                        }
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Số điện thoại</label>
-                            <input type="text" class="form-control rounded-3 @(CoLoi("SoDienThoai") ? "is-invalid" : "")"
-                                   @bind="formModel.SoDienThoai" maxlength="20" placeholder="VD: 0901234567" />
-                            @if (CoLoi("SoDienThoai"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("SoDienThoai")</div>
-                            }
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Email</label>
-                            <input type="email" class="form-control rounded-3 @(CoLoi("Email") ? "is-invalid" : "")"
-                                   @bind="formModel.Email" maxlength="100" placeholder="VD: contact@anhduong.vn" />
-                            @if (CoLoi("Email"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("Email")</div>
-                            }
-                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Mã khách hàng</label>
+                                <input type="text" class="form-control rounded-3 bg-light @(CoLoi("MaKhachHang") ? "is-invalid" : "")"
+                                       @bind="formModel.MaKhachHang" readonly disabled="@isEditing" maxlength="20" placeholder="Tự động tạo (VD: KH001)" />
+                                <small class="text-muted d-block mt-1">Mã được cấp tự động bởi hệ thống</small>
+                                <ValidationMessage For="@(() => formModel.MaKhachHang)" class="text-danger small mt-1 d-block" />
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Tên khách hàng <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control rounded-3 @(CoLoi("TenKhachHang") ? "is-invalid" : "")"
+                                       @bind="formModel.TenKhachHang" @bind:after="() => OnKhachHangFieldChanged(nameof(formModel.TenKhachHang))" maxlength="150" placeholder="VD: Công ty TNHH Ánh Dương" />
+                                <ValidationMessage For="@(() => formModel.TenKhachHang)" class="text-danger small mt-1 d-block" />
+                            </div>
 
-                        <div class="col-12">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Địa chỉ</label>
-                            <textarea class="form-control rounded-3 @(CoLoi("DiaChi") ? "is-invalid" : "")"
-                                      @bind="formModel.DiaChi" rows="2" maxlength="250" placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"></textarea>
-                            @if (CoLoi("DiaChi"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("DiaChi")</div>
-                            }
-                        </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Số điện thoại</label>
+                                <input type="text" class="form-control rounded-3 @(CoLoi("SoDienThoai") ? "is-invalid" : "")"
+                                       @bind="formModel.SoDienThoai" @bind:after="() => OnKhachHangFieldChanged(nameof(formModel.SoDienThoai))" maxlength="20" placeholder="VD: 0901234567" />
+                                <ValidationMessage For="@(() => formModel.SoDienThoai)" class="text-danger small mt-1 d-block" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Email</label>
+                                <input type="email" class="form-control rounded-3 @(CoLoi("Email") ? "is-invalid" : "")"
+                                       @bind="formModel.Email" @bind:after="() => OnKhachHangFieldChanged(nameof(formModel.Email))" maxlength="100" placeholder="VD: contact@anhduong.vn" />
+                                <ValidationMessage For="@(() => formModel.Email)" class="text-danger small mt-1 d-block" />
+                            </div>
 
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold text-slate-800 small mb-1">Hạn mức công nợ (VNĐ) <span class="text-danger">*</span></label>
-                            <input type="number" step="1000" min="0" class="form-control rounded-3 @(CoLoi("HanMucCongNo") ? "is-invalid" : "")"
-                                   @bind="formModel.HanMucCongNo" />
-                            @if (CoLoi("HanMucCongNo"))
-                            {
-                                <div class="invalid-feedback">@LayLoi("HanMucCongNo")</div>
-                            }
-                            <small class="text-muted d-block mt-1">Nhập 0 nếu không cho phép bán chịu.</small>
-                        </div>
-                        <div class="col-md-6 d-flex align-items-center mt-4">
-                            <div class="form-check form-switch fs-6">
-                                <input class="form-check-input" type="checkbox" id="chkTrangThai" @bind="formModel.TrangThai" />
-                                <label class="form-check-label fw-semibold" for="chkTrangThai">
-                                    @(formModel.TrangThai ? "Đang hoạt động (Cho phép bán chịu)" : "Tạm khóa (Chặn bán chịu)")
-                                </label>
+                            <div class="col-12">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Địa chỉ</label>
+                                <textarea class="form-control rounded-3 @(CoLoi("DiaChi") ? "is-invalid" : "")"
+                                          @bind="formModel.DiaChi" @bind:after="() => OnKhachHangFieldChanged(nameof(formModel.DiaChi))" rows="2" maxlength="250" placeholder="Số nhà, đường, quận/huyện, tỉnh/thành"></textarea>
+                                <ValidationMessage For="@(() => formModel.DiaChi)" class="text-danger small mt-1 d-block" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Hạn mức công nợ (VNĐ) <span class="text-danger">*</span></label>
+                                <input type="number" step="1000" min="0" class="form-control rounded-3 @(CoLoi("HanMucCongNo") ? "is-invalid" : "")"
+                                       @bind="formModel.HanMucCongNo" @bind:after="() => OnKhachHangFieldChanged(nameof(formModel.HanMucCongNo))" />
+                                <ValidationMessage For="@(() => formModel.HanMucCongNo)" class="text-danger small mt-1 d-block" />
+                                <small class="text-muted d-block mt-1">Nhập 0 nếu không cho phép bán chịu.</small>
+                            </div>
+                            <div class="col-md-6 d-flex align-items-center mt-4">
+                                <div class="form-check form-switch fs-6">
+                                    <input class="form-check-input" type="checkbox" id="chkTrangThai" @bind="formModel.TrangThai" />
+                                    <label class="form-check-label fw-semibold" for="chkTrangThai">
+                                        @(formModel.TrangThai ? "Đang hoạt động (Cho phép bán chịu)" : "Tạm khóa (Chặn bán chịu)")
+                                    </label>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-                <div class="modal-footer bg-light px-4 py-3 border-top">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
-                    <button type="button" class="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-luu-khach-hang" @onclick="LuuKhachHangAsync" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                            <span>Đang lưu...</span>
-                        }
-                        else
-                        {
-                            <span>@(isEditing ? "Lưu thay đổi" : "Thêm mới")</span>
-                        }
-                    </button>
-                </div>
+                    <div class="modal-footer bg-light px-4 py-3 border-top">
+                        <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="DongModalForm" disabled="@isSaving">Hủy bỏ</button>
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-luu-khach-hang" disabled="@isSaving">
+                            @if (isSaving)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                <span>Đang lưu...</span>
+                            }
+                            else
+                            {
+                                <span>@(isEditing ? "Lưu thay đổi" : "Thêm mới")</span>
+                            }
+                        </button>
+                    </div>
+                </EditForm>
             </div>
         </div>
     </div>
 }
 
 <!-- Modal Xác Nhận Tạm Khóa / Mở Lại -->
-@if (hienThiModalXacNhanTrangThai && khachHangDoiTrangThai != null)
-{
-    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
-        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
-                <div class="modal-header @(trangThaiMoiDuKien ? "modal-header-success" : "modal-header-warning") text-white">
-                    <h5 class="modal-title fw-bold fs-5">
-                        @(trangThaiMoiDuKien ? "Xác nhận mở lại khách hàng" : "Xác nhận tạm khóa khách hàng")
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving" aria-label="Close"></button>
-                </div>
-                <div class="modal-body p-4">
-                    @if (trangThaiMoiDuKien)
-                    {
-                        <p class="mb-0 text-slate-800">
-                            Bạn có chắc chắn muốn mở lại khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
-                            Khách hàng sẽ được phép tạo hóa đơn bán chịu tiếp trong hạn mức.
-                        </p>
-                    }
-                    else
-                    {
-                        <p class="mb-0 text-slate-800">
-                            Bạn có chắc chắn muốn tạm khóa khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
-                            Hệ thống sẽ <strong>chặn tạo hóa đơn bán chịu mới</strong> cho khách hàng này (khách vẫn được nộp tiền trả nợ).
-                        </p>
-                    }
-                </div>
-                <div class="modal-footer bg-light px-4 py-3 border-top">
-                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="() => hienThiModalXacNhanTrangThai = false" disabled="@isSaving">Đóng</button>
-                    <button type="button" class="btn @(trangThaiMoiDuKien ? "btn-success" : "btn-warning text-dark") rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="btn-xac-nhan-doi-trang-thai"
-                            @onclick="XacNhanDoiTrangThaiAsync" disabled="@isSaving">
-                        @if (isSaving)
-                        {
-                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                            <span>Đang xử lý...</span>
-                        }
-                        else
-                        {
-                            <span>@(trangThaiMoiDuKien ? "Xác nhận mở lại" : "Xác nhận tạm khóa")</span>
-                        }
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-}
+<ModalXacNhan HienThi="@(hienThiModalXacNhanTrangThai && khachHangDoiTrangThai != null)"
+              TieuDe="@(trangThaiMoiDuKien ? "Xác nhận mở lại khách hàng" : "Xác nhận tạm khóa khách hàng")"
+              HeaderClass="@(trangThaiMoiDuKien ? "modal-header-success" : "modal-header-warning")"
+              KieuNutXacNhan="@(trangThaiMoiDuKien ? "btn-success" : "btn-warning text-dark")"
+              NutXacNhanId="btn-xac-nhan-doi-trang-thai"
+              TextXacNhan="@(trangThaiMoiDuKien ? "Xác nhận mở lại" : "Xác nhận tạm khóa")"
+              TextHuy="Đóng"
+              DangXuLy="@isSaving"
+              OnXacNhan="XacNhanDoiTrangThaiAsync"
+              OnHuy="() => hienThiModalXacNhanTrangThai = false">
+    @if (khachHangDoiTrangThai != null)
+    {
+        @if (trangThaiMoiDuKien)
+        {
+            <p class="mb-0 text-slate-800">
+                Bạn có chắc chắn muốn mở lại khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
+                Khách hàng sẽ được phép tạo hóa đơn bán chịu tiếp trong hạn mức.
+            </p>
+        }
+        else
+        {
+            <p class="mb-0 text-slate-800">
+                Bạn có chắc chắn muốn tạm khóa khách hàng <strong>@khachHangDoiTrangThai.TenKhachHang</strong> (Mã: @khachHangDoiTrangThai.MaKhachHang)?
+                Hệ thống sẽ <strong>chặn tạo hóa đơn bán chịu mới</strong> cho khách hàng này (khách vẫn được nộp tiền trả nợ).
+            </p>
+        }
+    }
+</ModalXacNhan>
 
 @code {
     private IEnumerable<KhachHang>? danhSachKhachHang;
@@ -339,6 +289,8 @@ else
     private decimal congNoHienTaiCanhBao = 0;
 
     private FormKhachHangModel formModel = new();
+    private EditContext? editContextKhachHang;
+    private ValidationMessageStore? messageStoreKhachHang;
 
     // State cho Modal Đổi Trạng Thái
     private bool hienThiModalXacNhanTrangThai = false;
@@ -348,6 +300,41 @@ else
     protected override async Task OnInitializedAsync()
     {
         await TaiDanhSachKhachHangAsync();
+    }
+
+    private void KhoiTaoEditContextKhachHang()
+    {
+        if (editContextKhachHang != null)
+        {
+            editContextKhachHang.OnFieldChanged -= HandleKhachHangFieldChanged;
+        }
+        editContextKhachHang = new EditContext(formModel);
+        messageStoreKhachHang = new ValidationMessageStore(editContextKhachHang);
+        editContextKhachHang.OnFieldChanged += HandleKhachHangFieldChanged;
+    }
+
+    private void HandleKhachHangFieldChanged(object? sender, FieldChangedEventArgs args)
+    {
+        messageStoreKhachHang?.Clear(args.FieldIdentifier);
+        loiTheoTruong.Remove(args.FieldIdentifier.FieldName);
+        if (args.FieldIdentifier.FieldName == nameof(FormKhachHangModel.TenKhachHang))
+        {
+            formErrorMessage = null;
+        }
+        editContextKhachHang?.NotifyValidationStateChanged();
+    }
+
+    private void OnKhachHangFieldChanged(string propertyName)
+    {
+        editContextKhachHang?.NotifyFieldChanged(new FieldIdentifier(formModel, propertyName));
+    }
+
+    public void Dispose()
+    {
+        if (editContextKhachHang != null)
+        {
+            editContextKhachHang.OnFieldChanged -= HandleKhachHangFieldChanged;
+        }
     }
 
     private async Task TaiDanhSachKhachHangAsync()
@@ -391,6 +378,7 @@ else
             TrangThai = true,
             HanMucCongNo = 0
         };
+        KhoiTaoEditContextKhachHang();
         loiTheoTruong.Clear();
         formErrorMessage = null;
         canXacNhanHaHanMuc = false;
@@ -412,6 +400,7 @@ else
             TrangThai = kh.TrangThai,
             XacNhanHaHanMucDuoiNo = false
         };
+        KhoiTaoEditContextKhachHang();
         loiTheoTruong.Clear();
         formErrorMessage = null;
         canXacNhanHaHanMuc = false;
@@ -422,6 +411,7 @@ else
     private void DongModalForm()
     {
         hienThiModalForm = false;
+        messageStoreKhachHang?.Clear();
         loiTheoTruong.Clear();
         formErrorMessage = null;
         canXacNhanHaHanMuc = false;
@@ -432,6 +422,7 @@ else
         isSaving = true;
         formErrorMessage = null;
         loiTheoTruong.Clear();
+        messageStoreKhachHang?.Clear();
 
         try
         {
@@ -459,6 +450,14 @@ else
                 {
                     formErrorMessage = res.ThongBao;
                     loiTheoTruong = res.LoiTheoTruong;
+                    if (res.LoiTheoTruong != null && res.LoiTheoTruong.Any())
+                    {
+                        foreach (var kvp in res.LoiTheoTruong)
+                        {
+                            messageStoreKhachHang?.Add(new FieldIdentifier(formModel, kvp.Key), kvp.Value);
+                        }
+                        editContextKhachHang?.NotifyValidationStateChanged();
+                    }
                 }
             }
             else
@@ -487,6 +486,14 @@ else
                 {
                     formErrorMessage = res.ThongBao;
                     loiTheoTruong = res.LoiTheoTruong;
+                    if (res.LoiTheoTruong != null && res.LoiTheoTruong.Any())
+                    {
+                        foreach (var kvp in res.LoiTheoTruong)
+                        {
+                            messageStoreKhachHang?.Add(new FieldIdentifier(formModel, kvp.Key), kvp.Value);
+                        }
+                        editContextKhachHang?.NotifyValidationStateChanged();
+                    }
                     if (res.CanXacNhanHaHanMuc)
                     {
                         canXacNhanHaHanMuc = true;
@@ -547,18 +554,34 @@ else
         }
     }
 
-    private bool CoLoi(string field) => loiTheoTruong.ContainsKey(field);
-    private string LayLoi(string field) => loiTheoTruong.TryGetValue(field, out var val) ? val : string.Empty;
+    private bool CoLoi(string field)
+    {
+        if (editContextKhachHang == null) return false;
+        return editContextKhachHang.GetValidationMessages(new FieldIdentifier(formModel, field)).Any();
+    }
 
     public class FormKhachHangModel
     {
         public int KhachHangId { get; set; }
         public string MaKhachHang { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Tên khách hàng là bắt buộc.")]
+        [StringLength(150, ErrorMessage = "Tên khách hàng tối đa 150 ký tự.")]
         public string TenKhachHang { get; set; } = string.Empty;
+
+        [StringLength(20, ErrorMessage = "Số điện thoại tối đa 20 ký tự.")]
         public string? SoDienThoai { get; set; }
+
+        [EmailAddress(ErrorMessage = "Email không đúng định dạng.")]
+        [StringLength(100, ErrorMessage = "Email tối đa 100 ký tự.")]
         public string? Email { get; set; }
+
+        [StringLength(250, ErrorMessage = "Địa chỉ tối đa 250 ký tự.")]
         public string? DiaChi { get; set; }
+
+        [Range(0, double.MaxValue, ErrorMessage = "Hạn mức công nợ không được âm.")]
         public decimal HanMucCongNo { get; set; } = 0;
+
         public bool TrangThai { get; set; } = true;
         public bool XacNhanHaHanMucDuoiNo { get; set; } = false;
     }

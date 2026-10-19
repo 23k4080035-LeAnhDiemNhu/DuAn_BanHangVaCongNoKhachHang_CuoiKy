@@ -1,0 +1,53 @@
+@namespace DuAn_BanHangVaCongNoKhachHang.Components
+
+@if (DangTai)
+{
+    <div class="d-flex align-items-center my-4">
+        <div class="spinner-border @SpinnerClass me-3" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <span>@ThongBaoDangTai</span>
+    </div>
+}
+else if (CoLoi)
+{
+    <div class="alert alert-danger d-flex align-items-center justify-content-between rounded-3 mb-4" role="alert">
+        <div>
+            <h5 class="alert-heading mb-1">Đã xảy ra lỗi!</h5>
+            <p class="mb-0">@ThongBaoLoi</p>
+        </div>
+        @if (OnThuLai.HasDelegate)
+        {
+            <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 py-1 ms-3 fw-semibold text-nowrap" @onclick="XuLyThuLaiAsync">
+                Thử lại
+            </button>
+        }
+    </div>
+}
+else if (KhongCoDuLieu)
+{
+    <div class="alert alert-info rounded-3" role="alert">
+        @ThongBaoTrong
+    </div>
+}
+else
+{
+    @ChildContent
+}
+
+@code {
+    [Parameter] public bool DangTai { get; set; } = false;
+    [Parameter] public string ThongBaoDangTai { get; set; } = "Đang tải dữ liệu từ SQL Server...";
+    [Parameter] public string SpinnerClass { get; set; } = "text-primary";
+    [Parameter] public bool CoLoi { get; set; } = false;
+    [Parameter] public string? ThongBaoLoi { get; set; }
+    [Parameter] public bool KhongCoDuLieu { get; set; } = false;
+    [Parameter] public string ThongBaoTrong { get; set; } = "Chưa có dữ liệu nào trong hệ thống.";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public EventCallback OnThuLai { get; set; }
+
+    public async Task XuLyThuLaiAsync()
+    {
+        await OnThuLai.InvokeAsync();
+    }
+}

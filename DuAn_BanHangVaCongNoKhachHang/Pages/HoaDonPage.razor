@@ -20,32 +20,13 @@
     </AuthorizeView>
 </div>
 
-@if (isLoading)
-{
-    <div class="d-flex align-items-center my-4">
-        <div class="spinner-border text-primary me-3" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <span>Đang tải danh sách hóa đơn từ SQL Server...</span>
-    </div>
-}
-else if (hasError)
-{
-    <div class="alert alert-danger d-flex align-items-center" role="alert">
-        <div>
-            <h5 class="alert-heading">Đã xảy ra lỗi!</h5>
-            <p class="mb-0">@errorMessage</p>
-        </div>
-    </div>
-}
-else if (danhSachHoaDon == null || !danhSachHoaDon.Any())
-{
-    <div class="alert alert-info" role="alert">
-        Chưa có hóa đơn nào trong hệ thống.
-    </div>
-}
-else
-{
+<TrangThaiDuLieu DangTai="@isLoading"
+                 ThongBaoDangTai="Đang tải danh sách hóa đơn từ SQL Server..."
+                 CoLoi="@hasError"
+                 ThongBaoLoi="@errorMessage"
+                 KhongCoDuLieu="@(danhSachHoaDon == null || !danhSachHoaDon.Any())"
+                 ThongBaoTrong="Chưa có hóa đơn nào trong hệ thống."
+                 OnThuLai="TaiDanhSachHoaDonAsync">
     <div class="card border-0 shadow-sm rounded-3 overflow-hidden bg-white mb-4">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 custom-invoice-table" style="min-width: 1000px;" id="table-hoa-don">
@@ -62,7 +43,7 @@ else
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach (var hd in danhSachHoaDon)
+                    @foreach (var hd in danhSachHoaDon!)
                     {
                         <tr>
                             <td class="text-nowrap">
@@ -89,14 +70,14 @@ else
                                 @switch (hd.TrangThai)
                                 {
                                     case TrangThaiHoaDon.DaThanhToan:
-                                        <span class="status-badge badge-paid text-nowrap">Đã thanh toán</span>
+                                        <BadgeTrangThai Loai="paid" Text="Đã thanh toán" />
                                         break;
                                     case TrangThaiHoaDon.ThanhToanMotPhan:
-                                        <span class="status-badge badge-partial text-nowrap">Thanh toán 1 phần</span>
+                                        <BadgeTrangThai Loai="partial" Text="Thanh toán 1 phần" />
                                         break;
                                     case TrangThaiHoaDon.ChuaThanhToan:
                                     default:
-                                        <span class="status-badge badge-unpaid text-nowrap">Chưa thanh toán</span>
+                                        <BadgeTrangThai Loai="unpaid" Text="Chưa thanh toán" />
                                         break;
                                 }
                             </td>
@@ -105,17 +86,17 @@ else
                 </tbody>
                 <tfoot class="fw-bold text-nowrap">
                     <tr>
-                        <td colspan="4" class="text-end text-nowrap">TỔNG CỘNG (@danhSachHoaDon.Count() hóa đơn):</td>
-                        <td class="text-end text-nowrap">@danhSachHoaDon.Sum(h => h.TongTien).ToString("N0", viCulture) đ</td>
-                        <td class="text-end text-nowrap text-muted">@danhSachHoaDon.Sum(h => h.DaThanhToan).ToString("N0", viCulture) đ</td>
-                        <td class="text-end text-danger text-nowrap">@danhSachHoaDon.Sum(h => h.ConLai).ToString("N0", viCulture) đ</td>
+                        <td colspan="4" class="text-end text-nowrap">TỔNG CỘNG (@(danhSachHoaDon?.Count() ?? 0) hóa đơn):</td>
+                        <td class="text-end text-nowrap">@(danhSachHoaDon?.Sum(h => h.TongTien).ToString("N0", viCulture) ?? "0") đ</td>
+                        <td class="text-end text-nowrap text-muted">@(danhSachHoaDon?.Sum(h => h.DaThanhToan).ToString("N0", viCulture) ?? "0") đ</td>
+                        <td class="text-end text-danger text-nowrap">@(danhSachHoaDon?.Sum(h => h.ConLai).ToString("N0", viCulture) ?? "0") đ</td>
                         <td></td>
                     </tr>
                 </tfoot>
             </table>
         </div>
     </div>
-}
+</TrangThaiDuLieu>
 
 @code {
     private IEnumerable<HoaDonListItemDto>? danhSachHoaDon;

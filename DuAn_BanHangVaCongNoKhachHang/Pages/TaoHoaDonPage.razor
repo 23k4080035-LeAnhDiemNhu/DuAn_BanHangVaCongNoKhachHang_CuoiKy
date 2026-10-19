@@ -73,87 +73,93 @@
             </div>
         }
 
-        <div class="row g-4">
-            <!-- Cột trái: Thông tin hóa đơn & Khách hàng -->
-            <div class="col-lg-5">
-                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-                    <div class="card-header card-header-enterprise">
-                        <span class="fw-semibold">1. Thông tin Khách hàng & Hạn mức</span>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">Chọn khách hàng <span class="text-danger">*</span></label>
-                            <select class="form-select rounded-3" @onchange="OnKhachHangSelected" value="@selectedKhachHangId">
-                                <option value="0">-- Chọn khách hàng nhận nợ --</option>
-                                @foreach (var kh in danhSachKhachHang)
-                                {
-                                    <option value="@kh.KhachHangId">@kh.TenKhachHang</option>
-                                }
-                            </select>
-                        </div>
+    @if (editContextHoaDon != null)
+    {
+        <EditForm EditContext="@editContextHoaDon" OnValidSubmit="LuuHoaDonAsync">
+            <DataAnnotationsValidator />
 
-                        @if (khachHangHienTai != null)
-                        {
-                            <div class="p-3 rounded-3 bg-light border">
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-muted">Mã khách hàng:</span>
-                                    <span class="fw-semibold text-dark">@khachHangHienTai.MaKhachHang</span>
+            <div class="row g-4">
+                <!-- Cột trái: Thông tin hóa đơn & Khách hàng -->
+                <div class="col-lg-5">
+                    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                        <div class="card-header card-header-enterprise">
+                            <span class="fw-semibold">1. Thông tin Khách hàng & Hạn mức</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark">Chọn khách hàng <span class="text-danger">*</span></label>
+                                <select class="form-select rounded-3 @(CoLoi("KhachHangId") ? "is-invalid" : "")" @onchange="OnKhachHangSelected" value="@formModel.KhachHangId">
+                                    <option value="0">-- Chọn khách hàng nhận nợ --</option>
+                                    @foreach (var kh in danhSachKhachHang)
+                                    {
+                                        <option value="@kh.KhachHangId">@kh.TenKhachHang</option>
+                                    }
+                                </select>
+                                <ValidationMessage For="@(() => formModel.KhachHangId)" class="text-danger small mt-1 d-block" />
+                            </div>
+
+                            @if (khachHangHienTai != null)
+                            {
+                                <div class="p-3 rounded-3 bg-light border">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">Mã khách hàng:</span>
+                                        <span class="fw-semibold text-dark">@khachHangHienTai.MaKhachHang</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">Hạn mức tín dụng:</span>
+                                        <span class="fw-bold text-primary">@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">Công nợ hiện tại:</span>
+                                        <span class="fw-bold @(khachHangHienTai.SoDuCongNo > 0 ? "text-danger" : "text-success")">
+                                            @khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ
+                                        </span>
+                                    </div>
+                                    <div class="d-flex justify-content-between pt-2 border-top">
+                                        <span class="text-muted">Hạn mức còn lại:</span>
+                                        <span class="fw-bold @(khachHangHienTai.ConDuocMuaNo > 0 ? "text-success" : "text-danger")">
+                                            @khachHangHienTai.ConDuocMuaNo.ToString("N0", viCulture) đ
+                                        </span>
+                                    </div>
                                 </div>
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-muted">Hạn mức tín dụng:</span>
-                                    <span class="fw-bold text-primary">@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ</span>
+                            }
+                            else
+                            {
+                                <p class="text-muted fst-italic mb-0 small">Vui lòng chọn khách hàng để tra cứu hạn mức tín dụng và số dư nợ hiện tại.</p>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+                        <div class="card-header card-header-enterprise">
+                            <span class="fw-semibold">2. Thông tin Chứng từ</span>
+                        </div>
+                        <div class="card-body p-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold text-dark">Mã hóa đơn</label>
+                                <input type="text" class="form-control bg-light rounded-3 fw-bold text-primary" value="@maHoaDon" readonly />
+                                <small class="text-muted d-block mt-1">Mã xem trước tự động cấp bởi hệ thống khi lưu.</small>
+                            </div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-dark">Ngày lập <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control rounded-3 @(CoLoi("NgayLap") ? "is-invalid" : "")" @bind="formModel.NgayLap" @bind:after="OnNgayLapChanged" />
+                                    <ValidationMessage For="@(() => formModel.NgayLap)" class="text-danger small mt-1 d-block" />
                                 </div>
-                                <div class="d-flex justify-content-between mb-1">
-                                    <span class="text-muted">Công nợ hiện tại:</span>
-                                    <span class="fw-bold @(khachHangHienTai.SoDuCongNo > 0 ? "text-danger" : "text-success")">
-                                        @khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ
-                                    </span>
-                                </div>
-                                <div class="d-flex justify-content-between pt-2 border-top">
-                                    <span class="text-muted">Hạn mức còn lại:</span>
-                                    <span class="fw-bold @(khachHangHienTai.ConDuocMuaNo > 0 ? "text-success" : "text-danger")">
-                                        @khachHangHienTai.ConDuocMuaNo.ToString("N0", viCulture) đ
-                                    </span>
+                                <div class="col-md-6">
+                                    <label class="form-label fw-bold text-dark">Hạn thanh toán <span class="text-danger">*</span></label>
+                                    <input type="date" class="form-control rounded-3 @(CoLoi("HanThanhToan") ? "is-invalid" : "")" @bind="formModel.HanThanhToan" min="@formModel.NgayLap.ToString("yyyy-MM-dd")" @bind:after="OnHanThanhToanChanged" />
+                                    <ValidationMessage For="@(() => formModel.HanThanhToan)" class="text-danger small mt-1 d-block" />
                                 </div>
                             </div>
-                        }
-                        else
-                        {
-                            <p class="text-muted fst-italic mb-0 small">Vui lòng chọn khách hàng để tra cứu hạn mức tín dụng và số dư nợ hiện tại.</p>
-                        }
+                            <div class="mb-0">
+                                <label class="form-label fw-semibold text-dark">Ghi chú</label>
+                                <textarea class="form-control rounded-3 @(CoLoi("GhiChu") ? "is-invalid" : "")" rows="2" @bind="formModel.GhiChu" @bind:after="OnGhiChuChanged" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
+                                <ValidationMessage For="@(() => formModel.GhiChu)" class="text-danger small mt-1 d-block" />
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-                    <div class="card-header card-header-enterprise">
-                        <span class="fw-semibold">2. Thông tin Chứng từ</span>
-                    </div>
-                    <div class="card-body p-4">
-                        <div class="mb-3">
-                            <label class="form-label fw-bold text-dark">Mã hóa đơn</label>
-                            <input type="text" class="form-control bg-light rounded-3 fw-bold text-primary" value="@maHoaDon" readonly />
-                        </div>
-                        <div class="row g-2 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-dark">Ngày lập <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control rounded-3" @bind="ngayLap" @bind:after="DongBoVaoDraft" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold text-dark">Hạn thanh toán <span class="text-danger">*</span></label>
-                                <input type="date" class="form-control rounded-3" @bind="hanThanhToan" min="@ngayLap.ToString("yyyy-MM-dd")" @bind:after="DongBoVaoDraft" />
-                                @if (!hanThanhToan.HasValue)
-                                {
-                                    <small class="text-danger fst-italic">Vui lòng chọn hạn thanh toán</small>
-                                }
-                            </div>
-                        </div>
-                        <div class="mb-0">
-                            <label class="form-label fw-semibold text-dark">Ghi chú</label>
-                            <textarea class="form-control rounded-3" rows="2" @bind="ghiChu" @bind:after="DongBoVaoDraft" maxlength="500" placeholder="Ghi chú điều khoản mua nợ (tùy chọn)"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
             <!-- Cột phải: Chi tiết dòng hàng & Đối soát hạn mức -->
             <div class="col-lg-7">
@@ -267,7 +273,7 @@
                                                 <td class="text-end text-muted small">@item.DonGiaHienThi.ToString("N0", viCulture) đ</td>
                                                 <td>
                                                     <input type="number" class="form-control form-control-sm text-center rounded-3" 
-                                                           min="1" max="100000" 
+                                                           min="1" 
                                                            value="@item.SoLuong" 
                                                            @onchange="(e) => OnSoLuongChanged(index, e)" />
                                                 </td>
@@ -295,11 +301,17 @@
                                     </tr>
                                 </tfoot>
                             </table>
-                        </div>
+                        @if (!string.IsNullOrEmpty(loiDanhSachSanPham))
+                        {
+                            <div class="alert alert-danger py-2 mx-3 my-2 rounded-3 small">
+                                <strong>Lỗi dòng hàng:</strong> @loiDanhSachSanPham
+                            </div>
+                        }
                     </div>
                 </div>
+            </div>
 
-                <!-- Card đối soát hạn mức tín dụng -->
+            <!-- Card đối soát hạn mức tín dụng -->
                 <div class="card shadow-sm border-0 mb-4 overflow-hidden">
                     <div class="card-header card-header-enterprise-light py-2">
                         <span class="fw-semibold">4. Đối soát Hạn mức Tín dụng Khách hàng</span>
@@ -358,9 +370,9 @@
                 <div class="d-flex flex-column align-items-end mb-4">
                     <div class="d-flex gap-2">
                         <button type="button" class="btn btn-outline-secondary rounded-pill px-4" @onclick="HuyBo">Hủy bỏ</button>
-                        <button type="button" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" 
-                                disabled="@(isSubmitting || VuotHanMucHienTai || selectedKhachHangId <= 0 || !danhSachChiTiet.Any(c => c.SanPhamId > 0) || !hanThanhToan.HasValue)" 
-                                @onclick="LuuHoaDonAsync" id="btn-luu-hoa-don">
+                        <button type="submit" class="btn btn-primary rounded-pill px-4 py-2 fw-semibold shadow-sm" 
+                                disabled="@(isSubmitting || VuotHanMucHienTai)" 
+                                id="btn-luu-hoa-don">
                             @if (isSubmitting)
                             {
                                 <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
@@ -381,18 +393,36 @@
                 </div>
             </div>
         </div>
+    </EditForm>
+}
     }
 
 @code {
+    public class FormTaoHoaDonModel
+    {
+        [Range(1, int.MaxValue, ErrorMessage = "Vui lòng chọn khách hàng nhận nợ.")]
+        public int KhachHangId { get; set; } = 0;
+
+        [Required(ErrorMessage = "Ngày lập hóa đơn là bắt buộc.")]
+        public DateTime NgayLap { get; set; } = DateTime.Today;
+
+        [Required(ErrorMessage = "Vui lòng chọn hạn thanh toán.")]
+        public DateTime? HanThanhToan { get; set; }
+
+        [StringLength(500, ErrorMessage = "Ghi chú tối đa 500 ký tự.")]
+        public string? GhiChu { get; set; }
+    }
+
+    private FormTaoHoaDonModel formModel = new();
+    private EditContext? editContextHoaDon;
+    private ValidationMessageStore? messageStoreHoaDon;
+    private string loiDanhSachSanPham = string.Empty;
+
     private List<KhachHang> danhSachKhachHang = new();
     private List<SanPham> danhSachSanPham = new();
-    private int selectedKhachHangId = 0;
     private KhachHang? khachHangHienTai;
 
     private string maHoaDon = string.Empty;
-    private DateTime ngayLap = DateTime.Today;
-    private DateTime? hanThanhToan = null;
-    private string? ghiChu;
 
     private class DongChiTietItem
     {
@@ -423,7 +453,40 @@
 
     protected override async Task OnInitializedAsync()
     {
+        KhoiTaoEditContextHoaDon();
         await LoadDataAsync();
+    }
+
+    private EventHandler<FieldChangedEventArgs>? hoaDonFieldChangedHandler;
+
+    private void KhoiTaoEditContextHoaDon()
+    {
+        if (editContextHoaDon != null && hoaDonFieldChangedHandler != null)
+        {
+            editContextHoaDon.OnFieldChanged -= hoaDonFieldChangedHandler;
+        }
+
+        editContextHoaDon = new EditContext(formModel);
+        messageStoreHoaDon = new ValidationMessageStore(editContextHoaDon);
+
+        hoaDonFieldChangedHandler = (sender, args) =>
+        {
+            messageStoreHoaDon?.Clear(args.FieldIdentifier);
+            if (args.FieldIdentifier.FieldName == nameof(FormTaoHoaDonModel.KhachHangId))
+            {
+                errorMessage = string.Empty;
+            }
+            editContextHoaDon?.NotifyValidationStateChanged();
+        };
+
+        editContextHoaDon.OnFieldChanged += hoaDonFieldChangedHandler;
+    }
+
+    private bool CoLoi(string fieldName)
+    {
+        if (editContextHoaDon == null) return false;
+        var fieldIdentifier = editContextHoaDon.Field(fieldName);
+        return editContextHoaDon.GetValidationMessages(fieldIdentifier).Any();
     }
 
     private async Task LoadDataAsync()
@@ -448,16 +511,16 @@
             if (HoaDonNhapStateService.CoDuLieuNhap)
             {
                 var draft = HoaDonNhapStateService.LayDuLieuNhap();
-                selectedKhachHangId = draft.KhachHangId;
-                if (selectedKhachHangId > 0)
+                formModel.KhachHangId = draft.KhachHangId;
+                if (formModel.KhachHangId > 0)
                 {
                     // Lấy entity khách hàng mới nhất từ CSDL để tải lại số dư công nợ và hạn mức thực tế
-                    khachHangHienTai = danhSachKhachHang.FirstOrDefault(k => k.KhachHangId == selectedKhachHangId);
+                    khachHangHienTai = danhSachKhachHang.FirstOrDefault(k => k.KhachHangId == formModel.KhachHangId);
                 }
 
-                ngayLap = draft.NgayLap;
-                hanThanhToan = draft.HanThanhToan;
-                ghiChu = draft.GhiChu;
+                formModel.NgayLap = draft.NgayLap;
+                formModel.HanThanhToan = draft.HanThanhToan;
+                formModel.GhiChu = draft.GhiChu;
 
                 danhSachChiTiet.Clear();
                 if (draft.ChiTietDongs != null && draft.ChiTietDongs.Any())
@@ -494,6 +557,8 @@
             {
                 ThemDongSanPham();
             }
+
+            KhoiTaoEditContextHoaDon();
         }
         catch (Exception ex)
         {
@@ -510,25 +575,46 @@
     {
         if (int.TryParse(e.Value?.ToString(), out int id))
         {
-            selectedKhachHangId = id;
+            formModel.KhachHangId = id;
             khachHangHienTai = danhSachKhachHang.FirstOrDefault(k => k.KhachHangId == id);
         }
         else
         {
-            selectedKhachHangId = 0;
+            formModel.KhachHangId = 0;
             khachHangHienTai = null;
         }
+        editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.KhachHangId)));
+        DongBoVaoDraft();
+    }
+
+    private void OnNgayLapChanged()
+    {
+        editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.NgayLap)));
+        DongBoVaoDraft();
+    }
+
+    private void OnHanThanhToanChanged()
+    {
+        editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)));
+        DongBoVaoDraft();
+    }
+
+    private void OnGhiChuChanged()
+    {
+        editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.GhiChu)));
         DongBoVaoDraft();
     }
 
     private void ThemDongSanPham()
     {
+        loiDanhSachSanPham = string.Empty;
         danhSachChiTiet.Add(new DongChiTietItem());
         DongBoVaoDraft();
     }
 
     private void XoaDongSanPham(int index)
     {
+        loiDanhSachSanPham = string.Empty;
         if (index >= 0 && index < danhSachChiTiet.Count)
         {
             danhSachChiTiet.RemoveAt(index);
@@ -561,6 +647,7 @@
     {
         if (index >= 0 && index < danhSachChiTiet.Count && sp != null)
         {
+            loiDanhSachSanPham = string.Empty;
             var item = danhSachChiTiet[index];
             item.SanPhamId = sp.SanPhamId;
             item.TenSanPham = sp.TenSanPham;
@@ -597,6 +684,7 @@
     {
         if (index >= 0 && index < danhSachChiTiet.Count && int.TryParse(e.Value?.ToString(), out int sl))
         {
+            loiDanhSachSanPham = string.Empty;
             danhSachChiTiet[index].SoLuong = sl > 0 ? sl : 1;
             DongBoVaoDraft();
         }
@@ -613,10 +701,10 @@
         });
 
         HoaDonNhapStateService.CapNhatNhap(
-            selectedKhachHangId,
-            ngayLap,
-            hanThanhToan,
-            ghiChu,
+            formModel.KhachHangId,
+            formModel.NgayLap,
+            formModel.HanThanhToan,
+            formModel.GhiChu,
             dongs
         );
     }
@@ -630,6 +718,12 @@
 
     public void Dispose()
     {
+        if (editContextHoaDon != null && hoaDonFieldChangedHandler != null)
+        {
+            editContextHoaDon.OnFieldChanged -= hoaDonFieldChangedHandler;
+            hoaDonFieldChangedHandler = null;
+        }
+
         if (!daLuuThanhCong && !daHuyBo)
         {
             DongBoVaoDraft();
@@ -644,35 +738,54 @@
         thongBaoThanhCong = string.Empty;
         giaBiThayDoi = false;
         canhBaoGiaMessage = string.Empty;
+        loiDanhSachSanPham = string.Empty;
+        messageStoreHoaDon?.Clear();
+        editContextHoaDon?.NotifyValidationStateChanged();
 
-        // Kiểm tra sơ bộ phía client
-        if (selectedKhachHangId <= 0)
+        // 1. Kiểm tra hạn thanh toán không trước ngày lập
+        if (!formModel.HanThanhToan.HasValue)
         {
-            errorMessage = "Vui lòng chọn khách hàng.";
+            messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)), "Vui lòng chọn hạn thanh toán cho hóa đơn.");
+            editContextHoaDon?.NotifyValidationStateChanged();
             return;
         }
 
-        if (!hanThanhToan.HasValue)
+        if (formModel.HanThanhToan.Value.Date < formModel.NgayLap.Date)
         {
-            errorMessage = "Vui lòng chọn hạn thanh toán cho hóa đơn.";
+            messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)), "Hạn thanh toán không được trước ngày lập hóa đơn.");
+            editContextHoaDon?.NotifyValidationStateChanged();
             return;
         }
 
-        if (hanThanhToan.Value.Date < ngayLap.Date)
+        // 2. Kiểm tra danh sách dòng hàng chi tiết
+        var validLines = danhSachChiTiet.Where(c => c.SanPhamId > 0).ToList();
+        if (!validLines.Any())
         {
-            errorMessage = "Hạn thanh toán không được trước ngày lập hóa đơn.";
+            loiDanhSachSanPham = "Vui lòng chọn ít nhất một sản phẩm trong bảng chi tiết hàng hóa xuất bán.";
             return;
         }
 
+        foreach (var line in validLines)
+        {
+            if (line.SoLuong <= 0)
+            {
+                loiDanhSachSanPham = $"Sản phẩm '{line.TenSanPham}' phải có số lượng lớn hơn 0.";
+                return;
+            }
+        }
+
+        var duplicateProduct = validLines.GroupBy(c => c.SanPhamId).FirstOrDefault(g => g.Count() > 1);
+        if (duplicateProduct != null)
+        {
+            var sp = validLines.First(c => c.SanPhamId == duplicateProduct.Key);
+            loiDanhSachSanPham = $"Sản phẩm '{sp.TenSanPham}' bị chọn trùng nhiều dòng. Vui lòng gộp số lượng vào một dòng duy nhất.";
+            return;
+        }
+
+        // 3. Kiểm tra đối soát hạn mức tín dụng khách hàng
         if (VuotHanMucHienTai)
         {
             errorMessage = "Hóa đơn vượt quá hạn mức công nợ của khách hàng. Không thể lưu.";
-            return;
-        }
-
-        if (!danhSachChiTiet.Any() || danhSachChiTiet.All(c => c.SanPhamId <= 0))
-        {
-            errorMessage = "Vui lòng chọn ít nhất một dòng sản phẩm hợp lệ.";
             return;
         }
 
@@ -682,13 +795,12 @@
         {
             var request = new TaoHoaDonRequest
             {
-                KhachHangId = selectedKhachHangId,
+                KhachHangId = formModel.KhachHangId,
                 MaHoaDon = maHoaDon?.Trim() ?? string.Empty,
-                NgayLap = ngayLap,
-                HanThanhToan = hanThanhToan.Value,
-                GhiChu = ghiChu,
-                ChiTietHoaDons = danhSachChiTiet
-                    .Where(c => c.SanPhamId > 0)
+                NgayLap = formModel.NgayLap,
+                HanThanhToan = formModel.HanThanhToan.Value,
+                GhiChu = formModel.GhiChu,
+                ChiTietHoaDons = validLines
                     .Select(c => new TaoChiTietHoaDonDto
                     {
                         SanPhamId = c.SanPhamId,
@@ -705,8 +817,7 @@
                 daLuuThanhCong = true;
                 HoaDonNhapStateService.XoaNhap();
 
-                // Nếu mã hóa đơn thực tế khác mã dự kiến hiển thị ban đầu (do phiên khác đã lấy mã đó),
-                // thông báo rõ mã thực tế cho người dùng
+                // Nếu mã hóa đơn thực tế khác mã dự kiến hiển thị ban đầu, thông báo rõ cho người dùng
                 if (!string.IsNullOrEmpty(result.MaHoaDonMoi) && 
                     !string.Equals(result.MaHoaDonMoi, maHoaDon, StringComparison.OrdinalIgnoreCase))
                 {
@@ -736,7 +847,30 @@
             }
             else
             {
-                errorMessage = result.ThongBao;
+                if (!string.IsNullOrEmpty(result.ThongBao))
+                {
+                    if (result.ThongBao.Contains("khách hàng", StringComparison.OrdinalIgnoreCase))
+                    {
+                        messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.KhachHangId)), result.ThongBao);
+                        editContextHoaDon?.NotifyValidationStateChanged();
+                    }
+                    else if (result.ThongBao.Contains("hạn thanh toán", StringComparison.OrdinalIgnoreCase))
+                    {
+                        messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)), result.ThongBao);
+                        editContextHoaDon?.NotifyValidationStateChanged();
+                    }
+                    else if (result.ThongBao.Contains("sản phẩm", StringComparison.OrdinalIgnoreCase) ||
+                             result.ThongBao.Contains("tồn", StringComparison.OrdinalIgnoreCase) ||
+                             result.ThongBao.Contains("Dòng", StringComparison.OrdinalIgnoreCase))
+                    {
+                        loiDanhSachSanPham = result.ThongBao;
+                    }
+                    else
+                    {
+                        errorMessage = result.ThongBao;
+                    }
+                }
+
                 try
                 {
                     await LoadDataAsync();

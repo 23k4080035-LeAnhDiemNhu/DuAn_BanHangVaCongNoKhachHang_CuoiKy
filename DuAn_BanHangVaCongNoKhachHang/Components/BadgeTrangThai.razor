@@ -1,0 +1,34 @@
+@namespace DuAn_BanHangVaCongNoKhachHang.Components
+
+<span class="status-badge @LayCssClass() text-nowrap" id="@Id">
+    @if (ChildContent != null)
+    {
+        @ChildContent
+    }
+    else
+    {
+        @Text
+    }
+</span>
+
+@code {
+    [Parameter] public string Text { get; set; } = string.Empty;
+    [Parameter] public string Loai { get; set; } = "default";
+    [Parameter] public string? CssClass { get; set; }
+    [Parameter] public string? Id { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    public string LayCssClass()
+    {
+        if (!string.IsNullOrWhiteSpace(CssClass)) return CssClass;
+
+        return Loai.ToLowerInvariant() switch
+        {
+            "active" or "no-debt" or "selling" or "paid" or "success" => "badge-active",
+            "has-debt" or "partial" or "warning" => "badge-has-debt",
+            "over-limit" or "danger" => "badge-over-limit",
+            "locked" or "stopped" or "unpaid" or "secondary" => "badge-locked",
+            _ => "badge-locked"
+        };
+    }
+}

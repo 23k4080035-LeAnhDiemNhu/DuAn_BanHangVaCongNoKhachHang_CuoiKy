@@ -1,0 +1,67 @@
+@namespace DuAn_BanHangVaCongNoKhachHang.Components
+
+@if (HienThi)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);" role="dialog" aria-modal="true">
+        <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                <div class="modal-header @HeaderClass text-white">
+                    <h5 class="modal-title fw-bold fs-5">@TieuDe</h5>
+                    <button type="button" class="btn-close btn-close-white" @onclick="XuLyHuyAsync" disabled="@DangXuLy" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4 text-slate-800">
+                    @if (ChildContent != null)
+                    {
+                        @ChildContent
+                    }
+                    else if (!string.IsNullOrEmpty(NoiDung))
+                    {
+                        <p class="mb-0">@NoiDung</p>
+                    }
+                </div>
+                <div class="modal-footer bg-light px-4 py-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary rounded-pill px-3 py-1.5 fw-semibold" @onclick="XuLyHuyAsync" disabled="@DangXuLy">@TextHuy</button>
+                    <button type="button" class="btn @KieuNutXacNhan rounded-pill px-4 py-1.5 fw-semibold shadow-sm" id="@NutXacNhanId"
+                            @onclick="XuLyXacNhanAsync" disabled="@DangXuLy">
+                        @if (DangXuLy)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                            <span>Đang xử lý...</span>
+                        }
+                        else
+                        {
+                            <span>@TextXacNhan</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public bool HienThi { get; set; }
+    [Parameter] public string TieuDe { get; set; } = string.Empty;
+    [Parameter] public string? NoiDung { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+    [Parameter] public string HeaderClass { get; set; } = "modal-header-warning";
+    [Parameter] public string KieuNutXacNhan { get; set; } = "btn-warning text-dark";
+    [Parameter] public string TextXacNhan { get; set; } = "Xác nhận";
+    [Parameter] public string TextHuy { get; set; } = "Đóng";
+    [Parameter] public string NutXacNhanId { get; set; } = "btn-xac-nhan";
+    [Parameter] public bool DangXuLy { get; set; } = false;
+    [Parameter] public EventCallback OnXacNhan { get; set; }
+    [Parameter] public EventCallback OnHuy { get; set; }
+
+    public async Task XuLyXacNhanAsync()
+    {
+        if (DangXuLy) return;
+        await OnXacNhan.InvokeAsync();
+    }
+
+    public async Task XuLyHuyAsync()
+    {
+        if (DangXuLy) return;
+        await OnHuy.InvokeAsync();
+    }
+}

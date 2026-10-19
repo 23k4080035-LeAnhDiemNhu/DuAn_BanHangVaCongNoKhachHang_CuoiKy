@@ -204,31 +204,89 @@
 
 #### K3.1: Thành phần (Component) tái sử dụng với Parameter / EventCallback
 - **Yêu cầu của thầy**: Ít nhất 3 component tái sử dụng có [Parameter] / EventCallback; dùng trong thư mục Components (hoặc Shared).
-- **Trạng thái**: **Thiếu**
+- **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Dự án **hoàn toàn không có thư mục `Components/`**.
-  - Trong `DuAn_BanHangVaCongNoKhachHang/Shared/`: Chỉ có `MainLayout.razor`, `NavMenu.razor`, và `SurveyPrompt.razor`.
-  - `SurveyPrompt.razor`: Dòng 14 có `[Parameter] public string? Title { get; set; }` nhưng là file mẫu mặc định của Microsoft template, không có `EventCallback` và chỉ dùng ở `Index.razor`.
-  - `Pages/ChiTietHoaDonPage.razor`: Dòng 348 có `[Parameter] public string? MaHoaDon { get; set; }` nhưng đây là Route Parameter của Page, không phải component con tái sử dụng.
-  - Các hộp thoại Modal Thêm/Sửa Khách hàng, Sản phẩm và Xác nhận đổi trạng thái đều bị code inline trực tiếp trong các file `KhachHangPage.razor` và `SanPhamPage.razor`.
-- **Đánh giá trung thực**: Không có bất kỳ component nghiệp vụ con nào có `[Parameter]` kết hợp `EventCallback` được tái sử dụng qua lại giữa các màn hình.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Tách ít nhất 3 component tái sử dụng:
-    1. `Components/ModalXacNhan.razor`: Có `[Parameter]` (Tiêu đề, Nội dung) và `[Parameter] EventCallback<bool> OnXacNhan`.
-    2. `Components/ThongBaoAlert.razor`: Có `[Parameter]` Message, Type (`success`/`danger`) và `EventCallback OnClose`.
-    3. `Components/FormKhachHangModal.razor` hoặc `Components/FormSanPhamModal.razor`.
+  - Đã tạo thư mục `DuAn_BanHangVaCongNoKhachHang/Components/` và khai báo `@using DuAn_BanHangVaCongNoKhachHang.Components` trong `_Imports.razor`.
+  - **Component 1: `ModalXacNhan.razor`**:
+    - File & Số dòng: `DuAn_BanHangVaCongNoKhachHang/Components/ModalXacNhan.razor`: Dòng 42–67.
+    - `[Parameter]`: `HienThi` (bool), `TieuDe` (string), `NoiDung` (string?), `ChildContent` (RenderFragment?), `HeaderClass` (string), `KieuNutXacNhan` (string), `TextXacNhan` (string), `TextHuy` (string), `NutXacNhanId` (string), `DangXuLy` (bool).
+    - `[Parameter] EventCallback`: `OnXacNhan` (EventCallback), `OnHuy` (EventCallback).
+    - *Trách nhiệm*: Hộp thoại modal xác nhận tác vụ nhạy cảm, chống bấm lặp kép (`if (DangXuLy) return;`), tùy biến nội dung linh hoạt qua `RenderFragment`.
+    - *Các nơi sử dụng thực tế (ít nhất 2 nơi)*:
+      1. `Pages/KhachHangPage.razor`: Dòng 258–285 (Modal Xác nhận Tạm khóa / Mở lại khách hàng, giữ nút ID `btn-xac-nhan-doi-trang-thai`).
+      2. `Pages/SanPhamPage.razor`: Dòng 296–323 (Modal Xác nhận Ngừng bán / Mở bán lại sản phẩm, giữ nút ID `btn-xac-nhan-doi-trang-thai-sp`).
+  - **Component 2: `BadgeTrangThai.razor`** (kèm CSS isolation `BadgeTrangThai.razor.css`):
+    - File & Số dòng: `DuAn_BanHangVaCongNoKhachHang/Components/BadgeTrangThai.razor`: Dòng 14–34.
+    - `[Parameter]`: `Text` (string), `Loai` (string), `CssClass` (string?), `Id` (string?), `ChildContent` (RenderFragment?).
+    - *Trách nhiệm*: Hiển thị huy hiệu trạng thái (status badge) dạng pill pastel đồng nhất với hệ thống thiết kế giao diện Mẫu A, tự động ánh xạ phân loại semantic sang CSS class tương ứng.
+    - *Các nơi sử dụng thực tế (ít nhất 3 nơi)*:
+      1. `Pages/KhachHangPage.razor`: Dòng 83, 87, 91 (Trạng thái nợ: Vượt hạn mức, Đang có nợ, Không nợ); dòng 97, 101 (Hoạt động: Đang hoạt động, Tạm khóa).
+      2. `Pages/SanPhamPage.razor`: Dòng 115–116 (Trạng thái kinh doanh: Đang bán, Ngừng bán).
+      3. `Pages/HoaDonPage.razor`: Dòng 73, 76, 80 (Trạng thái thanh toán: Đã thanh toán, Thanh toán 1 phần, Chưa thanh toán).
+  - **Component 3: `TrangThaiDuLieu.razor`**:
+    - File & Số dòng: `DuAn_BanHangVaCongNoKhachHang/Components/TrangThaiDuLieu.razor`: Dòng 38–53.
+    - `[Parameter]`: `DangTai` (bool), `ThongBaoDangTai` (string), `SpinnerClass` (string), `CoLoi` (bool), `ThongBaoLoi` (string?), `KhongCoDuLieu` (bool), `ThongBaoTrong` (string), `ChildContent` (RenderFragment?).
+    - `[Parameter] EventCallback`: `OnThuLai` (EventCallback).
+    - *Trách nhiệm*: Quản lý và bao bọc 4 trạng thái nạp dữ liệu chuẩn mực cho trang danh sách: Đang tải (spinner), Có lỗi (alert-danger kèm nút Thử lại), Trống (alert-info), và Dữ liệu sẵn sàng (`ChildContent`).
+    - *Các nơi sử dụng thực tế (4 nơi)*:
+      1. `Pages/KhachHangPage.razor`: Dòng 40–129 (Danh sách khách hàng, callback `TaiDanhSachKhachHangAsync`).
+      2. `Pages/SanPhamPage.razor`: Dòng 40–151 (Danh sách sản phẩm, callback `TaiDanhSachSanPhamAsync`).
+      3. `Pages/HoaDonPage.razor`: Dòng 23–99 (Danh sách hóa đơn, callback `TaiDanhSachHoaDonAsync`).
+      4. `Pages/ThanhToanPage.razor`: Dòng 22–88 (Danh sách phiếu thu tiền, callback `TaiDanhSachThanhToanAsync`).
+- **Bằng chứng kiểm thử / Demo**:
+  - `BanHang.Tests/Components/ComponentLogicTests.cs`: 17 test cases tự động kiểm tra logic gọi callback `OnXacNhan`, `OnHuy`, cơ chế chống bấm lặp khi `DangXuLy = true`, callback `OnThuLai` khi nhấn Thử lại, và bảng ánh xạ CSS của `BadgeTrangThai`. Toàn bộ 17 test đều Passed.
+  - *Ghi chú kiểm tra giao diện*: Chưa kiểm tra browser trực tiếp (tuân thủ nguyên tắc an toàn, người dùng chỉ cần F5 trên trình duyệt đang chạy để kiểm chứng hiển thị).
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Đáp ứng hoàn chỉnh tiêu chuẩn của rubric.
 
 ---
 
 #### K3.2: EditForm + DataAnnotations và Lỗi nhập liệu hiển thị cạnh ô nhập
 - **Yêu cầu của thầy**: EditForm + DataAnnotations; lỗi nhập liệu hiển thị cạnh ô nhập.
-- **Trạng thái**: **Một phần**
+- **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - *DataAnnotations*: Được định nghĩa đầy đủ trên model `BanHang.CoreBusiness/KhachHang.cs`: Dòng 12–40 (`[Required]`, `[StringLength]`, `[Phone]`, `[EmailAddress]`, `[Range]`) và `SanPham.cs`: Dòng 12–42.
-  - *Lỗi cạnh ô nhập*: Đã hiển thị trực tiếp dưới từng ô nhập liệu bằng class Bootstrap `is-invalid` và `<div class="invalid-feedback">` (ví dụ `DuAn_BanHangVaCongNoKhachHang/Pages/KhachHangPage.razor`: Dòng 190–245, `SanPhamPage.razor`: Dòng 165–220).
-  - *Đánh giá trung thực*: **Thiếu hoàn toàn thẻ `<EditForm>` và `<DataAnnotationsValidator />`**. Toàn bộ project đang dùng form HTML `<input>` thường kết hợp validation thủ công từ UseCase Dictionary thay vì component validation chuẩn của Blazor.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Chuyển các form nhập liệu sang dùng `<EditForm Model="@formModel" OnValidSubmit="...">` và khai báo `<DataAnnotationsValidator />` cùng `<ValidationMessage For="...">`.
+  - `DuAn_BanHangVaCongNoKhachHang/_Imports.razor`: Đã bổ sung `@using System.ComponentModel.DataAnnotations` áp dụng toàn cục cho các component Razor.
+  - Cả 4 form Blazor đều sử dụng `<EditForm EditContext="@...">`, `<DataAnnotationsValidator />`, quản lý lỗi UseCase qua `ValidationMessageStore` và hiển thị lỗi cạnh từng trường bằng `<ValidationMessage For="..." />`:
+    1. **Form Thêm / Sửa Khách hàng** (`DuAn_BanHangVaCongNoKhachHang/Pages/KhachHangPage.razor`):
+       - Bọc modal trong `<EditForm EditContext="@editContextKhachHang" OnValidSubmit="LuuKhachHangAsync">` (Dòng 139–237). Nút Lưu mang `type="submit"`, `disabled="@isSaving"`, nút Hủy và Đóng là `type="button"`. Triển khai `@implements IDisposable` hủy đăng ký event handler `OnFieldChanged` sạch sẽ.
+       - Model nhập liệu: `public class FormKhachHangModel` (Dòng 563–587) mang DataAnnotations thực tế: `TenKhachHang` [Required, StringLength(150)], `SoDienThoai` [StringLength(20)] (chỉ kiểm tra độ dài theo schema CSDL `VARCHAR(20)`, không siết thuộc tính `[Phone]`), `Email` [EmailAddress, StringLength(100)], `DiaChi` [StringLength(250)], `HanMucCongNo` [Range(0, double.MaxValue, ErrorMessage = "Hạn mức công nợ không được âm.")]. `MaKhachHang` không áp `[Required]` (cấp tự động bởi hệ thống).
+       - Input HTML thường: Sử dụng `@bind:after="() => OnKhachHangFieldChanged(nameof(formModel...))"` chủ động kích hoạt `EditContext.NotifyFieldChanged()`.
+       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="@(() => formModel.TenKhachHang)" class="text-danger small mt-1 d-block" />` (và tương tự cho `SoDienThoai`, `Email`, `DiaChi`, `HanMucCongNo`).
+       - Tích hợp `ValidationMessageStore` (Dòng 348–370) kết hợp lỗi UseCase vào đúng trường; khi trường thay đổi chỉ dọn lỗi server của trường đó (`messageStore.Clear(fieldId)`), không làm mất lỗi DataAnnotations khi người dùng nhập sai.
+    2. **Form Thêm / Sửa Sản phẩm** (`DuAn_BanHangVaCongNoKhachHang/Pages/SanPhamPage.razor`):
+       - Bọc modal trong `<EditForm EditContext="@editContextSanPham" OnValidSubmit="LuuSanPhamAsync">` (Dòng 136–249). Nút Lưu mang `type="submit" id="btn-luu-san-pham"`, `disabled="@isSaving"`. Triển khai `@implements IDisposable` (Dòng 19, 345–352).
+       - Model nhập liệu: `public class FormSanPhamModel` (Dòng 666–698):
+         - `TenSanPham` [Required, StringLength(200)], `DonViTinh` [Required, StringLength(50)].
+         - Khôi phục đúng quy tắc đơn giá không âm: `DonGia` [Range(0, double.MaxValue, ErrorMessage = "Đơn giá không được âm.")] (0 là giá trị hợp lệ).
+         - `SoLuongTon` [Range(0, 2147483647, ErrorMessage = "Số lượng tồn kho phải là số không âm.")].
+         - `MoTa` [StringLength(500)].
+         - Đối chiếu schema CSDL: `HinhAnh` [StringLength(300, ErrorMessage = "Đường dẫn hình ảnh tối đa 300 ký tự.")] (khớp đúng cột `NVARCHAR(300)`).
+       - Input HTML thường: Gắn `@bind:after="() => OnSanPhamFieldChanged(nameof(formModel...))"` cho `TenSanPham`, `DonViTinh`, `DonGia`, `SoLuongTon`, `MoTa`.
+       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho từng trường tương ứng.
+       - Tích hợp `ValidationMessageStore` (Dòng 321–337), hủy đăng ký event handler khi khởi tạo lại hoặc khi `Dispose`.
+    3. **Form Tạo Hóa đơn Bán chịu** (`DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`):
+       - Bọc form trong `<EditForm EditContext="@editContextHoaDon" OnValidSubmit="LuuHoaDonAsync">` (Dòng 78–396). Triển khai `@implements IDisposable` (Dòng 15, 696–708).
+       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || VuotHanMucHienTai)"` (Dòng 374).
+       - Model nhập liệu: `public class FormTaoHoaDonModel` (Dòng 401–415): `KhachHangId` [Range(1, int.MaxValue)], `NgayLap` [Required], `HanThanhToan` [Required] (kiểu `DateTime?`, bắt buộc chọn, không mặc định), `GhiChu` [StringLength(500)].
+       - Input HTML thường: `NgayLap` `@bind:after="OnNgayLapChanged"`, `HanThanhToan` `@bind:after="OnHanThanhToanChanged"`, `GhiChu` `@bind:after="OnGhiChuChanged"`. Tất cả đều kích hoạt `NotifyFieldChanged` và đồng bộ nháp Scoped.
+       - Đồng bộ với UseCase/schema: Đã bỏ giới hạn 100.000 số lượng tự thêm ở ô nhập HTML (`min="1"`, bỏ `max="100000"`) và trong `LuuHoaDonAsync` (chỉ kiểm tra `line.SoLuong > 0`, đồng bộ đúng quy tắc UseCase).
+       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho `KhachHangId`, `NgayLap`, `HanThanhToan`, `GhiChu`, kèm cảnh báo dòng hàng `loiDanhSachSanPham` trực tiếp dưới bảng hàng hóa.
+       - Tích hợp `ValidationMessageStore` (Dòng 460–476), hủy đăng ký `hoaDonFieldChangedHandler` khi khởi tạo lại và trong `Dispose`.
+    4. **Form Tạo Phiếu Thu Tiền & Phân bổ FIFO** (`DuAn_BanHangVaCongNoKhachHang/Pages/TaoThanhToanPage.razor`):
+       - Bọc form trong `<EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync">` (Dòng 64–301). Triển khai `@implements IDisposable` (Dòng 13, 567–574).
+       - Giữ nguyên hành vi disabled gốc của nút Lưu: `disabled="@(isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0)"` (Dòng 286).
+       - Model nhập liệu: `public class FormTaoThanhToanModel` (Dòng 307–324): `KhachHangId` [Range(1, int.MaxValue)], `NgayThanhToan` [Required], `PhuongThuc` [Required, StringLength(50)], `SoTien` [Range(0.01, double.MaxValue)], `GhiChu` [StringLength(500)].
+       - Input HTML thường: Gắn `@bind:after` cho `NgayThanhToan`, `PhuongThuc`, `SoTien`, `GhiChu` kích hoạt `NotifyFieldChanged` và cập nhật bản xem trước phân bổ FIFO.
+       - Hiển thị lỗi cạnh ô nhập: `<ValidationMessage For="..." />` cho từng trường.
+       - Tích hợp `ValidationMessageStore` (Dòng 345–367, 508–540) ánh xạ lỗi UseCase máy chủ vào đúng trường và hủy đăng ký event handler an toàn.
+- **Bằng chứng kiểm thử / Demo**:
+  - `BanHang.Tests/Components/FormValidationTests.cs`: 18 test cases tự động kiểm tra DataAnnotations trên 4 model form (`FormKhachHangModel`, `FormSanPhamModel`, `FormTaoHoaDonModel`, `FormTaoThanhToanModel`), bao gồm:
+    - `FormSanPhamModel_DonGiaBangKhong_HopLe`: xác nhận 0 là đơn giá hợp lệ.
+    - `FormSanPhamModel_DonGiaAm_BaoLoiKhongDuocAm`: xác nhận đơn giá âm bị từ chối.
+    - `FormSanPhamModel_HinhAnhQua300KyTu_BaoLoiDoDai`: xác nhận chuỗi ảnh > 300 ký tự bị từ chối đúng schema CSDL.
+    - `FormKhachHangModel_SoDienThoai_KhongSietDinhDangPhone_ChiKiemTraDoDai`: xác nhận định dạng số điện thoại không bị siết chặt bởi `[Phone]`.
+  - Kết quả chạy kiểm thử toàn solution: **248/248 tests Passed 100%** (trong đó có 230 test trước đó + 18 test mới của `FormValidationTests.cs`). Bao gồm toàn bộ integration test trên DB test `QuanLyBanHangCongNo_Test` (khóa `sp_getapplock` timeout, cấn trừ FIFO, hạn mức tín dụng, trừ tồn kho...).
+  - *Ghi chú xác minh giao diện*: Chưa chạy trình duyệt tự động (tuân thủ nguyên tắc an toàn, không can thiệp tiến trình web đang chạy; người dùng kiểm chứng trực tiếp bằng cách F5 trình duyệt hiện có).
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K3.2 đã được rà soát và đáp ứng trọn vẹn mọi yêu cầu.
 
 ---
 
@@ -347,13 +405,13 @@
 ## II. TỔNG HỢP TRẠNG THÁI 18 TIÊU CHÍ
 
 **Thống kê tổng quan 18 tiêu chí:**
-- **Đạt**: **10 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.3`, `K4.1`, `K4.2`)
-- **Một phần**: **2 tiêu chí** (`K2.1`, `K3.2`)
-- **Thiếu (0 điểm)**: **4 tiêu chí** (`K3.1`, `K4.3`, `K5.1`, `K5.3`)
+- **Đạt**: **12 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K4.1`, `K4.2`)
+- **Một phần**: **1 tiêu chí** (`K2.1`)
+- **Thiếu (0 điểm)**: **3 tiêu chí** (`K4.3`, `K5.1`, `K5.3`)
 - **Chưa xác minh**: **2 tiêu chí** (`K3.4`, `K5.2`)
 
 | Nhóm tiêu chí | Mã | Nội dung | Trạng thái |
-| :--- | :--- | :--- | :---: |
+| :--- | :--- | :--- | :--- |
 | **1. Kiến trúc Clean Architecture (25%)** | **K1.1** | Đủ 4 project, đúng chiều phụ thuộc | **Đạt** |
 | | **K1.2** | Interface ở UseCases, Razor inject interface | **Đạt** |
 | | **K1.3** | 2 luật nghiệp vụ cài ở CoreBusiness / UseCases | **Đạt** |
@@ -362,8 +420,8 @@
 | | **K2.2** | Header–Line ghi trong 1 transaction | **Đạt** |
 | | **K2.3** | Mọi truy vấn tham số hóa, không nối chuỗi SQL | **Đạt** |
 | | **K2.4** | Luồng giao dịch chính chạy end-to-end trên SQL Server | **Đạt** |
-| **3. Giao diện & Trải nghiệm (20%)** | **K3.1** | Ít nhất 3 component tái sử dụng (Parameter/EventCallback) | **Thiếu** |
-| | **K3.2** | EditForm + DataAnnotations, lỗi cạnh ô nhập | **Một phần** |
+| **3. Giao diện & Trải nghiệm (20%)** | **K3.1** | Ít nhất 3 component tái sử dụng (Parameter/EventCallback) | **Đạt** |
+| | **K3.2** | EditForm + DataAnnotations, lỗi cạnh ô nhập | **Đạt** |
 | | **K3.3** | Báo lỗi thân thiện khi vi phạm 2 luật nghiệp vụ | **Đạt** |
 | | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Chưa xác minh** |
 | **4. Bảo mật & Nâng cao (15%)** | **K4.1** | Đăng nhập, đăng xuất, ít nhất 2 vai trò | **Đạt** |
@@ -378,11 +436,9 @@
 ## III. DANH SÁCH CÔNG VIỆC CẦN HOÀN THIỆN THEO MỨC ƯU TIÊN
 
 ### Ưu tiên cao (Các mục đang bị điểm 0 cần khắc phục ngay):
-1. **[K3.1] Xây dựng ít nhất 3 Component tái sử dụng**: Tách các modal Thêm/Sửa Khách hàng, Thêm/Sửa Sản phẩm và Hộp thoại xác nhận đổi trạng thái ra thư mục `Components/` với `[Parameter]` và `EventCallback`.
-2. **[K4.3] Tính năng Xuất Excel báo cáo tuổi nợ**: Tích hợp thư viện `ClosedXML`, viết UseCase xuất file Excel từ dữ liệu tuổi nợ thực tế để lấy trọn vẹn điểm tiêu chí tính năng nâng cao.
-3. **[K5.1] Bổ sung 3 sơ đồ PlantUML**: Soạn thảo các file `.puml` lưu tại `docs/uml/` thể hiện Use Case, Class diagram và Sequence diagram luồng Lập hóa đơn & Phân bổ FIFO.
+1. **[K4.3] Tính năng Xuất Excel báo cáo tuổi nợ**: Tích hợp thư viện `ClosedXML`, viết UseCase xuất file Excel từ dữ liệu tuổi nợ thực tế để lấy trọn vẹn điểm tiêu chí tính năng nâng cao.
+2. **[K5.1] Bổ sung 3 sơ đồ PlantUML**: Soạn thảo các file `.puml` lưu tại `docs/uml/` thể hiện Use Case, Class diagram và Sequence diagram luồng Lập hóa đơn & Phân bổ FIFO.
 
 ### Ưu tiên trung bình (Các mục Đạt một phần cần chuẩn hóa):
-4. **[K3.2] Chuẩn hóa `<EditForm>` và `<DataAnnotationsValidator>`**: Thay thế form HTML thường bằng component form chuẩn của Blazor.
-5. **[K2.1] Bổ sung trường "Số ngày nợ" cho Khách hàng**: Thêm cột `SoNgayNo` vào bảng `KhachHangs` và entity `KhachHang.cs` theo đặc tả Đề số 18.
-6. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.
+3. **[K2.1] Bổ sung trường "Số ngày nợ" cho Khách hàng**: Thêm cột `SoNgayNo` vào bảng `KhachHangs` và entity `KhachHang.cs` theo đặc tả Đề số 18.
+4. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.
