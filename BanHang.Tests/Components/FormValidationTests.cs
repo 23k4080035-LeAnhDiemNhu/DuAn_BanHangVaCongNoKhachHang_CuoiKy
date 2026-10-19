@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Reflection;
+using Microsoft.AspNetCore.Components.Forms;
 using DuAn_BanHangVaCongNoKhachHang.Pages;
 using Xunit;
 
@@ -130,6 +132,76 @@ namespace BanHang.Tests.Components
 
             var errors = ValidateModel(model);
             Assert.Contains(errors, e => e.MemberNames.Contains(nameof(KhachHangPage.FormKhachHangModel.SoNgayNo)));
+        }
+
+        [Fact]
+        public void KhachHangPage_ValidationSoNgayNo_PhoiHopInputNumberVaDataAnnotations()
+        {
+            var page = new KhachHangPage();
+            var formModelField = typeof(KhachHangPage).GetField("formModel", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var editContextField = typeof(KhachHangPage).GetField("editContextKhachHang", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var initMethod = typeof(KhachHangPage).GetMethod("KhoiTaoEditContextKhachHang", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var loiProp = typeof(KhachHangPage).GetProperty("LoiSoNgayNoHienThi", BindingFlags.NonPublic | BindingFlags.Instance)!;
+            var coLoiMethod = typeof(KhachHangPage).GetMethod("CoLoi", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+            var model = new KhachHangPage.FormKhachHangModel
+            {
+                TenKhachHang = "Công ty ABC",
+                HanMucCongNo = 10000000m,
+                SoNgayNo = 0
+            };
+            formModelField.SetValue(page, model);
+            initMethod.Invoke(page, null);
+            var editContext = (EditContext)editContextField.GetValue(page)!;
+            editContext.EnableDataAnnotationsValidation();
+
+            var fieldIdentifier = new FieldIdentifier(model, nameof(model.SoNgayNo));
+            var parsingStore = new ValidationMessageStore(editContext);
+
+            // 1. Nhập số nguyên âm (-1) -> Chỉ hiện lỗi không âm
+            model.SoNgayNo = -1;
+            editContext.NotifyFieldChanged(fieldIdentifier);
+
+            var loi1 = (string?)loiProp.GetValue(page);
+            var coLoi1 = (bool)coLoiMethod.Invoke(page, new object[] { nameof(model.SoNgayNo) })!;
+            Assert.True(coLoi1);
+            Assert.NotNull(loi1);
+            Assert.Contains("không âm", loi1);
+            Assert.DoesNotContain("không chứa số lẻ hoặc chữ", loi1);
+
+            // 2. Đổi thành 2.5 (parsing fail) -> InputNumber giữ model.SoNgayNo = -1 và ghi parsing error
+            // Yêu cầu: CHỈ hiện lỗi định dạng số nguyên, lỗi Range cũ không còn được hiển thị
+            parsingStore.Add(fieldIdentifier, "Số ngày nợ phải là số nguyên không âm hợp lệ (không chứa số lẻ hoặc chữ).");
+            editContext.NotifyValidationStateChanged();
+
+            var loi2 = (string?)loiProp.GetValue(page);
+            var coLoi2 = (bool)coLoiMethod.Invoke(page, new object[] { nameof(model.SoNgayNo) })!;
+            Assert.True(coLoi2);
+            Assert.NotNull(loi2);
+            Assert.Equal("Số ngày nợ phải là số nguyên không âm hợp lệ (không chứa số lẻ hoặc chữ).", loi2);
+            Assert.False(editContext.Validate(), "Phải chặn submit khi có lỗi parsing");
+
+            // 3. Để trống (model.SoNgayNo = null) -> Chỉ hiện lỗi bắt buộc
+            parsingStore.Clear(fieldIdentifier);
+            model.SoNgayNo = null;
+            editContext.NotifyFieldChanged(fieldIdentifier);
+
+            var loi3 = (string?)loiProp.GetValue(page);
+            var coLoi3 = (bool)coLoiMethod.Invoke(page, new object[] { nameof(model.SoNgayNo) })!;
+            Assert.True(coLoi3);
+            Assert.NotNull(loi3);
+            Assert.Contains("bắt buộc", loi3);
+            Assert.DoesNotContain("không chứa số lẻ hoặc chữ", loi3);
+
+            // 4. Sửa thành số nguyên hợp lệ (30) -> Xóa các lỗi cũ
+            model.SoNgayNo = 30;
+            editContext.NotifyFieldChanged(fieldIdentifier);
+
+            var loi4 = (string?)loiProp.GetValue(page);
+            var coLoi4 = (bool)coLoiMethod.Invoke(page, new object[] { nameof(model.SoNgayNo) })!;
+            Assert.False(coLoi4);
+            Assert.Null(loi4);
+            Assert.True(editContext.Validate(), "Cho phép submit khi dữ liệu hợp lệ");
         }
 
 

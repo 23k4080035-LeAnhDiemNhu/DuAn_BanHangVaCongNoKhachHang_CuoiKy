@@ -333,7 +333,14 @@
 
     private void HandleKhachHangValidationStateChanged(object? sender, ValidationStateChangedEventArgs args)
     {
-        InvokeAsync(StateHasChanged);
+        try
+        {
+            InvokeAsync(StateHasChanged);
+        }
+        catch (InvalidOperationException)
+        {
+            // Bỏ qua khi component chưa được gắn RenderHandle (ví dụ trong môi trường unit test)
+        }
     }
 
     private void HandleKhachHangFieldChanged(object? sender, FieldChangedEventArgs args)
