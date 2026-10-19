@@ -323,12 +323,20 @@
 
 #### K3.4: Khả năng tương thích trên màn hình điện thoại (Bề rộng 390px)
 - **Yêu cầu của thầy**: Dùng được trên màn hình điện thoại (DevTools, bề rộng 390px).
-- **Trạng thái**: **Chưa xác minh**
+- **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Mã nguồn đã sử dụng hệ thống lưới Bootstrap 5 (`col-md-6`, `col-12`, `d-flex flex-wrap`, `table-responsive`).
-  - Chưa được kiểm nghiệm trực tiếp trên trình duyệt ở bề rộng 390px (chế độ iPhone 12/13/14) trong đợt rà soát chỉ đọc này.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Mở Chrome DevTools, chọn kích thước 390px, kiểm tra trang `/hoa-don`, `/khach-hang`, `/san-pham`, `/bao-cao-tuoi-no` xem các bảng dài có thanh cuộn ngang mượt mà và modal không bị tràn viền.
+  - Mã nguồn sử dụng hệ thống lưới Bootstrap 5 (`col-md-4`, `col-md-6`, `col-12`, `d-flex flex-wrap`, `table-responsive`, thẻ `meta viewport`).
+  - Thiết lập chuỗi Flexbox & Scrollable xuyên suốt (`modal-dialog` $\rightarrow$ `modal-content` $\rightarrow$ `form.modal-form-scrollable` $\rightarrow$ `modal-body`) tại `DuAn_BanHangVaCongNoKhachHang/wwwroot/css/site.css` (Dòng 121–195), `Pages/SanPhamPage.razor` (Dòng 137, 210, 214) và `Pages/KhachHangPage.razor` (Dòng 139), khắc phục triệt để lỗi đứt gãy flex do thẻ `<form>` do `EditForm` sinh ra.
+  - **Bằng chứng kiểm tra thực tế**: Người dùng đã kiểm tra thủ công trên Microsoft Edge DevTools ở kích thước 390 × 844 px (chế độ mô phỏng iPhone 12/13/14 Pro) vào ngày 19/10/2026:
+    1. **Menu điều hướng**: Thu gọn dạng hamburger/offcanvas, các liên kết chuyển trang hoạt động mượt mà.
+    2. **Bảng và Chi tiết Hóa đơn**: Bảng danh sách cuộn ngang êm ái qua `table-responsive`, trang chi tiết hóa đơn `/hoa-don/{id}` hiển thị đầy đủ thông tin khách hàng, trạng thái thanh toán và danh sách chi tiết mặt hàng vừa vặn.
+    3. **Modal Thêm/Sửa Khách hàng & Sản phẩm**: Lỗi cuộn modal đã được sửa hoàn tất; modal nằm gọn trong viewport chừa lề trên/dưới (`max-height: calc(100vh - 1rem)` / `100dvh`), header và footer chứa nút "Hủy bỏ" / "Thêm mới" / "Lưu thay đổi" cố định luôn nhìn thấy, vùng `modal-body` cuộn dọc mượt mà bằng chuột và thao tác vuốt cả khi có thông báo validation hoặc ảnh xem trước. Người dùng kiểm tra lại đạt 100%.
+    4. **Form Phiếu thu & Phân bổ FIFO**: Trang `/thanh-toan/tao` hiển thị rõ các ô nhập, bảng xem trước phân bổ cấn trừ nợ FIFO cuộn xem dễ dàng.
+    5. **Báo cáo tuổi nợ**: Trang `/bao-cao-tuoi-no` hiển thị tốt bộ lọc ngày chốt, các thẻ thống kê tổng hợp và bảng 4 nhóm tuổi nợ cuộn ngang mượt mà, nút xuất Excel hoạt động chuẩn.
+    6. **Form Lập hóa đơn**: Trang `/hoa-don/tao` hiển thị gọn gàng thông tin khách hàng, ngày tháng, bảng danh mục hàng hóa và tổng tiền dự kiến.
+    7. **Đăng nhập & Nút hiện/ẩn mật khẩu**: Trang `/Login` hiển thị vừa vặn, form đăng nhập, nút chuyển đổi ẩn/hiện mật khẩu và thông báo lỗi đăng nhập rõ ràng.
+- **Giới hạn kiểm chứng**: Bằng chứng trên được xác nhận thông qua kiểm tra giả lập viewport (DevTools mô phỏng thiết bị di động 390 × 844 px), chưa phải kiểm tra trên điện thoại vật lý.
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K3.4 đã được người dùng kiểm tra lại và xác nhận Đạt.
 
 ---
 
@@ -482,10 +490,10 @@
 ## II. TỔNG HỢP TRẠNG THÁI 18 TIÊU CHÍ
 
 **Thống kê tổng quan 18 tiêu chí:**
-- **Đạt**: **14 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K4.1`, `K4.2`, `K4.3`, `K5.1`)
+- **Đạt**: **15 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K3.4`, `K4.1`, `K4.2`, `K4.3`, `K5.1`)
 - **Một phần**: **1 tiêu chí** (`K2.1`)
 - **Thiếu (0 điểm)**: **1 tiêu chí** (`K5.3`)
-- **Chưa xác minh**: **2 tiêu chí** (`K3.4`, `K5.2`)
+- **Chưa xác minh**: **1 tiêu chí** (`K5.2`)
 
 | Nhóm tiêu chí | Mã | Nội dung | Trạng thái |
 | :--- | :--- | :--- | :--- |
@@ -500,7 +508,7 @@
 | **3. Giao diện & Trải nghiệm (20%)** | **K3.1** | Ít nhất 3 component tái sử dụng (Parameter/EventCallback) | **Đạt** |
 | | **K3.2** | EditForm + DataAnnotations, lỗi cạnh ô nhập | **Đạt** |
 | | **K3.3** | Báo lỗi thân thiện khi vi phạm 2 luật nghiệp vụ | **Đạt** |
-| | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Chưa xác minh** |
+| | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Đạt** |
 | **4. Bảo mật & Nâng cao (15%)** | **K4.1** | Đăng nhập, đăng xuất, ít nhất 2 vai trò | **Đạt** |
 | | **K4.2** | Gõ trực tiếp URL trang quản trị bị chặn | **Đạt** |
 | | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Đạt** (File .xlsx đã kiểm thử tự động, tải trình duyệt chờ xác nhận) |
