@@ -369,7 +369,7 @@
 #### K4.3: Tính năng nâng cao: Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc Trợ lý AI
 - **Yêu cầu của thầy**: Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật.
 - **Trạng thái**: **Đạt (Phần kết xuất và nội dung file .xlsx đã kiểm thử tự động; phần tải file trên trình duyệt thực tế chờ người dùng xác nhận)**
-- **Đường    - **Nhóm bản Báo Cáo Thuyết Minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
+    - **Nhóm bản Báo Cáo Thuyết Minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
       1. `docs/uml/BaoCao_ClassDiagram_KienTrucTongQuan.puml` & `.svg` (1104 x 851 px): Clean Architecture chuẩn: Presentation $\rightarrow$ UseCases $\rightarrow$ CoreBusiness; Plugins $\rightarrow$ UseCases (DIP). CoreBusiness độc lập 100%, không phụ thuộc Plugins. Cỡ chữ in trên A4 Landscape đạt **9.4 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
       2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **15.5 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
       3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), quan hệ `ThanhToan 1 *-- 0..* PhanBoThanhToan` (chuẩn hóa nghiệp vụ phiếu thu chưa phân bổ khi khách nộp tiền thừa), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **10.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
@@ -393,7 +393,7 @@
       - `docs/uml/Sequence_ThanhToanFIFO_Phan2_Transaction.puml` & `.svg` (2594 x 2588 px): Bản 2 phần cũ ([19]–[68]), chữ in: **~2.15 pt** (Chưa đạt 9pt).
     - **Tài liệu PDF chính thức phục vụ báo cáo và kiểm chứng**:
       - `docs/uml/BaoCao_UML_A4.pdf`: Bản PDF 5 trang dành cho **chính văn báo cáo thuyết minh** đồ án. Đã loại bỏ khung kiểm chứng nét đứt và nhãn kiểm thử, bố trí sẵn lề an toàn 20mm, chữ đạt chuẩn từ 9.3 pt đến 15.5 pt.
-      - `docs/uml/KiemChung_BoCuc_A4.pdf` *(hoặc `KiemChung_BoCuc_A4_Moi.pdf`)*: Tài liệu kiểm chứng 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực (dòng thông số chân trang 2 dòng ngắt dòng chuẩn xác không bị cắt lề).�ng âm thầm xuất khác bảng đang xem.
+      - `docs/uml/KiemChung_BoCuc_A4.pdf`: Tài liệu kiểm chứng 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực (dòng thông số chân trang 2 dòng ngắt dòng chuẩn xác không bị cắt lề).
     - Tên file: `BaoCaoTuoiNo_{yyyyMMdd}.xlsx` chứa ngày chốt số liệu, không lộ thông tin nhạy cảm.
 - **Bằng chứng kiểm thử / Demo**:
   - `BanHang.Tests/BaoCaoTuoiNoExcelTests.cs`: 7 test cases tự động:
@@ -417,12 +417,12 @@
 - **Trạng thái**: **Đạt** (Đã kiểm chứng render cục bộ 19/19 tệp SVG, 19 tệp PDF vector và tài liệu kiểm chứng bố cục A4 thực tế `KiemChung_BoCuc_A4.pdf` gồm 13 trang, không phụ thuộc dịch vụ ngoài)
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
   - Thư mục hồ sơ thiết kế: `docs/uml/` chứa đầy đủ mã nguồn PlantUML chuẩn, tệp ảnh vector SVG và PDF vector tương ứng:
-    - **Nhóm bản Báo cáo Thuyết minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
+    - **Nhóm bản Báo Cáo Thuyết Minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
       1. `docs/uml/BaoCao_ClassDiagram_KienTrucTongQuan.puml` & `.svg` (1104 x 851 px): Clean Architecture chuẩn: Presentation $\rightarrow$ UseCases $\rightarrow$ CoreBusiness; Plugins $\rightarrow$ UseCases (DIP). CoreBusiness độc lập 100%, không phụ thuộc Plugins. Cỡ chữ in trên A4 Landscape đạt **9.4 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
-      2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **14.6 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
-      3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **12.2 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
-      4. `docs/uml/BaoCao_Sequence_TaoHoaDon.puml` & `.svg` (820 x 1421 px): Tập trung luồng chính: Nhập liệu $\rightarrow$ Validate $\rightarrow$ Mở Tx $\rightarrow$ Khóa khách hàng/sản phẩm UPDLOCK $\rightarrow$ Luật 1 hạn mức $\rightarrow$ Cấp mã HDxxx $\rightarrow$ Trừ tồn atomic $\rightarrow$ Commit. Cỡ chữ in đạt **11.1 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
-      5. `docs/uml/BaoCao_Sequence_ThanhToanFIFO.puml` & `.svg` (919 x 1675 px): Tập trung luồng chính: Xem trước FIFO $\rightarrow$ Bấm lưu $\rightarrow$ Mở Tx $\rightarrow$ Cấp mã PTxxx $\rightarrow$ Khóa UPDLOCK $\rightarrow$ Chạy lại FIFO & Đối chiếu snapshot $\rightarrow$ Commit. Cỡ chữ in đạt **9.7 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **15.5 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
+      3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), quan hệ `ThanhToan 1 *-- 0..* PhanBoThanhToan` (chuẩn hóa nghiệp vụ phiếu thu chưa phân bổ khi khách nộp tiền thừa), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **10.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      4. `docs/uml/BaoCao_Sequence_TaoHoaDon.puml` & `.svg` (820 x 1421 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, mở Tx tại Repository, khóa UPDLOCK $\rightarrow$ gọi Luật 1 hạn mức trong transaction sau khi khóa khách hàng và đọc công nợ thực tế $\rightarrow$ cấp mã HDxxx $\rightarrow$ trừ tồn atomic $\rightarrow$ Commit. Cỡ chữ in đạt **9.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
+      5. `docs/uml/BaoCao_Sequence_ThanhToanFIFO.puml` & `.svg` (919 x 1675 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, Xem trước FIFO $\rightarrow$ Bấm lưu $\rightarrow$ Mở Tx tại Repo $\rightarrow$ Cấp mã PTxxx $\rightarrow$ Khóa UPDLOCK $\rightarrow$ Chạy lại FIFO & Đối chiếu snapshot $\rightarrow$ Ghi nhận Header/Line (0..* dòng phân bổ) $\rightarrow$ Commit. Cỡ chữ in đạt **10.2 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
     - **Nhóm bản Phân rã Chi tiết (Phụ lục Báo cáo - Ghi nhận trung thực: CHƯA ĐẠT 9.0 pt do mật độ chi tiết cao)**:
       - *Luồng Lập Hóa Đơn Bán Chịu*:
         - P1: `docs/uml/Sequence_TaoHoaDon_Phan1_KiemTra.puml` & `.svg`: Bước `[01]`–`[14]`, chữ in **~4.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
@@ -439,8 +439,9 @@
       - `docs/uml/Sequence_ThanhToanFIFO.puml` & `.svg` (2863 x 3084 px): Toàn bộ luồng gồm cả xem trước và lưu kèm mọi nhánh lỗi. Chữ in: **~1.9 pt** (Chưa đạt 9pt).
       - `docs/uml/Sequence_TaoHoaDon_Phan2_Transaction.puml` & `.svg` (2294 x 2770 px): Bản 2 phần cũ ([15]–[69]), chữ in: **~2.4 pt** (Chưa đạt 9pt).
       - `docs/uml/Sequence_ThanhToanFIFO_Phan2_Transaction.puml` & `.svg` (2594 x 2588 px): Bản 2 phần cũ ([19]–[68]), chữ in: **~2.15 pt** (Chưa đạt 9pt).
-    - **Tài liệu kiểm chứng bố cục A4 thực tế**:
-      - `docs/uml/KiemChung_BoCuc_A4.pdf`: Tài liệu 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực.
+    - **Tài liệu PDF chính thức phục vụ báo cáo và kiểm chứng**:
+      - `docs/uml/BaoCao_UML_A4.pdf`: Bản PDF 5 trang dành cho **chính văn báo cáo thuyết minh** đồ án. Đã loại bỏ khung kiểm chứng nét đứt và nhãn kiểm thử, bố trí sẵn lề an toàn 20mm, chữ đạt chuẩn từ 9.3 pt đến 15.5 pt.
+      - `docs/uml/KiemChung_BoCuc_A4.pdf`: Tài liệu kiểm chứng 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực (dòng thông số chân trang 2 dòng ngắt dòng chuẩn xác không bị cắt lề).
 - **Bằng chứng kiểm thử / Demo**:
   - **Bộ công cụ portable**: `Eclipse Temurin OpenJDK 21.0.12.1+1-jre` (x64 portable) + `PlantUML 1.2026.9` (tại `C:\Users\Admin\.tools\plantuml\`).
   - **Lệnh thực thi**:

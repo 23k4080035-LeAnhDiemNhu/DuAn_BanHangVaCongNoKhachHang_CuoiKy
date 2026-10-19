@@ -134,7 +134,7 @@
     <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(2px);">
         <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
             <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
-                <EditForm EditContext="@editContextSanPham" OnValidSubmit="LuuSanPhamAsync" novalidate>
+                <EditForm EditContext="@editContextSanPham" OnValidSubmit="LuuSanPhamAsync" novalidate class="modal-form-scrollable">
                     <DataAnnotationsValidator />
                     <div class="modal-header modal-header-enterprise text-white">
                         <h5 class="modal-title fw-bold fs-5">
@@ -207,11 +207,11 @@
                                              class="rounded-2 border bg-white" style="width: 64px; height: 64px; object-fit: cover;"
                                              onerror="this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline-flex';" />
                                         <span class="product-table-fallback" style="display: none; width: 64px; height: 64px; font-size: 1.5rem;">📦</span>
-                                        <div class="small flex-grow-1">
+                                        <div class="small flex-grow-1" style="min-width: 0;">
                                             <div class="fw-semibold text-slate-800">
                                                 @(pendingImageBytes != null ? "Ảnh mới chọn (sẽ lưu khi bấm Lưu)" : "Ảnh hiện tại của sản phẩm")
                                             </div>
-                                            <div class="text-muted text-truncate" style="max-width: 380px;">
+                                            <div class="text-muted text-truncate" style="max-width: 100%;">
                                                 @(pendingImageBytes != null ? $"{pendingImageOriginalName} ({Math.Round(pendingImageBytes.Length / 1024.0, 1)} KB)" : formModel.HinhAnh)
                                             </div>
                                             @if (pendingImageBytes != null)

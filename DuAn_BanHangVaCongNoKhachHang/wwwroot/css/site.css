@@ -117,3 +117,78 @@ a:hover, .btn-link:hover {
     .blazor-error-boundary::after {
         content: "An error has occurred."
     }
+
+/* ==========================================================================
+   MODAL RESPONSIVE & FLEX SCROLLABLE CHAIN (Hỗ trợ màn hình 390x844px và mobile)
+   Đảm bảo cấu trúc flex xuyên suốt: modal-dialog -> modal-content -> form -> modal-body
+   ========================================================================== */
+
+/* 1. Modal Dialog: Giới hạn chiều cao theo viewport, chừa khoảng cách nhỏ ở trên/dưới */
+.modal-dialog.modal-dialog-scrollable {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    margin: 0.5rem auto;
+    width: calc(100% - 1rem);
+    max-height: calc(100vh - 1rem);
+    max-height: calc(100dvh - 1rem);
+    height: calc(100vh - 1rem);
+    height: calc(100dvh - 1rem);
+}
+
+@media (min-width: 576px) {
+    .modal-dialog.modal-dialog-scrollable {
+        margin: 1.75rem auto;
+        width: auto;
+        max-height: calc(100vh - 3.5rem);
+        max-height: calc(100dvh - 3.5rem);
+        height: calc(100vh - 3.5rem);
+        height: calc(100dvh - 3.5rem);
+    }
+}
+
+/* 2. Modal Content: Flex column và giới hạn chiều cao tối đa theo modal-dialog */
+.modal-dialog-scrollable .modal-content {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-height: 100%;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 3. Form do EditForm sinh ra: Nối liền chuỗi flex, không làm đứt cấu trúc flex */
+.modal-dialog-scrollable .modal-content > form,
+.modal-dialog-scrollable form.modal-form-scrollable {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 4. Modal Header: Không bị co */
+.modal-dialog-scrollable .modal-header,
+.modal-dialog-scrollable .modal-content > form > .modal-header {
+    flex-shrink: 0;
+}
+
+/* 5. Modal Body: Cuộn dọc mượt mà, co giãn linh hoạt khi nội dung dài */
+.modal-dialog-scrollable .modal-body,
+.modal-dialog-scrollable .modal-content > form > .modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+}
+
+/* 6. Modal Footer: Không bị co, luôn hiển thị nút ở chân modal */
+.modal-dialog-scrollable .modal-footer,
+.modal-dialog-scrollable .modal-content > form > .modal-footer {
+    flex-shrink: 0;
+}
