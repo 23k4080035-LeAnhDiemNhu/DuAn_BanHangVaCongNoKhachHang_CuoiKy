@@ -338,22 +338,56 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         // Dọn dẹp bảng kiểm thử legacy
         await conn.ExecuteAsync("DROP TABLE dbo.KhachHangs_LegacyTest;");
 
-        // 4. KIỂM TRA ĐẶC BIỆT: Thực thi migration script gốc và xác nhận HanThanhToan của các hóa đơn hiện hữu KHÔNG ĐỔI
-        // Đọc snapshot hạn thanh toán hiện tại của tất cả hóa đơn
+        // 4. KIỂM TRA ĐẶC BIỆT: Khởi đầu với bảng KhachHangs CHƯA CÓ SoNgayNo (mô phỏng chính xác DB chính)
+        // 4.1 Đưa bảng KhachHangs về trạng thái legacy (chưa có cột SoNgayNo)
+        await conn.ExecuteAsync(@"
+            DECLARE @def NVARCHAR(128) = (
+                SELECT dc.name FROM sys.default_constraints dc 
+                INNER JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id 
+                WHERE dc.parent_object_id = OBJECT_ID('dbo.KhachHangs') AND c.name = 'SoNgayNo');
+            IF @def IS NOT NULL EXEC('ALTER TABLE dbo.KhachHangs DROP CONSTRAINT ' + @def);
+
+            DECLARE @chk NVARCHAR(128) = (
+                SELECT cc.name FROM sys.check_constraints cc 
+                WHERE cc.parent_object_id = OBJECT_ID('dbo.KhachHangs') AND (cc.definition LIKE '%SoNgayNo%' OR cc.name LIKE '%SoNgayNo%'));
+            IF @chk IS NOT NULL EXEC('ALTER TABLE dbo.KhachHangs DROP CONSTRAINT ' + @chk);
+
+            IF COL_LENGTH('dbo.KhachHangs', 'SoNgayNo') IS NOT NULL
+                ALTER TABLE dbo.KhachHangs DROP COLUMN SoNgayNo;");
+
+        // Xác nhận chắc chắn cột SoNgayNo chưa tồn tại trước migration
+        var colBefore = await conn.ExecuteScalarAsync<int>(
+            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'KhachHangs' AND COLUMN_NAME = 'SoNgayNo'");
+        Assert.Equal(0, colBefore);
+
+        // Đọc snapshot hạn thanh toán hiện tại của tất cả hóa đơn trước migration
         var originalInvoices = (await conn.QueryAsync<dynamic>(
             "SELECT HoaDonId, MaHoaDon, NgayLap, HanThanhToan, TongTien, ConLai FROM dbo.HoaDons ORDER BY HoaDonId")).ToList();
-
         Assert.NotEmpty(originalInvoices);
 
-        // Thực thi script Migration_Add_SoNgayNo_To_KhachHangs.sql
+        // 4.2 LẦN 1: Thực thi migration script gốc từ đầu bằng cách tương đương SSMS (giữ đúng các batch GO)
+        // Lần đầu tiên thêm cột SoNgayNo vào bảng chưa có cột
         await ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql");
 
-        // Đọc lại snapshot sau migration
+        // Xác nhận lần đầu thêm cột thành công (cột đã xuất hiện và là INT NOT NULL)
+        var colAfter1 = await conn.QuerySingleOrDefaultAsync<dynamic>(@"
+            SELECT DATA_TYPE, IS_NULLABLE 
+            FROM INFORMATION_SCHEMA.COLUMNS 
+            WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'KhachHangs' AND COLUMN_NAME = 'SoNgayNo'");
+        Assert.NotNull(colAfter1);
+        Assert.Equal("int", (string)colAfter1.DATA_TYPE);
+        Assert.Equal("NO", (string)colAfter1.IS_NULLABLE);
+
+        // Xác nhận toàn bộ khách hàng cũ được khởi tạo SoNgayNo = 0
+        var allOldCustomers = (await conn.QueryAsync<int>("SELECT SoNgayNo FROM dbo.KhachHangs")).ToList();
+        Assert.NotEmpty(allOldCustomers);
+        Assert.All(allOldCustomers, val => Assert.Equal(0, val));
+
+        // 4.3 Đọc lại snapshot sau migration lần 1: BẢO TOÀN 100% HanThanhToan và dữ liệu hóa đơn
         var afterMigrationInvoices = (await conn.QueryAsync<dynamic>(
             "SELECT HoaDonId, MaHoaDon, NgayLap, HanThanhToan, TongTien, ConLai FROM dbo.HoaDons ORDER BY HoaDonId")).ToList();
 
         Assert.Equal(originalInvoices.Count, afterMigrationInvoices.Count);
-
         for (int i = 0; i < originalInvoices.Count; i++)
         {
             var before = originalInvoices[i];
@@ -367,6 +401,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
             Assert.Equal((decimal)before.TongTien, (decimal)after.TongTien);
             Assert.Equal((decimal)before.ConLai, (decimal)after.ConLai);
         }
+
+        // 4.4 LẦN 2: Chạy lại nguyên tệp migration lần thứ 2 xác nhận IDEMPOTENT (an toàn tuyệt đối khi chạy lại)
+        await ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql");
 
         // 5. KIỂM TRA TÍNH TOÀN VẸN CỦA RÀNG BUỘC SAU MIGRATION TRÊN DB VERIFY:
         // 5.1 DEFAULT constraint thực sự có giá trị là 0
@@ -435,8 +472,17 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         var exCheckUntrusted = await Assert.ThrowsAsync<SqlException>(() => ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql"));
         Assert.Contains("is_not_trusted = 1", exCheckUntrusted.Message);
 
-        // Khôi phục lại trạng thái chuẩn WITH CHECK (ENABLED & TRUSTED)
-        await conn.ExecuteAsync("ALTER TABLE dbo.KhachHangs WITH CHECK CHECK CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative;");
+        // 6.5 Trường hợp CHECK constraint có biểu thức không phải đơn lẻ: CHECK (SoNgayNo >= 0 OR 1=1) -> Bị từ chối, yêu cầu kiểm tra thủ công
+        await conn.ExecuteAsync("ALTER TABLE dbo.KhachHangs DROP CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative;");
+        await conn.ExecuteAsync("ALTER TABLE dbo.KhachHangs WITH CHECK ADD CONSTRAINT CK_KhachHangs_SoNgayNo_Tautology CHECK (SoNgayNo >= 0 OR 1=1);");
+
+        var exCheckTautology = await Assert.ThrowsAsync<SqlException>(() => ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql"));
+        Assert.Contains("LỖI RÀNG BUỘC KHÔNG TƯƠNG THÍCH", exCheckTautology.Message);
+        Assert.Contains("không phải là đúng biểu thức đơn [SoNgayNo >= 0]", exCheckTautology.Message);
+
+        // Dọn dẹp ràng buộc tautology và khôi phục lại trạng thái chuẩn WITH CHECK (ENABLED & TRUSTED)
+        await conn.ExecuteAsync("ALTER TABLE dbo.KhachHangs DROP CONSTRAINT CK_KhachHangs_SoNgayNo_Tautology;");
+        await conn.ExecuteAsync("ALTER TABLE dbo.KhachHangs WITH CHECK ADD CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0);");
 
         // 7. KIỂM TRA CHẠY LẠI THÀNH CÔNG (IDEMPOTENCY): Khi mọi cấu hình đã chuẩn, chạy lại script an toàn 100% không lỗi
         await ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql");

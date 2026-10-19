@@ -221,7 +221,10 @@
                                              class="@($"form-control rounded-3 {(CoLoi("SoNgayNo") ? "is-invalid" : "")}")"
                                              placeholder="0" min="0" step="1"
                                              @bind-Value:after="() => OnKhachHangFieldChanged(nameof(formModel.SoNgayNo))" />
-                                <ValidationMessage For="@(() => formModel.SoNgayNo)" class="text-danger small mt-1 d-block" />
+                                @if (!string.IsNullOrEmpty(LoiSoNgayNoHienThi))
+                                {
+                                    <div class="text-danger small mt-1 d-block">@LoiSoNgayNoHienThi</div>
+                                }
                                 <small class="text-muted d-block mt-1">Số ngày cho phép nợ (0: thanh toán trong ngày).</small>
                             </div>
                             <div class="col-12 d-flex align-items-center pt-1">
@@ -320,10 +323,17 @@
         if (editContextKhachHang != null)
         {
             editContextKhachHang.OnFieldChanged -= HandleKhachHangFieldChanged;
+            editContextKhachHang.OnValidationStateChanged -= HandleKhachHangValidationStateChanged;
         }
         editContextKhachHang = new EditContext(formModel);
         messageStoreKhachHang = new ValidationMessageStore(editContextKhachHang);
         editContextKhachHang.OnFieldChanged += HandleKhachHangFieldChanged;
+        editContextKhachHang.OnValidationStateChanged += HandleKhachHangValidationStateChanged;
+    }
+
+    private void HandleKhachHangValidationStateChanged(object? sender, ValidationStateChangedEventArgs args)
+    {
+        InvokeAsync(StateHasChanged);
     }
 
     private void HandleKhachHangFieldChanged(object? sender, FieldChangedEventArgs args)
@@ -347,6 +357,7 @@
         if (editContextKhachHang != null)
         {
             editContextKhachHang.OnFieldChanged -= HandleKhachHangFieldChanged;
+            editContextKhachHang.OnValidationStateChanged -= HandleKhachHangValidationStateChanged;
         }
     }
 
@@ -434,6 +445,16 @@
 
     private async Task LuuKhachHangAsync()
     {
+        if (isSaving) return;
+        if (!string.IsNullOrEmpty(LoiSoNgayNoHienThi))
+        {
+            return;
+        }
+        if (editContextKhachHang != null && !editContextKhachHang.Validate())
+        {
+            return;
+        }
+
         isSaving = true;
         formErrorMessage = null;
         loiTheoTruong.Clear();
@@ -571,9 +592,44 @@
         }
     }
 
+    private string? LoiSoNgayNoHienThi
+    {
+        get
+        {
+            if (editContextKhachHang == null) return null;
+            var field = new FieldIdentifier(formModel, nameof(formModel.SoNgayNo));
+            var messages = editContextKhachHang.GetValidationMessages(field).ToList();
+            if (!messages.Any()) return null;
+
+            // 1. Lỗi parsing từ InputNumber (số lẻ, chữ, vượt giới hạn kiểu int...)
+            var parseErr = messages.FirstOrDefault(m => m.Contains("không chứa số lẻ hoặc chữ") || m.Contains("must be a number"));
+            if (parseErr != null) return parseErr;
+
+            // 2. Lỗi nghiệp vụ từ server (ValidationMessageStore / res.LoiTheoTruong)
+            if (loiTheoTruong.TryGetValue(nameof(formModel.SoNgayNo), out var serverErr)) return serverErr;
+
+            // 3. Nếu để trống (formModel.SoNgayNo == null), hiển thị lỗi bắt buộc
+            if (formModel.SoNgayNo == null)
+            {
+                var reqErr = messages.FirstOrDefault(m => m.Contains("bắt buộc"));
+                if (reqErr != null) return reqErr;
+            }
+
+            // 4. Lỗi số âm (Range)
+            var rangeErr = messages.FirstOrDefault(m => m.Contains("không âm"));
+            if (rangeErr != null) return rangeErr;
+
+            return messages.First();
+        }
+    }
+
     private bool CoLoi(string field)
     {
         if (editContextKhachHang == null) return false;
+        if (field == nameof(formModel.SoNgayNo))
+        {
+            return !string.IsNullOrEmpty(LoiSoNgayNoHienThi);
+        }
         return editContextKhachHang.GetValidationMessages(new FieldIdentifier(formModel, field)).Any();
     }
 

@@ -37,10 +37,8 @@ BEGIN TRY
     BEGIN
         PRINT N'  -> Cột [SoNgayNo] chưa tồn tại. Đang bổ sung cột với giá trị khởi tạo 0 (NOT NULL DEFAULT 0)...';
         
-        -- Thêm cột SoNgayNo với giá trị mặc định 0 cho toàn bộ dữ liệu hiện hữu kèm ràng buộc CHECK
-        ALTER TABLE dbo.KhachHangs
-        ADD SoNgayNo INT NOT NULL CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0)
-            CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0);
+        -- Thêm cột SoNgayNo qua sp_executesql để không bị lỗi biên dịch Msg 207 trong batch
+        EXEC sp_executesql N'ALTER TABLE dbo.KhachHangs ADD SoNgayNo INT NOT NULL CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0) CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0)';
 
         PRINT N'  -> Đã thêm thành công cột [SoNgayNo] vào dbo.KhachHangs.';
     END
@@ -68,8 +66,13 @@ BEGIN TRY
             PRINT N'    + 1. Kiểu dữ liệu [int] hoàn toàn tương thích.';
         END
 
-        -- 1.2 Kiểm tra dữ liệu âm hiện có: Nếu đã có dữ liệu SoNgayNo < 0, dừng ngay và báo rõ
-        DECLARE @CountNegative INT = (SELECT COUNT(*) FROM dbo.KhachHangs WHERE SoNgayNo < 0);
+        -- 1.2 Kiểm tra dữ liệu âm hiện có: Thực thi qua sp_executesql để tránh Msg 207
+        DECLARE @CountNegative INT = 0;
+        EXEC sp_executesql 
+            N'SELECT @cnt = COUNT(*) FROM dbo.KhachHangs WHERE SoNgayNo < 0',
+            N'@cnt INT OUTPUT',
+            @cnt = @CountNegative OUTPUT;
+
         IF @CountNegative > 0
         BEGIN
             DECLARE @ErrNeg NVARCHAR(300) = N'LỖI DỮ LIỆU BẤT HỢP LỆ: Phát hiện ' + CAST(@CountNegative AS NVARCHAR(10)) + N' bản ghi khách hàng có SoNgayNo < 0. Dừng migration để không làm sai lệch dữ liệu gốc.';
@@ -84,8 +87,8 @@ BEGIN TRY
         IF @IsNullable = 'YES'
         BEGIN
             PRINT N'    + Cột SoNgayNo đang cho phép NULL. Đang chuẩn hóa giá trị NULL thành 0 và chuyển sang NOT NULL...';
-            UPDATE dbo.KhachHangs SET SoNgayNo = 0 WHERE SoNgayNo IS NULL;
-            ALTER TABLE dbo.KhachHangs ALTER COLUMN SoNgayNo INT NOT NULL;
+            EXEC sp_executesql N'UPDATE dbo.KhachHangs SET SoNgayNo = 0 WHERE SoNgayNo IS NULL';
+            EXEC sp_executesql N'ALTER TABLE dbo.KhachHangs ALTER COLUMN SoNgayNo INT NOT NULL';
             PRINT N'    + 3. Đã chuyển SoNgayNo sang INT NOT NULL thành công.';
         END
         ELSE
@@ -121,7 +124,7 @@ BEGIN TRY
         ELSE
         BEGIN
             PRINT N'    + Chưa có DEFAULT CONSTRAINT. Đang bổ sung DEFAULT (0) cho cột SoNgayNo...';
-            ALTER TABLE dbo.KhachHangs ADD CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0) FOR SoNgayNo;
+            EXEC sp_executesql N'ALTER TABLE dbo.KhachHangs ADD CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0) FOR SoNgayNo';
             PRINT N'    + 4. Đã thêm DF_KhachHangs_SoNgayNo DEFAULT (0) thành công.';
         END
     END
@@ -157,21 +160,22 @@ BEGIN TRY
             RAISERROR(@ErrNotTrusted, 16, 1);
         END
 
-        -- 2.3 Kiểm tra biểu thức định nghĩa phải bảo đảm SoNgayNo >= 0
-        DECLARE @CleanCheckDef NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@CheckDef, '(', ''), ')', ''), '[', ''), ']', ''), ' ', '');
-        IF @CleanCheckDef NOT LIKE '%SoNgayNo>=0%'
+        -- 2.3 Kiểm tra biểu thức định nghĩa: Chỉ chấp nhận đúng biểu thức đơn SoNgayNo >= 0, không dùng LIKE
+        DECLARE @CleanCheckDef NVARCHAR(MAX) = REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(@CheckDef, '(', ''), ')', ''), '[', ''), ']', ''), ' ', ''), CHAR(9), ''), CHAR(10), '');
+        SET @CleanCheckDef = REPLACE(@CleanCheckDef, CHAR(13), '');
+
+        IF @CleanCheckDef <> 'SoNgayNo>=0'
         BEGIN
-            DECLARE @ErrCheckDef NVARCHAR(300) = N'LỖI RÀNG BUỘC KHÔNG TƯƠNG THÍCH: Ràng buộc CHECK [' + @CheckName + N'] có định nghĩa [' + @CheckDef + N'] không tương thích với quy tắc [SoNgayNo >= 0]. Dừng migration, không tự ý ghi đè.';
+            DECLARE @ErrCheckDef NVARCHAR(400) = N'LỖI RÀNG BUỘC KHÔNG TƯƠNG THÍCH: Ràng buộc CHECK [' + @CheckName + N'] có định nghĩa [' + @CheckDef + N'] không phải là đúng biểu thức đơn [SoNgayNo >= 0]. Dừng migration, vui lòng kiểm tra thủ công.';
             RAISERROR(@ErrCheckDef, 16, 1);
         END
 
-        PRINT N'  -> 5. Ràng buộc CHECK [' + @CheckName + N'] đã tồn tại, định nghĩa ' + @CheckDef + N', đang ENABLED và TRUSTED.';
+        PRINT N'  -> 5. Ràng buộc CHECK [' + @CheckName + N'] đã tồn tại, đúng biểu thức đơn [SoNgayNo >= 0], đang ENABLED và TRUSTED.';
     END
     ELSE
     BEGIN
         PRINT N'  -> Đang bổ sung ràng buộc CHECK (SoNgayNo >= 0) ở trạng thái WITH CHECK (TRUSTED)...';
-        ALTER TABLE dbo.KhachHangs
-        WITH CHECK ADD CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0);
+        EXEC sp_executesql N'ALTER TABLE dbo.KhachHangs WITH CHECK ADD CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0)';
         PRINT N'  -> 5. Đã thêm ràng buộc CK_KhachHangs_SoNgayNo_NonNegative (ENABLED & TRUSTED) thành công.';
     END
 
