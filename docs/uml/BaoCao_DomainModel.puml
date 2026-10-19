@@ -20,6 +20,7 @@ class KhachHang <<Entity>> #EBF8FF {
     + MaKhachHang : string
     + TenKhachHang : string
     + HanMucCongNo : decimal
+    + SoNgayNo : int
     + SoDuCongNo : decimal <<tổng hợp nạp khi truy vấn>>
     + KiemTraVuotHanMucKhiMua(soTien) : bool
 }

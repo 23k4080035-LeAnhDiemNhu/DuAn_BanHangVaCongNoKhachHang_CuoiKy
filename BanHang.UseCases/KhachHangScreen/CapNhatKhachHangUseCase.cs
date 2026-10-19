@@ -83,7 +83,7 @@ public class CapNhatKhachHangUseCase : ICapNhatKhachHangUseCase
             result.LoiTheoTruong["DiaChi"] = "Địa chỉ không được vượt quá 250 ký tự.";
         }
 
-        // 3. Kiểm tra hạn mức công nợ
+        // 3. Kiểm tra hạn mức công nợ và số ngày nợ
         if (request.HanMucCongNo < 0)
         {
             result.LoiTheoTruong["HanMucCongNo"] = "Hạn mức công nợ không được âm.";
@@ -91,6 +91,11 @@ public class CapNhatKhachHangUseCase : ICapNhatKhachHangUseCase
         else if (decimal.Round(request.HanMucCongNo, 2) != request.HanMucCongNo)
         {
             result.LoiTheoTruong["HanMucCongNo"] = "Hạn mức công nợ tối đa 2 chữ số thập phân.";
+        }
+
+        if (request.SoNgayNo < 0)
+        {
+            result.LoiTheoTruong["SoNgayNo"] = "Số ngày nợ phải là số nguyên không âm.";
         }
 
         if (result.LoiTheoTruong.Count > 0)

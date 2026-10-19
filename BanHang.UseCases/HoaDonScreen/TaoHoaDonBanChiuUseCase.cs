@@ -81,6 +81,15 @@ public class TaoHoaDonBanChiuUseCase : ITaoHoaDonBanChiuUseCase
             };
         }
 
+        if (request.HanThanhToan.Value.Date > new DateTime(9999, 12, 31))
+        {
+            return new TaoHoaDonResult
+            {
+                ThanhCong = false,
+                ThongBao = "Hạn thanh toán vượt quá phạm vi ngày hợp lệ (tối đa 31/12/9999)."
+            };
+        }
+
         // 5. Kiểm tra dòng hàng: ít nhất một dòng sản phẩm
         if (request.ChiTietHoaDons == null || !request.ChiTietHoaDons.Any())
         {

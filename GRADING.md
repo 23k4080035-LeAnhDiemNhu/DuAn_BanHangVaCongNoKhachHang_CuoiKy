@@ -139,22 +139,50 @@
 
 #### K2.1: Thiết kế CSDL từ 5 bảng, chuẩn 3NF, có script tạo bảng và dữ liệu mẫu
 - **Yêu cầu của thầy**: Từ 5 bảng, 3NF, có khóa ngoại; script tạo bảng + dữ liệu mẫu trong repo chạy được.
-- **Trạng thái**: **Một phần / Chưa xác minh thực thi trên DB trống**
+- **Trạng thái**: **Một phần / Đã hoàn tất toàn bộ mã nguồn, giao diện & script an toàn; Đã kiểm chứng trên database mới độc lập; Chưa áp dụng migration trên CSDL chính và chưa kiểm chứng qua browser**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - CSDL gồm 7 bảng chuẩn 3NF:
-    - 6 bảng nghiệp vụ: `BanHang.DataStore.SQL/Scripts/01_CreateDatabaseAndTables.sql`: Dòng 41–180 (`KhachHangs`, `SanPhams`, `HoaDons`, `ChiTietHoaDons`, `ThanhToans`, `PhanBoThanhToans`). Có 2 cặp Header–Line: `HoaDons`–`ChiTietHoaDons` và `ThanhToans`–`PhanBoThanhToans`.
-    - 1 bảng tài khoản: `BanHang.DataStore.SQL/Scripts/03_CreateNguoiDungsTable.sql`: Dòng 8–21 (`NguoiDungs`).
-  - Script dữ liệu mẫu: `BanHang.DataStore.SQL/Scripts/02_SeedData.sql`: Dòng 38–220 nạp khách hàng, sản phẩm, hóa đơn và phân bổ thanh toán phục vụ đối soát tuổi nợ.
-- **Đánh giá trung thực & Cảnh báo an toàn**:
-  - Chưa chạy kiểm chứng tự động toàn bộ script `01_...` và `02_...` từ đầu đến cuối trên một instance SQL Server hoàn toàn trống do lệnh cấm ghi DB chính trong đợt rà soát này.
-  - Script `01_CreateDatabaseAndTables.sql` (dòng 22–33) có lệnh `USE [QuanLyBanHangCongNo]` và `DROP TABLE` hàng loạt; `02_SeedData.sql` (dòng 19–32) có lệnh `DELETE FROM ...` và `DBCC CHECKIDENT RESEED`. **Nguy cơ phá hủy dữ liệu rất cao nếu chạy nhầm vào database đang có dữ liệu thật.**
-  - **Trường còn thiếu / chưa chốt theo Đề 18**: Đặc tả ghi `Customer (hạn mức tín dụng, số ngày nợ)`. Ở đây cần phân biệt:
-    - **Thời hạn tín dụng khách hàng (Số ngày nợ theo chính sách - Credit Terms)**: Quy định số ngày tối đa cho phép khách hàng được nợ kể từ ngày mua hàng trước khi bị coi là quá hạn (ví dụ 30 ngày). Bảng `KhachHangs` và entity `KhachHang.cs` hiện **chưa có trường này**.
-    - **Số ngày quá hạn của từng hóa đơn**: Là chỉ số động được tính toán tại thời điểm chốt báo cáo cho từng khoản nợ (`SoNgayQuaHan = max(0, NgayBaoCao - HanThanhToan)`).
-    - Hai khái niệm này hoàn toàn độc lập và không được nhầm lẫn.
-- **Phần còn thiếu & Công việc cần thực hiện**:
-  - Bổ sung cột `SoNgayNo INT DEFAULT (30)` (thời hạn tín dụng khách hàng) vào bảng `KhachHangs` và entity `KhachHang.cs`.
-  - Chuẩn hóa script tạo bảng sang dạng Idempotent (`IF NOT EXISTS`) và gỡ bỏ lệnh DROP TABLE mặc định.
+  - **Entity & Domain Model**:
+    - `BanHang.CoreBusiness/KhachHang.cs`: Bổ sung thuộc tính `SoNgayNo` (kiểu `int`, mặc định 0, ràng buộc `[Range(0, int.MaxValue)]`). Ý nghĩa nghiệp vụ: `0` là hạn thanh toán cùng ngày lập hóa đơn, không có nghĩa đã thu tiền hay bán tiền ngay.
+  - **DTOs & UseCases Validation**:
+    - `BanHang.UseCases/KhachHangScreen/KhachHangDtoModels.cs`: Bổ sung `SoNgayNo` vào `TaoKhachHangRequest` và `CapNhatKhachHangRequest`.
+    - `BanHang.UseCases/KhachHangScreen/ThemKhachHangUseCase.cs` & `CapNhatKhachHangUseCase.cs`: Kiểm tra validation chặt chẽ `request.SoNgayNo < 0` trả về lỗi trường `SoNgayNo` ("Số ngày nợ phải là số nguyên không âm").
+  - **Repository (DataStore SQL)**:
+    - `BanHang.DataStore.SQL/KhachHangRepository.cs`:
+      - Dòng 35–45, 60–75: Bổ sung `k.SoNgayNo` vào các truy vấn `LayDanhSachKhachHangAsync` và `LayKhachHangTheoIdAsync`.
+      - Dòng 130–145: Thêm `SoNgayNo` vào câu INSERT của `ThemKhachHangAsync`.
+      - Dòng 210–225: Thêm `SoNgayNo = @SoNgayNo` vào câu UPDATE của `CapNhatKhachHangAsync`.
+  - **Giao diện Blazor (Mẫu A, responsive 390 × 844 px)**:
+    - `DuAn_BanHangVaCongNoKhachHang/Pages/KhachHangPage.razor`:
+      - Bổ sung trường `SoNgayNo` vào `FormKhachHangModel` kèm `[Range(0, int.MaxValue)]`.
+      - Thêm ô nhập "Số ngày nợ (Credit terms)" vào modal Thêm/Sửa khách hàng.
+      - Hiển thị thông tin chính sách thời hạn nợ trong bảng danh sách khách hàng (`Thời hạn: X ngày`).
+    - `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`:
+      - Hiển thị chính sách thời hạn nợ của khách hàng trong khối thông tin khách hàng khi lập hóa đơn.
+      - Hàm `TinhHanThanhToanGoiY(DateTime ngayLap, int soNgayNo)` tự động gợi ý `HanThanhToan = NgayLap.Date + SoNgayNo`, có cơ chế bảo vệ chống tràn ngày `DateTime.MaxValue` an toàn, không để `AddDays` văng lỗi unhandled.
+      - Cho phép người dùng chỉnh tay hạn thanh toán (giữ quy tắc `HanThanhToan >= NgayLap`). Nếu chưa sửa tay, đổi Ngày lập sẽ cập nhật lại gợi ý; nếu đã sửa tay, không tự ý ghi đè khi đổi Ngày lập.
+      - Đổi khách hàng sẽ tự động áp dụng chính sách thời hạn nợ của khách hàng mới.
+      - Khôi phục hóa đơn nháp bảo toàn nguyên vẹn hạn đã nhập và cờ trạng thái sửa tay (`daSuaHanThanhToanBangTay`).
+    - `DuAn_BanHangVaCongNoKhachHang/Services/HoaDonNhapStateService.cs`:
+      - Bổ sung `DaSuaHanThanhToanBangTay` vào `HoaDonNhapDto` và các phương thức đồng bộ nháp.
+  - **Bộ Script CSDL an toàn mới & Migration chuyên biệt**:
+    - `BanHang.DataStore.SQL/Scripts/01_Safe_CreateSchema.sql`: Khởi tạo 6 bảng nghiệp vụ an toàn (Idempotent), chuẩn 3NF, không DROP/DELETE/TRUNCATE/RESEED, chặn DB hệ thống (`master`, `model`, `msdb`, `tempdb`), cột `SoNgayNo` kiểu `INT NOT NULL CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0)`, CHECK constraint `CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0)`.
+    - `BanHang.DataStore.SQL/Scripts/02_Safe_CreateNguoiDungs.sql`: Tạo bảng tài khoản an toàn, không ghi mật khẩu thô.
+    - `BanHang.DataStore.SQL/Scripts/03_Safe_SeedSampleData.sql`: Nạp dữ liệu mẫu an toàn trong Transaction, ánh xạ khóa ngoại động theo Mã nghiệp vụ (không phụ thuộc ID Identity), kiểm tra bảng nghiệp vụ trống trước khi nạp.
+    - `BanHang.DataStore.SQL/Scripts/Migration_Add_SoNgayNo_To_KhachHangs.sql`: Migration chuyên biệt nâng cấp CSDL hiện hữu: bổ sung `SoNgayNo` an toàn, gán giá trị khởi tạo `0`, `NOT NULL`, CHECK `>= 0`, **BẢO TOÀN 100% dữ liệu cũ và hạn thanh toán của hóa đơn cũ**.
+    - `BanHang.DataStore.SQL/Scripts/README.md`: Hướng dẫn phân biệt rõ ràng 3 kịch bản: Cài đặt mới, Nâng cấp CSDL cũ, Nạp dữ liệu mẫu.
+- **Bằng chứng kiểm chứng tự động (Unit & Integration Tests)**:
+  - `BanHang.Tests/SoNgayNoVaGoiYHanThanhToanTests.cs`: 11 unit tests kiểm thử toàn diện `SoNgayNo` (mặc định 0, số dương, số âm bị chặn, vượt phạm vi), logic gợi ý ngày lập, và bảo toàn nháp (**Passed 100%**).
+  - `BanHang.Tests/Components/FormValidationTests.cs`: 2 test cases kiểm thử validation `FormKhachHangModel.SoNgayNo` (**Passed 100%**).
+  - `BanHang.Tests/K21DatabaseVerificationTests.cs`: 4 integration tests chạy trực tiếp trên database kiểm chứng độc lập `QuanLyBanHangCongNo_K21_Verify` (có chốt an toàn từ chối tuyệt đối DB chính `QuanLyBanHangCongNo` và DB hệ thống):
+    - `K21_Test01`: Tạo mới đủ bảng, cột `SoNgayNo`, CHECK constraint, Computed Columns (`ThanhTien`, `ConLai`) (**Passed**).
+    - `K21_Test02`: Tạo bảng người dùng, nạp seed dữ liệu mẫu trong transaction, `SoNgayNo` đúng từng khách hàng, Idempotent khi chạy lại (**Passed**).
+    - `K21_Test03`: Ràng buộc CHECK trên CSDL chặn số âm (-1), cho phép 0 và số dương (45) (**Passed**).
+    - `K21_Test04`: Migration trên schema cũ có dữ liệu bảo toàn toàn bộ dữ liệu và bảo toàn 100% `HanThanhToan` của 7 hóa đơn hiện hữu (**Passed**).
+  - Kiểm thử hồi quy toàn bộ solution: 297/297 tests passed sạch sẽ.
+- **Giới hạn kỹ thuật & Công việc còn lại để đạt 100%**:
+  - **Migration trên CSDL chính `QuanLyBanHangCongNo` CHƯA THỰC THI**: Tuân thủ nghiêm ngặt chỉ thị không ghi CSDL chính trong phiên làm việc. Cần chạy script `Migration_Add_SoNgayNo_To_KhachHangs.sql` trên CSDL chính trước khi đưa vào vận hành thực tế.
+  - **Thao tác giao diện trên trình duyệt thực tế**: Chưa kiểm chứng qua browser tự động (tuân thủ quy định không bật web/browser).
+  - Do 2 phần giới hạn trên, tiêu chí K2.1 tiếp tục được ghi nhận trung thực ở mức **Một phần** theo đúng bằng chứng thực tế.
 
 ---
 
@@ -524,5 +552,8 @@
 *(Không còn mục điểm 0 nào về mã nguồn, tính năng hay hồ sơ thiết kế UML; tiêu chí K5.3 thuộc về lịch sử Git quá khứ, nhóm cam kết giữ trung thực không giả lập commit).*
 
 ### Ưu tiên trung bình (Các mục Đạt một phần cần chuẩn hóa):
-1. **[K2.1] Bổ sung trường "Số ngày nợ" cho Khách hàng**: Thêm cột `SoNgayNo` vào bảng `KhachHangs` và entity `KhachHang.cs` theo đặc tả Đề số 18.
+1. **[K2.1] Thực thi migration trên CSDL chính và kiểm chứng browser**:
+   - Toàn bộ mã nguồn C#, UseCase, Repository, giao diện Blazor (Mẫu A, responsive 390 × 844 px) và bộ script an toàn đã hoàn tất và vượt qua 100% kiểm chứng tự động (297/297 tests passed).
+   - Cần chạy script `Migration_Add_SoNgayNo_To_KhachHangs.sql` trên CSDL chính `QuanLyBanHangCongNo` khi được cấp quyền ghi CSDL chính.
+   - Kiểm chứng thao tác lập hóa đơn và gợi ý hạn thanh toán trực tiếp trên trình duyệt web.
 2. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.

@@ -110,6 +110,10 @@
                                         <span class="fw-bold text-primary">@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ</span>
                                     </div>
                                     <div class="d-flex justify-content-between mb-1">
+                                        <span class="text-muted">Chính sách thời hạn:</span>
+                                        <span class="fw-semibold text-dark">@(khachHangHienTai.SoNgayNo == 0 ? "0 ngày (Thanh toán cùng ngày)" : $"{khachHangHienTai.SoNgayNo} ngày")</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
                                         <span class="text-muted">Công nợ hiện tại:</span>
                                         <span class="fw-bold @(khachHangHienTai.SoDuCongNo > 0 ? "text-danger" : "text-success")">
                                             @khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ
@@ -149,6 +153,19 @@
                                     <label class="form-label fw-bold text-dark">Hạn thanh toán <span class="text-danger">*</span></label>
                                     <input type="date" class="form-control rounded-3 @(CoLoi("HanThanhToan") ? "is-invalid" : "")" @bind="formModel.HanThanhToan" min="@formModel.NgayLap.ToString("yyyy-MM-dd")" @bind:after="OnHanThanhToanChanged" />
                                     <ValidationMessage For="@(() => formModel.HanThanhToan)" class="text-danger small mt-1 d-block" />
+                                    @if (!string.IsNullOrEmpty(loiHanThanhToanVuotPhamVi))
+                                    {
+                                        <small class="text-danger fw-semibold d-block mt-1">@loiHanThanhToanVuotPhamVi</small>
+                                    }
+                                    else if (khachHangHienTai != null)
+                                    {
+                                        var goiY = TinhHanThanhToanGoiY(formModel.NgayLap, khachHangHienTai.SoNgayNo);
+                                        <small class="text-muted d-block mt-1">
+                                            @(daSuaHanThanhToanBangTay 
+                                                ? (goiY.HopLe ? $"Đã điều chỉnh thủ công (Gợi ý theo chính sách: {goiY.HanThanhToan:dd/MM/yyyy})" : "Đã điều chỉnh thủ công") 
+                                                : $"Gợi ý tự động: +{khachHangHienTai.SoNgayNo} ngày theo chính sách khách hàng")
+                                        </small>
+                                    }
                                 </div>
                             </div>
                             <div class="mb-0">
@@ -428,6 +445,8 @@
     private KhachHang? khachHangHienTai;
 
     private string maHoaDon = string.Empty;
+    private bool daSuaHanThanhToanBangTay = false;
+    private string? loiHanThanhToanVuotPhamVi = null;
 
     private class DongChiTietItem
     {
@@ -527,6 +546,7 @@
 
                 formModel.NgayLap = draft.NgayLap;
                 formModel.HanThanhToan = draft.HanThanhToan;
+                daSuaHanThanhToanBangTay = draft.DaSuaHanThanhToanBangTay;
                 formModel.GhiChu = draft.GhiChu;
 
                 danhSachChiTiet.Clear();
@@ -579,17 +599,60 @@
         }
     }
 
+    public static (bool HopLe, DateTime? HanThanhToan, string? ThongBaoLoi) TinhHanThanhToanGoiY(DateTime ngayLap, int soNgayNo)
+    {
+        if (soNgayNo < 0)
+        {
+            return (false, null, "Số ngày nợ của khách hàng không hợp lệ (phải là số nguyên không âm).");
+        }
+        if (soNgayNo == 0)
+        {
+            return (true, ngayLap.Date, null);
+        }
+        try
+        {
+            double maxDays = (DateTime.MaxValue.Date - ngayLap.Date).TotalDays;
+            if (soNgayNo > maxDays)
+            {
+                return (false, null, "Hạn thanh toán gợi ý vượt quá ngày tối đa cho phép (31/12/9999). Vui lòng điều chỉnh lại.");
+            }
+            return (true, ngayLap.Date.AddDays(soNgayNo), null);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return (false, null, "Hạn thanh toán gợi ý vượt quá ngày tối đa cho phép (31/12/9999). Vui lòng điều chỉnh lại.");
+        }
+    }
+
     private void OnKhachHangSelected(ChangeEventArgs e)
     {
         if (int.TryParse(e.Value?.ToString(), out int id))
         {
             formModel.KhachHangId = id;
             khachHangHienTai = danhSachKhachHang.FirstOrDefault(k => k.KhachHangId == id);
+            if (khachHangHienTai != null)
+            {
+                // Khi đổi sang khách hàng khác, áp dụng chính sách thời hạn nợ của khách hàng mới
+                daSuaHanThanhToanBangTay = false;
+                var goiY = TinhHanThanhToanGoiY(formModel.NgayLap, khachHangHienTai.SoNgayNo);
+                if (goiY.HopLe)
+                {
+                    formModel.HanThanhToan = goiY.HanThanhToan;
+                    loiHanThanhToanVuotPhamVi = null;
+                }
+                else
+                {
+                    formModel.HanThanhToan = null;
+                    loiHanThanhToanVuotPhamVi = goiY.ThongBaoLoi;
+                }
+                editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)));
+            }
         }
         else
         {
             formModel.KhachHangId = 0;
             khachHangHienTai = null;
+            loiHanThanhToanVuotPhamVi = null;
         }
         editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.KhachHangId)));
         DongBoVaoDraft();
@@ -597,12 +660,35 @@
 
     private void OnNgayLapChanged()
     {
+        if (!daSuaHanThanhToanBangTay && khachHangHienTai != null)
+        {
+            // Nếu hạn chưa được sửa tay, đổi Ngày lập thì cập nhật lại gợi ý
+            var goiY = TinhHanThanhToanGoiY(formModel.NgayLap, khachHangHienTai.SoNgayNo);
+            if (goiY.HopLe)
+            {
+                formModel.HanThanhToan = goiY.HanThanhToan;
+                loiHanThanhToanVuotPhamVi = null;
+            }
+            else
+            {
+                formModel.HanThanhToan = null;
+                loiHanThanhToanVuotPhamVi = goiY.ThongBaoLoi;
+            }
+            editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)));
+        }
+        else
+        {
+            // Nếu người dùng đã sửa hạn bằng tay, không tự ghi đè khi đổi Ngày lập; thông báo để kiểm tra nếu HanThanhToan < NgayLap
+            editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)));
+        }
         editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.NgayLap)));
         DongBoVaoDraft();
     }
 
     private void OnHanThanhToanChanged()
     {
+        daSuaHanThanhToanBangTay = true;
+        loiHanThanhToanVuotPhamVi = null;
         editContextHoaDon?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)));
         DongBoVaoDraft();
     }
@@ -748,7 +834,8 @@
             formModel.NgayLap,
             formModel.HanThanhToan,
             formModel.GhiChu,
-            dongs
+            dongs,
+            daSuaHanThanhToanBangTay
         );
     }
 
@@ -796,6 +883,13 @@
         if (formModel.HanThanhToan.Value.Date < formModel.NgayLap.Date)
         {
             messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)), "Hạn thanh toán không được trước ngày lập hóa đơn.");
+            editContextHoaDon?.NotifyValidationStateChanged();
+            return;
+        }
+
+        if (formModel.HanThanhToan.Value.Date > new DateTime(9999, 12, 31))
+        {
+            messageStoreHoaDon?.Add(new FieldIdentifier(formModel, nameof(formModel.HanThanhToan)), "Hạn thanh toán vượt quá phạm vi ngày hợp lệ (tối đa 31/12/9999).");
             editContextHoaDon?.NotifyValidationStateChanged();
             return;
         }

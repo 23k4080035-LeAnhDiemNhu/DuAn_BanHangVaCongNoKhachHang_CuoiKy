@@ -34,6 +34,7 @@ public class KhachHangRepository : IKhachHangRepository
                 k.Email,
                 k.DiaChi,
                 k.HanMucCongNo,
+                k.SoNgayNo,
                 k.TrangThai,
                 ISNULL(hd.TongConLai, 0) AS SoDuCongNo
             FROM dbo.KhachHangs k
@@ -60,6 +61,7 @@ public class KhachHangRepository : IKhachHangRepository
                 k.Email,
                 k.DiaChi,
                 k.HanMucCongNo,
+                k.SoNgayNo,
                 k.TrangThai,
                 ISNULL(hd.TongConLai, 0) AS SoDuCongNo
             FROM dbo.KhachHangs k
@@ -190,9 +192,9 @@ public class KhachHangRepository : IKhachHangRepository
 
             const string sql = @"
                 INSERT INTO dbo.KhachHangs 
-                    (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiaChi, HanMucCongNo, TrangThai, NgayTao)
+                    (MaKhachHang, TenKhachHang, SoDienThoai, Email, DiaChi, HanMucCongNo, SoNgayNo, TrangThai, NgayTao)
                 VALUES 
-                    (@MaKhachHang, @TenKhachHang, @SoDienThoai, @Email, @DiaChi, @HanMucCongNo, @TrangThai, GETDATE());
+                    (@MaKhachHang, @TenKhachHang, @SoDienThoai, @Email, @DiaChi, @HanMucCongNo, @SoNgayNo, @TrangThai, GETDATE());
                 SELECT CAST(SCOPE_IDENTITY() AS INT);";
 
             var idMoi = await connection.ExecuteScalarAsync<int>(sql, new
@@ -203,6 +205,7 @@ public class KhachHangRepository : IKhachHangRepository
                 request.Email,
                 request.DiaChi,
                 request.HanMucCongNo,
+                request.SoNgayNo,
                 request.TrangThai
             }, transaction: transaction);
 
@@ -296,6 +299,7 @@ public class KhachHangRepository : IKhachHangRepository
                     Email = @Email,
                     DiaChi = @DiaChi,
                     HanMucCongNo = @HanMucCongNo,
+                    SoNgayNo = @SoNgayNo,
                     TrangThai = @TrangThai
                 WHERE KhachHangId = @KhachHangId;";
 
@@ -308,6 +312,7 @@ public class KhachHangRepository : IKhachHangRepository
                 request.Email,
                 request.DiaChi,
                 request.HanMucCongNo,
+                request.SoNgayNo,
                 request.TrangThai
             }, transaction: transaction);
 

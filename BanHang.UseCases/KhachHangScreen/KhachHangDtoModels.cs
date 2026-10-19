@@ -10,6 +10,7 @@ public class TaoKhachHangRequest
     public string? Email { get; set; }
     public string? DiaChi { get; set; }
     public decimal HanMucCongNo { get; set; } = 0;
+    public int SoNgayNo { get; set; } = 0;
     public bool TrangThai { get; set; } = true;
 }
 
@@ -31,6 +32,7 @@ public class CapNhatKhachHangRequest
     public string? Email { get; set; }
     public string? DiaChi { get; set; }
     public decimal HanMucCongNo { get; set; } = 0;
+    public int SoNgayNo { get; set; } = 0;
     public bool TrangThai { get; set; } = true;
 
     /// <summary>

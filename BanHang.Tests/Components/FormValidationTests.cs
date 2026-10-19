@@ -104,6 +104,34 @@ namespace BanHang.Tests.Components
             Assert.DoesNotContain(errors, e => e.MemberNames.Contains(nameof(KhachHangPage.FormKhachHangModel.SoDienThoai)));
         }
 
+        [Fact]
+        public void FormKhachHangModel_SoNgayNo_HopLe_KhongLoi()
+        {
+            var model = new KhachHangPage.FormKhachHangModel
+            {
+                TenKhachHang = "Khách Hàng A",
+                HanMucCongNo = 10000000m,
+                SoNgayNo = 30
+            };
+
+            var errors = ValidateModel(model);
+            Assert.DoesNotContain(errors, e => e.MemberNames.Contains(nameof(KhachHangPage.FormKhachHangModel.SoNgayNo)));
+        }
+
+        [Fact]
+        public void FormKhachHangModel_SoNgayNo_Am_BaoLoi()
+        {
+            var model = new KhachHangPage.FormKhachHangModel
+            {
+                TenKhachHang = "Khách Hàng A",
+                HanMucCongNo = 10000000m,
+                SoNgayNo = -5
+            };
+
+            var errors = ValidateModel(model);
+            Assert.Contains(errors, e => e.MemberNames.Contains(nameof(KhachHangPage.FormKhachHangModel.SoNgayNo)));
+        }
+
 
         // ==========================================
         // 2. SanPham Form Validation

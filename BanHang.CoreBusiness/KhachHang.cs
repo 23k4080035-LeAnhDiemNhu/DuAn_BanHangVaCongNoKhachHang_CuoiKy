@@ -40,6 +40,12 @@ public class KhachHang
     public decimal HanMucCongNo { get; set; } = 0;
 
     /// <summary>
+    /// Số ngày nợ theo chính sách thời hạn tín dụng (Credit Terms) cho phép khách hàng được nợ kể từ ngày mua. Mặc định là 0 (thanh toán cùng ngày).
+    /// </summary>
+    [Range(0, int.MaxValue, ErrorMessage = "Số ngày nợ phải là số nguyên không âm")]
+    public int SoNgayNo { get; set; } = 0;
+
+    /// <summary>
     /// Số dư công nợ hiện tại mà khách hàng đang nợ doanh nghiệp (VNĐ).
     /// </summary>
     public decimal SoDuCongNo { get; set; } = 0;

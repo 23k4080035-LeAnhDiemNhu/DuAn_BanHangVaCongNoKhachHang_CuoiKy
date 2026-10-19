@@ -63,6 +63,7 @@ public class BaoCaoTuoiNoIntegrationTests : IAsyncLifetime
                     SoDienThoai NVARCHAR(20) NULL,
                     DiaChi NVARCHAR(250) NULL,
                     HanMucCongNo DECIMAL(18,2) NOT NULL DEFAULT (0),
+                    SoNgayNo INT NOT NULL DEFAULT (0),
                     NgayTao DATETIME NOT NULL DEFAULT (GETDATE()),
                     TrangThai BIT NOT NULL DEFAULT (1)
                 );

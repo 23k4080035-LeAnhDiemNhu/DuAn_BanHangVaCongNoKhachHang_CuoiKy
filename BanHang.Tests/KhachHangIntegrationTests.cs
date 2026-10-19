@@ -83,9 +83,17 @@ public class KhachHangIntegrationTests : IAsyncLifetime
                         Email NVARCHAR(100) NULL,
                         DiaChi NVARCHAR(250) NULL,
                         HanMucCongNo DECIMAL(18,2) NOT NULL DEFAULT (0),
+                        SoNgayNo INT NOT NULL DEFAULT (0),
                         NgayTao DATETIME NOT NULL DEFAULT (GETDATE()),
                         TrangThai BIT NOT NULL DEFAULT (1)
                     );
+                END
+                ELSE
+                BEGIN
+                    IF COL_LENGTH('dbo.KhachHangs', 'SoNgayNo') IS NULL
+                    BEGIN
+                        ALTER TABLE dbo.KhachHangs ADD SoNgayNo INT NOT NULL CONSTRAINT DF_KhachHangs_SoNgayNo DEFAULT (0) CONSTRAINT CK_KhachHangs_SoNgayNo_NonNegative CHECK (SoNgayNo >= 0);
+                    END
                 END
 
                 IF OBJECT_ID('dbo.SanPhams', 'U') IS NULL

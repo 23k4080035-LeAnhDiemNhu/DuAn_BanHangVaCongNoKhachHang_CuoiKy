@@ -18,6 +18,7 @@ public class HoaDonNhapDto
     public int KhachHangId { get; set; }
     public DateTime NgayLap { get; set; } = DateTime.Today;
     public DateTime? HanThanhToan { get; set; }
+    public bool DaSuaHanThanhToanBangTay { get; set; } = false;
     public string? GhiChu { get; set; }
     public List<DongHangNhapDto> ChiTietDongs { get; set; } = new();
 
@@ -49,7 +50,7 @@ public interface IHoaDonNhapStateService
     /// <summary>
     /// Cập nhật dữ liệu hóa đơn nháp
     /// </summary>
-    void CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets);
+    void CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets, bool daSuaHanThanhToanBangTay = false);
 
     /// <summary>
     /// Xóa toàn bộ dữ liệu nháp khi lưu thành công hoặc người dùng chủ động bấm Hủy

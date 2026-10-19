@@ -36,6 +36,7 @@ class KhachHang {
     + string? DiaChi
     + bool TrangThai
     + decimal HanMucCongNo
+    + int SoNgayNo
     -- Giá trị tổng hợp nạp khi truy vấn (không lưu trong dbo.KhachHangs) --
     + decimal SoDuCongNo <<tổng hợp khi truy vấn>>
     -- Thuộc tính tính toán C# (không lưu cột CSDL) --

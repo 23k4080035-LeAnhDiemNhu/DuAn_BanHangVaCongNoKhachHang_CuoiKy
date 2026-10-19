@@ -74,7 +74,10 @@
                                 }
                             </td>
                             <td class="text-nowrap text-secondary">@(string.IsNullOrEmpty(kh.SoDienThoai) ? "-" : kh.SoDienThoai)</td>
-                            <td class="text-end text-nowrap fw-semibold text-slate-800">@kh.HanMucCongNo.ToString("N0", viCulture) đ</td>
+                            <td class="text-end text-nowrap fw-semibold text-slate-800">
+                                @kh.HanMucCongNo.ToString("N0", viCulture) đ
+                                <small class="text-muted d-block">Thời hạn: @kh.SoNgayNo ngày</small>
+                            </td>
                             <td class="text-end text-nowrap fw-bold @(kh.SoDuCongNo > 0 ? "text-danger" : "text-success")">
                                 @kh.SoDuCongNo.ToString("N0", viCulture) đ
                             </td>
@@ -211,10 +214,20 @@
                                 <ValidationMessage For="@(() => formModel.HanMucCongNo)" class="text-danger small mt-1 d-block" />
                                 <small class="text-muted d-block mt-1">Nhập 0 nếu không cho phép bán chịu.</small>
                             </div>
-                            <div class="col-md-6 d-flex align-items-center mt-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold text-slate-800 small mb-1">Số ngày nợ (Credit terms) <span class="text-danger">*</span></label>
+                                <InputNumber @bind-Value="formModel.SoNgayNo"
+                                             ParsingErrorMessage="Số ngày nợ phải là số nguyên không âm hợp lệ (không chứa số lẻ hoặc chữ)."
+                                             class="@($"form-control rounded-3 {(CoLoi("SoNgayNo") ? "is-invalid" : "")}")"
+                                             placeholder="0" min="0" step="1"
+                                             @bind-Value:after="() => OnKhachHangFieldChanged(nameof(formModel.SoNgayNo))" />
+                                <ValidationMessage For="@(() => formModel.SoNgayNo)" class="text-danger small mt-1 d-block" />
+                                <small class="text-muted d-block mt-1">Số ngày cho phép nợ (0: thanh toán trong ngày).</small>
+                            </div>
+                            <div class="col-12 d-flex align-items-center pt-1">
                                 <div class="form-check form-switch fs-6">
                                     <input class="form-check-input" type="checkbox" id="chkTrangThai" @bind="formModel.TrangThai" />
-                                    <label class="form-check-label fw-semibold" for="chkTrangThai">
+                                    <label class="form-check-label fw-semibold ms-1" for="chkTrangThai">
                                         @(formModel.TrangThai ? "Đang hoạt động (Cho phép bán chịu)" : "Tạm khóa (Chặn bán chịu)")
                                     </label>
                                 </div>
@@ -376,7 +389,8 @@
         {
             MaKhachHang = maKhMoi,
             TrangThai = true,
-            HanMucCongNo = 0
+            HanMucCongNo = 0,
+            SoNgayNo = 0
         };
         KhoiTaoEditContextKhachHang();
         loiTheoTruong.Clear();
@@ -397,6 +411,7 @@
             Email = kh.Email,
             DiaChi = kh.DiaChi,
             HanMucCongNo = kh.HanMucCongNo,
+            SoNgayNo = kh.SoNgayNo,
             TrangThai = kh.TrangThai,
             XacNhanHaHanMucDuoiNo = false
         };
@@ -436,6 +451,7 @@
                     Email = formModel.Email,
                     DiaChi = formModel.DiaChi,
                     HanMucCongNo = formModel.HanMucCongNo,
+                    SoNgayNo = formModel.SoNgayNo ?? 0,
                     TrangThai = formModel.TrangThai
                 };
 
@@ -471,6 +487,7 @@
                     Email = formModel.Email,
                     DiaChi = formModel.DiaChi,
                     HanMucCongNo = formModel.HanMucCongNo,
+                    SoNgayNo = formModel.SoNgayNo ?? 0,
                     TrangThai = formModel.TrangThai,
                     XacNhanHaHanMucDuoiNo = formModel.XacNhanHaHanMucDuoiNo
                 };
@@ -581,6 +598,10 @@
 
         [Range(0, double.MaxValue, ErrorMessage = "Hạn mức công nợ không được âm.")]
         public decimal HanMucCongNo { get; set; } = 0;
+
+        [Required(ErrorMessage = "Số ngày nợ là bắt buộc (nhập 0 nếu thanh toán cùng ngày).")]
+        [Range(0, int.MaxValue, ErrorMessage = "Số ngày nợ phải là số nguyên không âm (từ 0 đến 2.147.483.647).")]
+        public int? SoNgayNo { get; set; } = 0;
 
         public bool TrangThai { get; set; } = true;
         public bool XacNhanHaHanMucDuoiNo { get; set; } = false;

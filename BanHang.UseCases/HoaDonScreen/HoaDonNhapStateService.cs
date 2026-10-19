@@ -22,6 +22,7 @@ public class HoaDonNhapStateService : IHoaDonNhapStateService
             KhachHangId = _draft.KhachHangId,
             NgayLap = _draft.NgayLap,
             HanThanhToan = _draft.HanThanhToan,
+            DaSuaHanThanhToanBangTay = _draft.DaSuaHanThanhToanBangTay,
             GhiChu = _draft.GhiChu,
             ChiTietDongs = _draft.ChiTietDongs.Select(d => new DongHangNhapDto
             {
@@ -31,13 +32,14 @@ public class HoaDonNhapStateService : IHoaDonNhapStateService
         };
     }
 
-    public void CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets)
+    public void CapNhatNhap(int khachHangId, DateTime ngayLap, DateTime? hanThanhToan, string? ghiChu, IEnumerable<DongHangNhapDto> chiTiets, bool daSuaHanThanhToanBangTay = false)
     {
         _draft = new HoaDonNhapDto
         {
             KhachHangId = khachHangId,
             NgayLap = ngayLap,
             HanThanhToan = hanThanhToan,
+            DaSuaHanThanhToanBangTay = daSuaHanThanhToanBangTay,
             GhiChu = ghiChu,
             ChiTietDongs = chiTiets?.Select(d => new DongHangNhapDto
             {
