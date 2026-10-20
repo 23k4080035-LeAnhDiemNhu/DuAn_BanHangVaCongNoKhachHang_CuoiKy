@@ -1,63 +1,225 @@
 @import url('open-iconic/font/css/open-iconic-bootstrap.min.css');
 
-html, body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background-color: #F4F6FA;
-    color: #1E293B;
+:root {
+    --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    
+    /* Core Brand Colors */
+    --brand-primary: #4F46E5;
+    --brand-primary-hover: #4338CA;
+    --brand-primary-light: #EEF2FF;
+    --brand-gradient: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
+    --brand-gradient-glow: 0 8px 24px -4px rgba(79, 70, 229, 0.45);
+    
+    /* Semantic Status */
+    --emerald-primary: #10B981;
+    --emerald-gradient: linear-gradient(135deg, #059669 0%, #10B981 100%);
+    --amber-primary: #F59E0B;
+    --amber-gradient: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+    --rose-primary: #EF4444;
+    --rose-gradient: linear-gradient(135deg, #DC2626 0%, #EF4444 100%);
+    
+    /* Surface & Background */
+    --surface-bg: #F8FAFC;
+    --surface-card: #FFFFFF;
+    --text-main: #0F172A;
+    --text-muted: #475569;
+    --border-color: #E2E8F0;
+    --border-subtle: #F1F5F9;
+    
+    /* Elevation & Shadows */
+    --shadow-subtle: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+    --shadow-card: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.03);
+    --shadow-hover: 0 20px 30px -8px rgba(15, 23, 42, 0.08), 0 4px 10px -2px rgba(15, 23, 42, 0.03);
 }
+
+html, body {
+    font-family: var(--font-sans);
+    background-color: var(--surface-bg);
+    color: var(--text-main);
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.02em;
+    color: var(--text-main);
+    font-weight: 700;
+}
+
+.fw-black { font-weight: 900 !important; }
+.fw-extrabold { font-weight: 800 !important; }
+.text-slate-800 { color: #1E293B !important; }
+.text-slate-900 { color: #0F172A !important; }
+.font-mono { font-family: var(--font-mono) !important; }
 
 h1:focus {
     outline: none;
 }
 
+/* Typography Links */
 a, .btn-link {
-    color: #2563EB;
+    color: var(--brand-primary);
     text-decoration: none;
+    font-weight: 500;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 a:hover, .btn-link:hover {
-    color: #1D4ED8;
-    text-decoration: underline;
+    color: var(--brand-primary-hover);
+    text-decoration: none;
 }
 
 .text-primary {
-    color: #2563EB !important;
+    color: var(--brand-primary) !important;
+}
+
+/* Buttons System */
+.btn {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    border-radius: 12px;
+    padding: 0.55rem 1.15rem;
+    font-size: 0.885rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.btn:active {
+    transform: scale(0.98);
 }
 
 .btn-primary {
-    color: #ffffff;
-    background-color: #2563EB;
-    border-color: #2563EB;
-    transition: all 0.15s ease-in-out;
+    color: #ffffff !important;
+    background: var(--brand-gradient);
+    border: none;
+    box-shadow: 0 4px 14px 0 rgba(79, 70, 229, 0.35);
 }
 
 .btn-primary:hover {
-    color: #ffffff;
-    background-color: #1D4ED8;
-    border-color: #1D4ED8;
+    background: linear-gradient(135deg, #4338CA 0%, #2563EB 100%);
+    box-shadow: 0 6px 20px -2px rgba(79, 70, 229, 0.5);
+    transform: translateY(-1px);
 }
 
 .btn-primary:focus, .btn-primary:focus-visible {
-    color: #ffffff;
-    background-color: #1D4ED8;
-    border-color: #1D4ED8;
-    box-shadow: 0 0 0 0.25rem rgba(37, 99, 235, 0.25);
+    box-shadow: 0 0 0 0.25rem rgba(79, 70, 229, 0.25);
+    outline: none;
 }
 
 .btn-primary:disabled, .btn-primary.disabled {
-    background-color: #93C5FD;
-    border-color: #93C5FD;
-    color: #ffffff;
-    opacity: 0.8;
+    background: #A5B4FC;
+    box-shadow: none;
+    opacity: 0.85;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-success {
+    color: #ffffff !important;
+    background: var(--emerald-gradient);
+    border: none;
+    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.35);
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #047857 0%, #059669 100%);
+    box-shadow: 0 6px 20px -2px rgba(16, 185, 129, 0.5);
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+    border: 1.5px solid #C7D2FE;
+    color: var(--brand-primary);
+    background-color: #FFFFFF;
+}
+
+.btn-outline-primary:hover {
+    background-color: var(--brand-primary-light);
+    border-color: var(--brand-primary);
+    color: var(--brand-primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+    border: 1.5px solid var(--border-color);
+    color: #475569;
+    background-color: #FFFFFF;
+}
+
+.btn-outline-secondary:hover {
+    background-color: #F8FAFC;
+    border-color: #CBD5E1;
+    color: #1E293B;
+    transform: translateY(-1px);
 }
 
 .rounded-pill {
     border-radius: 9999px !important;
 }
 
+/* Cards & Containers */
+.card {
+    border-radius: 16px;
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-card);
+    transition: box-shadow 0.25s ease, transform 0.25s ease;
+    background: var(--surface-card);
+}
+
+.card-hover-lift:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-hover);
+}
+
+/* Data Tables Excellence */
+.custom-page-table, .custom-invoice-table {
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.custom-page-table thead th, .custom-invoice-table thead th {
+    background-color: #F8FAFC;
+    color: #64748B;
+    font-size: 0.725rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    border-top: none;
+}
+
+.custom-page-table tbody td, .custom-invoice-table tbody td {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid var(--border-subtle);
+    font-size: 0.885rem;
+    transition: background-color 0.15s ease;
+}
+
+.custom-page-table tbody tr:hover, .custom-invoice-table tbody tr:hover {
+    background-color: rgba(248, 250, 252, 0.85);
+}
+
+.custom-page-table tfoot td, .custom-invoice-table tfoot td {
+    background-color: #F8FAFC;
+    border-top: 2px solid var(--border-color);
+    padding: 0.9rem 1rem;
+}
+
+.font-mono, .currency-cell {
+    font-family: var(--font-mono);
+    letter-spacing: -0.02em;
+}
+
 .content {
-    padding-top: 1.25rem;
-    padding-bottom: 2rem;
+    padding-top: 1.5rem;
+    padding-bottom: 2.5rem;
     min-width: 0;
     width: 100%;
     max-width: 100%;
@@ -70,6 +232,26 @@ a:hover, .btn-link:hover {
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    border-radius: 14px;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #CBD5E1;
+    border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94A3B8;
 }
 
 .table-nowrap th,
@@ -78,34 +260,41 @@ a:hover, .btn-link:hover {
 }
 
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid #10B981;
 }
 
 .invalid {
-    outline: 1px solid red;
+    outline: 1px solid #EF4444;
 }
 
 .validation-message {
-    color: red;
+    color: #EF4444;
+    font-size: 0.825rem;
+    margin-top: 0.25rem;
+    font-weight: 500;
 }
 
 #blazor-error-ui {
-    background: lightyellow;
+    background: #FEF3C7;
+    color: #92400E;
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.08);
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: 0.75rem 1.5rem;
     position: fixed;
     width: 100%;
-    z-index: 1000;
+    z-index: 10000;
+    font-weight: 500;
+    border-top: 1px solid #FDE68A;
 }
 
     #blazor-error-ui .dismiss {
         cursor: pointer;
         position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
+        right: 1.25rem;
+        top: 0.65rem;
+        font-size: 1.1rem;
     }
 
 .blazor-error-boundary {

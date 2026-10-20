@@ -5,7 +5,7 @@
     width: 100%;
     max-width: 100%;
     min-height: 100vh;
-    background-color: #F4F6FA;
+    background-color: #F8FAFC;
 }
 
 main {
@@ -15,7 +15,7 @@ main {
     max-width: 100%;
     display: flex;
     flex-direction: column;
-    background-color: #F4F6FA;
+    background-color: #F8FAFC;
 }
 
 article {
@@ -26,32 +26,155 @@ article {
 }
 
 .sidebar {
-    background-color: #14243B; /* Sidebar navy phẳng, bỏ hoàn toàn gradient tím */
+    background-color: #0B132B;
+    border-right: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* TOPBAR HEADER CAO CẤP */
 .top-row {
-    background-color: #ffffff;
+    background-color: #FFFFFF;
     border-bottom: 1px solid #E2E8F0;
     justify-content: space-between;
-    min-height: 3.5rem;
+    min-height: 4.25rem;
     height: auto;
-    padding-top: 0.5rem;
-    padding-bottom: 0.5rem;
+    padding-top: 0.65rem;
+    padding-bottom: 0.65rem;
     display: flex;
     align-items: center;
     width: 100%;
     max-width: 100%;
-    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+    box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04);
+    z-index: 1000;
 }
 
-    .top-row ::deep a, .top-row .btn-link {
-        white-space: nowrap;
-    }
+/* Chip trạng thái bên trái */
+.topbar-context-pill {
+    background-color: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 9999px;
+    padding: 0.4rem 0.95rem;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #1E293B;
+}
 
-    .top-row a:first-child {
-        overflow: hidden;
-        text-overflow: ellipsis;
-    }
+.pulse-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #10B981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25);
+    display: inline-block;
+}
+
+.context-label {
+    letter-spacing: -0.01em;
+}
+
+/* Widget Hồ sơ người dùng */
+.user-profile-widget {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    padding: 0.35rem 0.85rem 0.35rem 0.45rem;
+    transition: all 0.2s ease;
+}
+
+.user-profile-widget:hover {
+    border-color: #CBD5E1;
+    background-color: #F1F5F9;
+}
+
+.user-avatar-wrap {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #FFFFFF;
+    font-size: 0.8rem;
+    font-weight: 900;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
+.avatar-wrap-kt {
+    background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+}
+
+.avatar-wrap-nv {
+    background: linear-gradient(135deg, #4F46E5 0%, #3B82F6 100%);
+}
+
+.user-display-name {
+    font-size: 0.885rem;
+    font-weight: 800;
+    color: #0F172A;
+    line-height: 1.25;
+}
+
+.user-role-badge-row {
+    margin-top: 0.1rem;
+}
+
+.role-badge-mini {
+    font-size: 0.72rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 6px;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.2;
+}
+
+.role-kt {
+    background-color: #D1FAE5;
+    color: #065F46;
+    border: 1px solid #A7F3D0;
+}
+
+.role-nv {
+    background-color: #EEF2FF;
+    color: #312E81;
+    border: 1px solid #C7D2FE;
+}
+
+/* Vạch phân cách */
+.topbar-divider {
+    width: 1px;
+    height: 28px;
+    background-color: #E2E8F0;
+}
+
+/* Nút Đăng xuất */
+.btn-topbar-logout {
+    border-radius: 10px;
+    padding: 0.45rem 0.95rem;
+    font-size: 0.825rem;
+    font-weight: 700;
+    background-color: #FFF1F2;
+    border: 1px solid #FECDD3;
+    color: #E11D48 !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    text-decoration: none;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-topbar-logout:hover {
+    background-color: #FFE4E6;
+    border-color: #FDA4AF;
+    color: #BE123C !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(225, 29, 72, 0.15);
+}
+
+.top-row ::deep a, .top-row .btn-link {
+    white-space: nowrap;
+}
 
 @media (max-width: 640.98px) {
     .top-row:not(.auth) {
@@ -75,9 +198,9 @@ article {
     }
 
     .sidebar {
-        width: 250px;
-        min-width: 250px;
-        flex: 0 0 250px;
+        width: 270px;
+        min-width: 270px;
+        flex: 0 0 270px;
         height: 100vh;
         position: sticky;
         top: 0;
@@ -85,8 +208,8 @@ article {
     }
 
     main {
-        width: calc(100% - 250px);
-        max-width: calc(100% - 250px);
+        width: calc(100% - 270px);
+        max-width: calc(100% - 270px);
     }
 
     .top-row {
@@ -97,6 +220,6 @@ article {
 
     .top-row, article {
         padding-left: 2rem !important;
-        padding-right: 1.5rem !important;
+        padding-right: 2rem !important;
     }
 }

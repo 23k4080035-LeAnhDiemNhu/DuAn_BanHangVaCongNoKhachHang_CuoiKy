@@ -1,7 +1,8 @@
 @inherits LayoutComponentBase
 @using System.Security.Claims
+@using BanHang.CoreBusiness
 
-<PageTitle>DuAn_BanHangVaCongNoKhachHang</PageTitle>
+<PageTitle>Quản lý Bán hàng & Công nợ</PageTitle>
 
 <div class="page">
     <div class="sidebar">
@@ -9,29 +10,67 @@
     </div>
 
     <main>
-        <div class="top-row auth px-3 px-md-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
-            <span class="fw-bold" style="color: #0F172A;">Hệ Thống Quản Lý Bán Hàng & Công Nợ</span>
-            <AuthorizeView>
-                <Authorized>
-                    <div class="d-flex align-items-center flex-wrap gap-2">
-                        <span class="small text-nowrap" style="color: #64748B;">
-                            Xin chào, <strong style="color: #0F172A;">@(context.User.FindFirst("HoTen")?.Value ?? context.User.Identity?.Name)</strong>
-                            <span class="badge rounded-pill ms-1 px-2 py-1" style="background-color: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE;">
-                                @(context.User.FindFirst(ClaimTypes.Role)?.Value)
-                            </span>
-                        </span>
-                        <a href="/logout" class="btn btn-sm btn-outline-danger rounded-pill px-3 text-nowrap">Đăng xuất</a>
-                    </div>
-                </Authorized>
-                <NotAuthorized>
-                    <div>
-                        <a href="/login" class="btn btn-sm btn-primary rounded-pill px-3 text-nowrap">Đăng nhập</a>
-                    </div>
-                </NotAuthorized>
-            </AuthorizeView>
-        </div>
+        <header class="top-row auth px-3 px-md-4 d-flex justify-content-between align-items-center">
+            <!-- Khu vực bên trái: Nhận diện không gian làm việc doanh nghiệp -->
+            <div class="topbar-left d-flex align-items-center gap-3">
+                <div class="topbar-context-pill d-flex align-items-center gap-2">
+                    <span class="pulse-indicator"></span>
+                    <span class="context-label">Cổng Nghiệp Vụ Doanh Nghiệp</span>
+                </div>
+            </div>
 
-        <article class="content px-3 px-md-4">
+            <!-- Khu vực bên phải: Widget người dùng & Đăng xuất chuẩn Enterprise -->
+            <div class="topbar-right">
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="d-flex align-items-center gap-2 gap-md-3">
+                            <!-- Card hồ sơ nhân sự -->
+                            <div class="user-profile-widget d-flex align-items-center gap-2 gap-md-3">
+                                <div class="user-avatar-wrap @(context.User.IsInRole(VaiTroConstants.KeToanCongNo) ? "avatar-wrap-kt" : "avatar-wrap-nv")">
+                                    <span class="avatar-text">@(context.User.IsInRole(VaiTroConstants.KeToanCongNo) ? "KT" : "NV")</span>
+                                </div>
+                                <div class="d-flex flex-column text-start">
+                                    <span class="user-display-name">@(context.User.FindFirst("HoTen")?.Value ?? context.User.Identity?.Name)</span>
+                                    <div class="user-role-badge-row">
+                                        @if (context.User.IsInRole(VaiTroConstants.KeToanCongNo))
+                                        {
+                                            <span class="role-badge-mini role-kt">
+                                                <i class="bi bi-shield-check me-1"></i>Kế toán công nợ
+                                            </span>
+                                        }
+                                        else
+                                        {
+                                            <span class="role-badge-mini role-nv">
+                                                <i class="bi bi-person-check-fill me-1"></i>Nhân viên bán hàng
+                                            </span>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Vạch phân cách tinh tế -->
+                            <div class="topbar-divider d-none d-sm-block"></div>
+
+                            <!-- Nút Đăng xuất phong cách cao cấp -->
+                            <a href="/logout" class="btn-topbar-logout" title="Đăng xuất khỏi phiên làm việc">
+                                <i class="bi bi-box-arrow-right"></i>
+                                <span class="d-none d-sm-inline">Đăng xuất</span>
+                            </a>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div>
+                            <a href="/login" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2">
+                                <i class="bi bi-box-arrow-in-right"></i>
+                                <span>Đăng nhập</span>
+                            </a>
+                        </div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+        </header>
+
+        <article class="content px-3 px-md-4 py-3 py-md-4">
             @Body
         </article>
     </main>

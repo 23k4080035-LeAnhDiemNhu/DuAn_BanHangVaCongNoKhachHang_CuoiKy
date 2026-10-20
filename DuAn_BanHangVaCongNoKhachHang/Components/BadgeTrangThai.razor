@@ -1,6 +1,7 @@
 @namespace DuAn_BanHangVaCongNoKhachHang.Components
 
-<span class="status-badge @LayCssClass() text-nowrap" id="@Id">
+<span class="status-badge @LayCssClass() text-nowrap d-inline-flex align-items-center gap-1" id="@Id">
+    <span class="status-dot" aria-hidden="true"></span>
     @if (ChildContent != null)
     {
         @ChildContent

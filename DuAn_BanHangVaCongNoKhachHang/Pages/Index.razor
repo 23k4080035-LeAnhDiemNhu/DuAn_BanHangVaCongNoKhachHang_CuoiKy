@@ -1,71 +1,367 @@
 @page "/"
 @using BanHang.CoreBusiness
 
-<PageTitle>Trang chủ - Bán Hàng & Công Nợ</PageTitle>
+<PageTitle>Trang chủ - Quản lý Bán hàng & Công nợ</PageTitle>
 
-<div class="py-4">
-    <div class="p-4 mb-4 bg-light rounded-3 shadow-sm">
-        <h1 class="display-6 fw-bold text-primary">Hệ Thống Bán Hàng & Quản Lý Công Nợ Khách Hàng</h1>
-        <p class="col-md-10 fs-6 text-muted">
-            Hệ thống hỗ trợ lập hóa đơn bán chịu, kiểm soát hạn mức tín dụng tức thời, thu tiền cấn trừ công nợ theo thứ tự FIFO và phân tích tuổi nợ.
-        </p>
+<div class="homepage-container pb-4">
+    <!-- KHỐI CHÀO MỪNG THU GỌN - CHỮ TRẮNG NỔI BẬT 100%, KHÔNG BAO GIỜ BỊ KHUẤT -->
+    <div class="welcome-banner rounded-4 p-4 p-md-5 mb-4 shadow-sm">
+        <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div>
+                <h1 class="welcome-title mb-2">
+                    @LayLoiChaoTheoGio(), 
+                    <AuthorizeView>
+                        <Authorized>
+                            <span class="user-name-highlight">@(context.User.FindFirst("HoTen")?.Value ?? context.User.Identity?.Name)</span>!
+                        </Authorized>
+                        <NotAuthorized>
+                            <span class="user-name-highlight">Quý khách</span>!
+                        </NotAuthorized>
+                    </AuthorizeView>
+                </h1>
+                <p class="welcome-desc mb-0">
+                    Quản lý bán hàng, theo dõi công nợ và thanh toán khách hàng
+                </p>
+            </div>
+            
+            <AuthorizeView>
+                <NotAuthorized>
+                    <div class="flex-shrink-0">
+                        <a href="/login" class="btn btn-login-banner rounded-pill px-4 py-2 fw-bold shadow-sm d-inline-flex align-items-center gap-2" id="btn-home-login">
+                            <i class="bi bi-box-arrow-in-right"></i>
+                            <span>Đăng nhập</span>
+                        </a>
+                    </div>
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
     </div>
 
+    <!-- KHỐI CHỨC NĂNG THEO VAI TRÒ (CHỈ HIỂN THỊ KHI ĐÃ ĐĂNG NHẬP, ĐÚNG VAI TRÒ) -->
     <AuthorizeView>
         <Authorized>
-            <div class="alert alert-info d-flex align-items-center mb-4">
-                <div>
-                    Phiên làm việc hiện tại: <strong>@context.User.Identity?.Name</strong> 
-                    (Vai trò: <span class="badge bg-primary">@(context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value)</span>)
+            <div class="quick-access-section">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 pb-2 border-bottom">
+                    <h4 class="section-heading mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-grid-fill text-primary"></i>
+                        <span>Chức năng thường dùng</span>
+                    </h4>
+                    <span class="role-badge-pill">
+                        @(context.User.IsInRole(VaiTroConstants.KeToanCongNo) ? "Vai trò: Kế toán công nợ" : "Vai trò: Nhân viên bán hàng")
+                    </span>
                 </div>
-            </div>
 
-            <div class="row g-4">
-                <AuthorizeView Roles="@VaiTroConstants.NhanVienBanHang" Context="nvbhContext">
-                    <div class="col-md-6">
-                        <div class="card h-100 shadow-sm border-0 border-top border-4 border-primary">
-                            <div class="card-body p-4">
-                                <h5 class="card-title fw-bold text-primary">Nhân Viên Bán Hàng</h5>
-                                <p class="card-text text-muted">
-                                    Thực hiện lập hóa đơn bán chịu, tra cứu hạn mức tín dụng của khách hàng và theo dõi danh sách hóa đơn xuất bán.
-                                </p>
-                                <div class="d-flex gap-2 mt-3">
-                                    <a href="/hoa-don/tao" class="btn btn-primary btn-sm">+ Lập hóa đơn mới</a>
-                                    <a href="/hoa-don" class="btn btn-outline-primary btn-sm">Xem danh sách hóa đơn</a>
+                <div class="row g-3">
+                    <!-- Phân quyền: Nhân viên bán hàng -->
+                    <AuthorizeView Roles="@VaiTroConstants.NhanVienBanHang" Context="nvContext">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-primary-subtle text-primary">
+                                        <i class="bi bi-file-earmark-plus-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Lập hóa đơn bán chịu</h5>
+                                        <p class="function-card-desc mb-0">Tạo mới đơn hàng và kiểm soát hạn mức</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/hoa-don/tao" class="btn btn-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-tao-hd">
+                                        Lập hóa đơn mới
+                                    </a>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </AuthorizeView>
 
-                <AuthorizeView Roles="@VaiTroConstants.KeToanCongNo" Context="ktcnContext">
-                    <div class="col-md-6">
-                        <div class="card h-100 shadow-sm border-0 border-top border-4 border-success">
-                            <div class="card-body p-4">
-                                <h5 class="card-title fw-bold text-success">Kế Toán Công Nợ</h5>
-                                <p class="card-text text-muted">
-                                    Quản lý danh mục khách hàng, sản phẩm bảng giá, lập phiếu thu tiền phân bổ FIFO và lập báo cáo phân tích tuổi nợ.
-                                </p>
-                                <div class="d-flex flex-wrap gap-2 mt-3">
-                                    <a href="/khach-hang" class="btn btn-outline-secondary btn-sm">Khách hàng</a>
-                                    <a href="/san-pham" class="btn btn-outline-secondary btn-sm">Sản phẩm</a>
-                                    <a href="/thanh-toan" class="btn btn-success btn-sm">Phiếu thu & FIFO</a>
-                                    <a href="/bao-cao-tuoi-no" class="btn btn-outline-success btn-sm">Báo cáo tuổi nợ</a>
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-indigo-subtle text-indigo">
+                                        <i class="bi bi-file-earmark-text-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Danh sách hóa đơn</h5>
+                                        <p class="function-card-desc mb-0">Tra cứu trạng thái hóa đơn & thanh toán</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/hoa-don" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-xem-hd">
+                                        Xem hóa đơn
+                                    </a>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </AuthorizeView>
+                    </AuthorizeView>
+
+                    <!-- Phân quyền: Kế toán công nợ -->
+                    <AuthorizeView Roles="@VaiTroConstants.KeToanCongNo" Context="ktContext">
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-success-subtle text-success">
+                                        <i class="bi bi-cash-stack"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Lập phiếu thu tiền</h5>
+                                        <p class="function-card-desc mb-0">Ghi nhận thanh toán và phân bổ FIFO</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/thanh-toan/tao" class="btn btn-success rounded-pill w-100 fw-bold py-2" id="btn-quick-thu-tien">
+                                        Lập phiếu thu
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-cyan-subtle text-cyan-dark">
+                                        <i class="bi bi-pie-chart-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Báo cáo tuổi nợ</h5>
+                                        <p class="function-card-desc mb-0">Phân tích 4 nhóm tuổi nợ & xuất Excel</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/bao-cao-tuoi-no" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-bao-cao">
+                                        Xem báo cáo
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-warning-subtle text-warning-dark">
+                                        <i class="bi bi-people-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Khách hàng & Hạn mức</h5>
+                                        <p class="function-card-desc mb-0">Quản lý hạn mức và số ngày được nợ</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/khach-hang" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-khach-hang">
+                                        Quản lý khách hàng
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-indigo-subtle text-indigo">
+                                        <i class="bi bi-file-earmark-text-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Quản lý hóa đơn</h5>
+                                        <p class="function-card-desc mb-0">Theo dõi công nợ chi tiết từng đơn hàng</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/hoa-don" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-hoa-don">
+                                        Xem hóa đơn
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-slate-subtle text-slate-700">
+                                        <i class="bi bi-receipt"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Danh sách phiếu thu</h5>
+                                        <p class="function-card-desc mb-0">Lịch sử thu tiền và tiền chưa phân bổ</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/thanh-toan" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-thanh-toan">
+                                        Xem phiếu thu
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 col-lg-4">
+                            <div class="card function-card h-100 p-3 p-md-4 rounded-4 shadow-sm">
+                                <div class="d-flex align-items-center gap-3 mb-3">
+                                    <div class="function-icon bg-primary-subtle text-primary">
+                                        <i class="bi bi-box-seam-fill"></i>
+                                    </div>
+                                    <div class="flex-grow-1">
+                                        <h5 class="function-card-title mb-1">Sản phẩm & Tồn kho</h5>
+                                        <p class="function-card-desc mb-0">Tra cứu danh mục và số lượng tồn</p>
+                                    </div>
+                                </div>
+                                <div class="mt-auto pt-2">
+                                    <a href="/san-pham" class="btn btn-outline-primary rounded-pill w-100 fw-bold py-2" id="btn-quick-san-pham">
+                                        Xem sản phẩm
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </AuthorizeView>
+                </div>
             </div>
         </Authorized>
         <NotAuthorized>
-            <div class="card shadow-sm border-0 p-4 text-center">
-                <h5 class="card-title text-secondary mb-3">Yêu cầu đăng nhập</h5>
-                <p class="text-muted">Vui lòng đăng nhập với tài khoản được cấp quyền để bắt đầu thao tác với hệ thống.</p>
-                <div>
-                    <a href="/login" class="btn btn-primary px-4">Đăng nhập tài khoản</a>
+            <!-- Thẻ gợi ý đăng nhập tối giản và nhã nhặn -->
+            <div class="card border-0 rounded-4 p-4 shadow-sm bg-white text-center my-4">
+                <div class="py-4">
+                    <div class="d-inline-flex align-items-center justify-content-center bg-primary-subtle text-primary rounded-circle p-3 mb-3" style="width: 64px; height: 64px;">
+                        <i class="bi bi-shield-lock-fill fs-2"></i>
+                    </div>
+                    <h4 class="fw-bold text-dark mb-2">Yêu cầu đăng nhập</h4>
+                    <p class="text-secondary fs-6 mx-auto mb-4" style="max-width: 500px;">
+                        Vui lòng đăng nhập với tài khoản được cấp quyền để truy cập các chức năng bán hàng và quản lý công nợ khách hàng.
+                    </p>
+                    <a href="/login" class="btn btn-primary rounded-pill px-4 py-2 fw-bold shadow-sm">
+                        Đăng nhập ngay
+                    </a>
                 </div>
             </div>
         </NotAuthorized>
     </AuthorizeView>
 </div>
+
+<style>
+    .homepage-container {
+        animation: fadeIn 0.25s ease-in-out;
+    }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(4px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Welcome Banner Thu Gọn - Màu sắc sống động, chữ trắng sáng 100% */
+    .welcome-banner {
+        background: linear-gradient(135deg, #1E1B4B 0%, #312E81 50%, #1E3A8A 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        box-shadow: 0 8px 24px -4px rgba(30, 27, 75, 0.25) !important;
+    }
+
+    .welcome-title,
+    .welcome-banner h1 {
+        color: #FFFFFF !important;
+        font-size: 1.85rem !important;
+        font-weight: 900 !important;
+        letter-spacing: -0.02em !important;
+        line-height: 1.3 !important;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    .user-name-highlight {
+        color: #38BDF8 !important;
+        font-weight: 900 !important;
+        text-shadow: 0 0 16px rgba(56, 189, 248, 0.6) !important;
+    }
+
+    .welcome-desc,
+    .welcome-banner p {
+        color: #F1F5F9 !important;
+        font-size: 1.05rem !important;
+        font-weight: 600 !important;
+        line-height: 1.5 !important;
+        text-shadow: 0 1px 3px rgba(0, 0, 0, 0.25) !important;
+    }
+
+    .btn-login-banner {
+        background: linear-gradient(135deg, #4F46E5 0%, #2563EB 100%);
+        color: #FFFFFF !important;
+        border: none;
+        font-size: 0.95rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .btn-login-banner:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 18px rgba(79, 70, 229, 0.5);
+    }
+
+    /* Section Heading & Role Badge */
+    .section-heading {
+        font-size: 1.25rem !important;
+        font-weight: 900 !important;
+        color: #0F172A !important;
+        letter-spacing: -0.01em;
+    }
+
+    .role-badge-pill {
+        background-color: #EEF2FF !important;
+        color: #312E81 !important;
+        border: 1.5px solid #A5B4FC !important;
+        font-size: 0.825rem !important;
+        font-weight: 800 !important;
+        padding: 0.35rem 0.95rem !important;
+        border-radius: 9999px !important;
+    }
+
+    /* Function Cards - Đường nét sắc bén, chữ cực kỳ rõ */
+    .function-card {
+        background-color: #FFFFFF !important;
+        border: 2px solid #E2E8F0 !important;
+        transition: all 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .function-card:hover {
+        transform: translateY(-3px);
+        border-color: #4F46E5 !important;
+        box-shadow: 0 12px 28px -4px rgba(79, 70, 229, 0.12) !important;
+    }
+
+    .function-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.4rem;
+        flex-shrink: 0;
+    }
+
+    .function-card-title {
+        font-size: 1.15rem !important;
+        font-weight: 800 !important;
+        color: #0F172A !important;
+        line-height: 1.3 !important;
+    }
+
+    .function-card-desc {
+        font-size: 0.925rem !important;
+        font-weight: 600 !important;
+        color: #334155 !important;
+        line-height: 1.4 !important;
+    }
+
+    /* Subtle Icon Backgrounds */
+    .bg-primary-subtle { background-color: #EEF2FF; }
+    .bg-indigo-subtle { background-color: #EEF2FF; }
+    .text-indigo { color: #4F46E5; }
+    .bg-success-subtle { background-color: #D1FAE5; }
+    .bg-cyan-subtle { background-color: #E0F2FE; }
+    .text-cyan-dark { color: #0284C7; }
+    .bg-warning-subtle { background-color: #FEF3C7; }
+    .text-warning-dark { color: #B45309; }
+    .bg-slate-subtle { background-color: #F1F5F9; }
+    .text-slate-700 { color: #334155; }
+</style>
+
+@code {
+    private string LayLoiChaoTheoGio()
+    {
+        var gio = DateTime.Now.Hour;
+        if (gio < 12) return "Chào buổi sáng";
+        if (gio < 18) return "Chào buổi chiều";
+        return "Chào buổi tối";
+    }
+}
