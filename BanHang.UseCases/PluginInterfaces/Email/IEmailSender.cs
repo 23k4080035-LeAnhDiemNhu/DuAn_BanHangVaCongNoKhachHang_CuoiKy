@@ -19,6 +19,7 @@ public class KetQuaGuiEmailRawDto
     public string? MaPhanHoiDichVu { get; set; }
     public string? ThongBaoChiTiet { get; set; }
     public string? EmailNhanThucTe { get; set; }
+    public string? CheDoGui { get; set; }
 }
 
 /// <summary>

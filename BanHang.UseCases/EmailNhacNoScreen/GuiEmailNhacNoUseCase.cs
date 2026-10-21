@@ -258,6 +258,14 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
         }
 
         // 2. Ghi nhận yêu cầu trước khi gọi sender (Pre-registration: TrangThaiGui = DangXuLy)
+        string cheDoGuiKhoiTao = _emailSender.GetType().Name.Contains("Smtp", StringComparison.OrdinalIgnoreCase)
+            ? "GuiThat"
+            : (_emailSender.GetType().Name.Contains("Dev", StringComparison.OrdinalIgnoreCase) ||
+               _emailSender.GetType().Name.Contains("Mock", StringComparison.OrdinalIgnoreCase) ||
+               _emailSender.GetType().Name.Contains("Fake", StringComparison.OrdinalIgnoreCase)
+                ? "MoPhong"
+                : (request.CheDoGui ?? "MoPhong"));
+
         var preReg = new NhatKyEmailNhacNo
         {
             KhachHangId = duLieuHienTai.KhachHangId,
@@ -278,7 +286,7 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
             IdempotencyKey = idempotencyKey,
             MaPheDuyet = snapshot.MaPheDuyet,
             PayloadHash = payloadHash,
-            CheDoGui = request.CheDoGui,
+            CheDoGui = cheDoGuiKhoiTao,
             NguonSoan = request.NguonSoan
         };
 
@@ -290,9 +298,45 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Lỗi ghi nhận pre-registration cho IdempotencyKey '{Key}'. Kiểm tra trùng lặp CSDL.", idempotencyKey);
+
+            bool isDuplicateKey = false;
+            for (Exception? curr = ex; curr != null; curr = curr.InnerException)
+            {
+                if (curr.GetType().Name.Contains("SqlException", StringComparison.OrdinalIgnoreCase))
+                {
+                    var numProp = curr.GetType().GetProperty("Number");
+                    if (numProp != null && numProp.GetValue(curr) is int num && (num == 2601 || num == 2627))
+                    {
+                        isDuplicateKey = true;
+                        break;
+                    }
+                }
+
+                if (curr.Message.Contains("UX_NhatKyEmailNhacNos_IdempotencyKey", StringComparison.OrdinalIgnoreCase) ||
+                    curr.Message.Contains("2601", StringComparison.OrdinalIgnoreCase) ||
+                    curr.Message.Contains("2627", StringComparison.OrdinalIgnoreCase) ||
+                    curr.Message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                    curr.Message.Contains("trùng lặp khóa", StringComparison.OrdinalIgnoreCase) ||
+                    curr.Message.Contains("UNIQUE KEY", StringComparison.OrdinalIgnoreCase))
+                {
+                    isDuplicateKey = true;
+                    break;
+                }
+            }
+
             var dup = await _nhatKyRepo.LayTheoIdempotencyKeyAsync(idempotencyKey);
             if (dup != null)
             {
+                // Kiểm tra lại NguoiDuyet và PayloadHash trước khi trả kết quả
+                if (!string.Equals(dup.NguoiDuyet, currentUser, StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new QuyTacNghiepVuException("Yêu cầu gửi email bị từ chối: Khóa Idempotency này thuộc sở hữu của một người dùng khác.");
+                }
+                if (!string.Equals(dup.PayloadHash, payloadHash, StringComparison.Ordinal))
+                {
+                    throw new QuyTacNghiepVuException("Yêu cầu gửi email bị từ chối do xung đột Idempotency: Khóa này đã được sử dụng trước đó cho một yêu cầu có nội dung, người nhận hoặc tham số khác.");
+                }
+
                 if (dup.TrangThaiGui == TrangThaiGuiEmail.DangXuLy)
                 {
                     throw new QuyTacNghiepVuException("Yêu cầu gửi email này đang được xử lý đồng thời bởi hệ thống. Vui lòng không bấm lặp.");
@@ -309,7 +353,14 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
                     NhatKyId = dup.NhatKyId
                 };
             }
-            throw new QuyTacNghiepVuException("Yêu cầu gửi email này đang được xử lý đồng thời bởi hệ thống. Vui lòng không bấm lặp.");
+
+            // Nếu không phải lỗi trùng khóa, không mô tả thành "đang xử lý đồng thời"
+            if (!isDuplicateKey)
+            {
+                throw new InvalidOperationException($"Lỗi cơ sở dữ liệu khi ghi nhận yêu cầu gửi email: {ex.Message}", ex);
+            }
+
+            throw new QuyTacNghiepVuException("Yêu cầu gửi email bị tranh chấp khóa Idempotency trong CSDL. Vui lòng thử lại.");
         }
 
         // 3. Gọi dịch vụ gửi email với bắt lỗi timeout / mất kết nối
@@ -333,7 +384,9 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
                     nhatKyId,
                     TrangThaiGuiEmail.ChuaRoKetQua,
                     $"Mất kết nối hoặc timeout sau khi phát lệnh gửi: {ex.Message}. Tuyệt đối không tự động gửi lại.",
-                    null);
+                    null,
+                    snapshot.EmailNguoiNhan.Trim(),
+                    cheDoGuiKhoiTao);
             }
             catch (Exception dbEx)
             {
@@ -349,15 +402,25 @@ public class GuiEmailNhacNoUseCase : IGuiEmailNhacNoUseCase
             };
         }
 
-        // 4. Chuyển trạng thái nguyên tử tại CSDL sau khi dịch vụ phản hồi
+        // 4. Chuyển trạng thái nguyên tử tại CSDL sau khi dịch vụ phản hồi (Bảo toàn EmailNguoiNhan dự kiến, cập nhật EmailNhanThucTe & CheDoGui)
         string? canhBaoAudit = null;
+        string actualEmail = !string.IsNullOrWhiteSpace(rawResult.EmailNhanThucTe)
+            ? rawResult.EmailNhanThucTe.Trim()
+            : snapshot.EmailNguoiNhan.Trim();
+
+        string actualCheDoGui = !string.IsNullOrWhiteSpace(rawResult.CheDoGui)
+            ? rawResult.CheDoGui.Trim()
+            : (rawResult.TrangThai == TrangThaiGuiEmail.GuiThu ? "MoPhong" : cheDoGuiKhoiTao);
+
         try
         {
             await _nhatKyRepo.CapNhatTrangThaiGuiAsync(
                 nhatKyId,
                 rawResult.TrangThai,
                 rawResult.ThongBaoChiTiet,
-                rawResult.MaPhanHoiDichVu);
+                rawResult.MaPhanHoiDichVu,
+                actualEmail,
+                actualCheDoGui);
         }
         catch (Exception ex)
         {

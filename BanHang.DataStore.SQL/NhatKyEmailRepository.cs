@@ -82,13 +82,21 @@ public class NhatKyEmailRepository : INhatKyEmailRepository
         return await LuuNhatKyAsync(nhatKy);
     }
 
-    public async Task CapNhatTrangThaiGuiAsync(int nhatKyId, TrangThaiGuiEmail trangThai, string? chiTiet, string? maPhanHoi)
+    public async Task CapNhatTrangThaiGuiAsync(
+        int nhatKyId,
+        TrangThaiGuiEmail trangThai,
+        string? chiTiet,
+        string? maPhanHoi,
+        string? emailNhanThucTe = null,
+        string? cheDoGui = null)
     {
         const string sql = @"
             UPDATE dbo.NhatKyEmailNhacNos
             SET TrangThaiGui = CAST(@TrangThai AS INT),
                 ChiTietTrangThai = @ChiTiet,
                 MaPhanHoiDichVu = COALESCE(@MaPhanHoi, MaPhanHoiDichVu),
+                EmailNhanThucTe = COALESCE(@EmailNhanThucTe, EmailNhanThucTe),
+                CheDoGui = COALESCE(@CheDoGui, CheDoGui),
                 ThoiDiemGui = GETDATE()
             WHERE NhatKyId = @NhatKyId;";
 
@@ -98,7 +106,9 @@ public class NhatKyEmailRepository : INhatKyEmailRepository
             NhatKyId = nhatKyId,
             TrangThai = trangThai,
             ChiTiet = chiTiet,
-            MaPhanHoi = maPhanHoi
+            MaPhanHoi = maPhanHoi,
+            EmailNhanThucTe = emailNhanThucTe,
+            CheDoGui = cheDoGui
         });
     }
 

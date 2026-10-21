@@ -13,7 +13,13 @@ public interface INhatKyEmailRepository
 
     Task<int> GhiNhanYeuCauGuiAsync(NhatKyEmailNhacNo nhatKy);
 
-    Task CapNhatTrangThaiGuiAsync(int nhatKyId, TrangThaiGuiEmail trangThai, string? chiTiet, string? maPhanHoi);
+    Task CapNhatTrangThaiGuiAsync(
+        int nhatKyId,
+        TrangThaiGuiEmail trangThai,
+        string? chiTiet,
+        string? maPhanHoi,
+        string? emailNhanThucTe = null,
+        string? cheDoGui = null);
 
     Task<NhatKyEmailNhacNo?> LayTheoIdempotencyKeyAsync(string idempotencyKey);
 

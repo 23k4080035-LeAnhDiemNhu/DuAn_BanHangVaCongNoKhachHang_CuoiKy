@@ -303,7 +303,28 @@ public class AiChatClientEmailDraftingService : IAiEmailDraftingService
             };
         }
 
-        return (tieuDe.Trim(), bodyBuilder.ToString().Trim());
+        string rawBody = bodyBuilder.ToString().Trim();
+        if (!string.IsNullOrWhiteSpace(duLieu.TenKhachHang) && !rawBody.Contains(duLieu.TenKhachHang, StringComparison.OrdinalIgnoreCase))
+        {
+            if (rawBody.StartsWith("Kính gửi Quý khách hàng", StringComparison.OrdinalIgnoreCase))
+            {
+                rawBody = "Kính gửi Quý khách hàng " + duLieu.TenKhachHang + rawBody.Substring("Kính gửi Quý khách hàng".Length);
+            }
+            else if (rawBody.StartsWith("Kính gửi Quý khách", StringComparison.OrdinalIgnoreCase))
+            {
+                rawBody = "Kính gửi Quý khách hàng " + duLieu.TenKhachHang + rawBody.Substring("Kính gửi Quý khách".Length);
+            }
+            else if (rawBody.StartsWith("Kính gửi", StringComparison.OrdinalIgnoreCase))
+            {
+                rawBody = "Kính gửi " + duLieu.TenKhachHang + rawBody.Substring("Kính gửi".Length);
+            }
+            else
+            {
+                rawBody = $"Kính gửi Quý khách hàng {duLieu.TenKhachHang},\n\n" + rawBody;
+            }
+        }
+
+        return (tieuDe.Trim(), rawBody);
     }
 
     private static string GhepBangSoLieuChuan(string noiDungAi, DuLieuSoanEmailDto duLieu)
@@ -321,31 +342,31 @@ public class AiChatClientEmailDraftingService : IAiEmailDraftingService
             .Sum(h => h.DuNoTaiNgayChot);
 
         sb.AppendLine("BẢNG SỐ LIỆU ĐỐI SOÁT CÔNG NỢ CHI TIẾT");
-        sb.AppendLine($"• Tổng dư nợ tính đến ngày {duLieu.NgayChotBaoCao:dd/MM/yyyy}: {duLieu.TongCongNo:N0} đ ({duLieu.TongCongNo.ToString("N0", CultureInfo.InvariantCulture)} VNĐ)");
+        sb.AppendLine($"• Tổng dư nợ tính đến ngày {duLieu.NgayChotBaoCao:dd/MM/yyyy}: {duLieu.TongCongNo.ToString("N0", CultureInfo.InvariantCulture)} VNĐ");
 
         if (tongDenVaQuaHan > 0 && tongChuaDenHan > 0)
         {
-            sb.AppendLine($"- Khoản đã đến hạn (đề nghị thanh toán): {tongDenVaQuaHan.ToString("N0", vi)} đ");
-            sb.AppendLine($"- Khoản chưa đến hạn (theo dõi thanh toán): {tongChuaDenHan.ToString("N0", vi)} đ");
+            sb.AppendLine($"- Khoản đã đến hạn (đề nghị thanh toán): {tongDenVaQuaHan.ToString("N0", vi)} VNĐ");
+            sb.AppendLine($"- Khoản chưa đến hạn (theo dõi thanh toán): {tongChuaDenHan.ToString("N0", vi)} VNĐ");
         }
         else if (tongDenVaQuaHan > 0 && tongChuaDenHan == 0)
         {
-            sb.AppendLine($"- Toàn bộ dư nợ ({tongDenVaQuaHan.ToString("N0", vi)} đ) đã đến hạn thanh toán.");
+            sb.AppendLine($"- Toàn bộ dư nợ ({tongDenVaQuaHan.ToString("N0", vi)} VNĐ) đã đến hạn thanh toán.");
         }
-        else if (tongDenVaQuaHan == 0)
+        else if (tongChuaDenHan > 0)
         {
-            sb.AppendLine($"- Toàn bộ dư nợ ({tongChuaDenHan.ToString("N0", vi)} đ) hiện vẫn trong hạn thanh toán.");
+            sb.AppendLine($"- Toàn bộ dư nợ ({tongChuaDenHan.ToString("N0", vi)} VNĐ) hiện vẫn trong hạn thanh toán.");
         }
 
         sb.AppendLine();
         sb.AppendLine("Tổng hợp các khoản công nợ theo thời hạn:");
-        sb.AppendLine($"- Nhóm 0–30 ngày (bao gồm các khoản chưa đến hạn và quá hạn đến 30 ngày): {duLieu.TuoiNo_0_30.ToString("N0", vi)} đ");
+        sb.AppendLine($"- Nhóm 0–30 ngày (bao gồm các khoản chưa đến hạn và quá hạn đến 30 ngày): {duLieu.TuoiNo_0_30.ToString("N0", vi)} VNĐ");
         if (duLieu.TuoiNo_31_60 > 0)
-            sb.AppendLine($"- Nhóm quá hạn 31–60 ngày: {duLieu.TuoiNo_31_60.ToString("N0", vi)} đ");
+            sb.AppendLine($"- Nhóm quá hạn 31–60 ngày: {duLieu.TuoiNo_31_60.ToString("N0", vi)} VNĐ");
         if (duLieu.TuoiNo_61_90 > 0)
-            sb.AppendLine($"- Nhóm quá hạn 61–90 ngày: {duLieu.TuoiNo_61_90.ToString("N0", vi)} đ");
+            sb.AppendLine($"- Nhóm quá hạn 61–90 ngày: {duLieu.TuoiNo_61_90.ToString("N0", vi)} VNĐ");
         if (duLieu.TuoiNo_Tren_90 > 0)
-            sb.AppendLine($"- Nhóm quá hạn trên 90 ngày: {duLieu.TuoiNo_Tren_90.ToString("N0", vi)} đ");
+            sb.AppendLine($"- Nhóm quá hạn trên 90 ngày: {duLieu.TuoiNo_Tren_90.ToString("N0", vi)} VNĐ");
 
         if (duLieu.DanhSachHoaDon.Any())
         {

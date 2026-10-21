@@ -130,7 +130,13 @@ public class EmailNhacNoUnitTests
             }
         }
 
-        public Task CapNhatTrangThaiGuiAsync(int nhatKyId, TrangThaiGuiEmail trangThai, string? maPhanHoi, string? thongBao)
+        public Task CapNhatTrangThaiGuiAsync(
+            int nhatKyId,
+            TrangThaiGuiEmail trangThai,
+            string? thongBao,
+            string? maPhanHoi,
+            string? emailNhanThucTe = null,
+            string? cheDoGui = null)
         {
             if (ShouldThrow || ShouldThrowOnUpdate)
             {
@@ -142,8 +148,16 @@ public class EmailNhacNoUnitTests
                 if (existing != null)
                 {
                     existing.TrangThaiGui = trangThai;
-                    existing.MaPhanHoiDichVu = maPhanHoi;
                     existing.ChiTietTrangThai = thongBao;
+                    existing.MaPhanHoiDichVu = maPhanHoi;
+                    if (!string.IsNullOrEmpty(emailNhanThucTe))
+                    {
+                        existing.EmailNhanThucTe = emailNhanThucTe;
+                    }
+                    if (!string.IsNullOrEmpty(cheDoGui))
+                    {
+                        existing.CheDoGui = cheDoGui;
+                    }
                 }
                 return Task.CompletedTask;
             }
@@ -173,6 +187,8 @@ public class EmailNhacNoUnitTests
         public bool ShouldFail { get; set; } = false;
         public bool ShouldTimeout { get; set; } = false;
         public int DelayMs { get; set; } = 0;
+        public string? EmailNhanThucTeToReturn { get; set; }
+        public string? CheDoGuiToReturn { get; set; }
 
         public async Task<KetQuaGuiEmailRawDto> GuiEmailAsync(ThongTinEmailGuiDto emailDto, CancellationToken cancellationToken = default)
         {
@@ -192,7 +208,9 @@ public class EmailNhacNoUnitTests
                 {
                     ThanhCong = false,
                     TrangThai = TrangThaiGuiEmail.ThatBai,
-                    ThongBaoChiTiet = "Lỗi kết nối máy chủ gửi thư giả lập."
+                    ThongBaoChiTiet = "Lỗi kết nối máy chủ gửi thư giả lập.",
+                    EmailNhanThucTe = EmailNhanThucTeToReturn ?? emailDto.NguoiNhanEmail,
+                    CheDoGui = CheDoGuiToReturn ?? "MoPhong"
                 };
             }
 
@@ -202,7 +220,9 @@ public class EmailNhacNoUnitTests
                 ThanhCong = true,
                 TrangThai = TrangThaiGuiEmail.GuiThu,
                 MaPhanHoiDichVu = $"TEST-MSG-{Guid.NewGuid():N}",
-                ThongBaoChiTiet = "Gửi thử nghiệm thành công (Sandbox Test)."
+                ThongBaoChiTiet = "Gửi thử nghiệm thành công (Sandbox Test).",
+                EmailNhanThucTe = EmailNhanThucTeToReturn ?? emailDto.NguoiNhanEmail,
+                CheDoGui = CheDoGuiToReturn ?? "MoPhong"
             };
         }
     }
@@ -1489,7 +1509,7 @@ public class EmailNhacNoUnitTests
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["AiSettings:Provider"] = "Gemini",
-                ["AiSettings:ModelId"] = "gemini-1.5-flash"
+                ["AiSettings:ModelId"] = "gemini-3.6-flash"
             })
             .Build();
 
@@ -1781,6 +1801,257 @@ Mã HĐ | Hạn thanh toán | Số tiền còn nợ | Tình trạng
         Assert.DoesNotContain("<img", html);
         Assert.Contains("&lt;script&gt;", html);
         Assert.Contains("&lt;img", html);
+    }
+
+    // 38. BẢNG PIPE CÓ DẤU GẠCH | Ở ĐẦU/CUỐI VÀ DÒNG KẾ TOÁN SỬA TAY ĐƯỢC BẢO TOÀN NGUYÊN VĂN
+    [Fact]
+    public void EmailHtmlFormatter_BangCoDauGachDauCuoiVaKeToanSuaTay_BaoToanNguyenVan()
+    {
+        var emailDto = new ThongTinEmailGuiDto
+        {
+            NguoiNhanEmail = "khachhang@congtyabc.com",
+            TenNguoiNhan = "Công ty ABC",
+            TieuDe = "Đối soát công nợ",
+            NoiDung = @"Kính gửi Quý khách hàng Công ty ABC,
+
+Tính đến ngày 20/10/2026, tổng số dư công nợ là: 50.000.000 đ.
+- Khoản đã đến hạn (đề nghị thanh toán): 30.000.000 đ
+
+Bảng chi tiết các hóa đơn:
+| Mã HĐ | Hạn thanh toán | Số tiền còn nợ | Tình trạng |
+| HD-01 | 15/10/2026 | 30,000,000 đ | Quá hạn 5 ngày |
+| HD-02 | 25/10/2026 | 20,000,000 đ | Chưa đến hạn |
+Kế toán lưu ý: Hóa đơn HD-01 khách hẹn chuyển khoản trước 17h ngày thứ Sáu.
+
+Kính đề nghị Quý khách sắp xếp thanh toán.
+
+Trân trọng,
+Bộ phận Kế toán"
+        };
+
+        string html = EmailHtmlFormatter.TaoHtmlEmail(emailDto, "Công ty ABC");
+
+        // Bảng HTML được dựng đúng dòng hóa đơn dù có dấu | ở đầu và cuối
+        Assert.Contains("HD-01", html);
+        Assert.Contains("HD-02", html);
+        Assert.Contains("Quá hạn 5 ngày", html);
+        // Dòng kế toán sửa tay không bị âm thầm nuốt bỏ, được bảo toàn nguyên văn
+        Assert.Contains("Kế toán lưu ý: Hóa đơn HD-01 khách hẹn chuyển khoản trước 17h ngày thứ Sáu.", html);
+    }
+
+    // 39. NẾU KHÔNG CHUYỂN ĐƯỢC THÀNH BẢNG: HIỂN THỊ NGUYÊN VĂN ĐÃ HTML-ENCODE
+    [Fact]
+    public void EmailHtmlFormatter_KhongChuyenDuocThanhBang_HienThiNguyenVanHtmlEncoded()
+    {
+        var emailDto = new ThongTinEmailGuiDto
+        {
+            NguoiNhanEmail = "khachhang@congtyabc.com",
+            TenNguoiNhan = "Công ty ABC",
+            TieuDe = "Đối soát công nợ tự do",
+            NoiDung = @"Kính gửi Quý khách hàng Công ty ABC,
+
+Thông tin công nợ đặc thù chưa theo khuôn mẫu:
+Mã HD-SPECIAL-99: nợ 15 triệu đồng, hạn ngày 10/10/2026 (đang chờ bù trừ biên bản phạt & <hư hỏng>)
+
+Kính đề nghị Quý khách phản hồi sớm.
+
+Trân trọng,
+Bộ phận Kế toán"
+        };
+
+        string html = EmailHtmlFormatter.TaoHtmlEmail(emailDto, "Công ty ABC");
+
+        // Dòng tự do không bị mất, và được HTML-encode an toàn (ký tự & và < > không gây lỗi HTML)
+        Assert.Contains("HD-SPECIAL-99", html);
+        Assert.Contains("&amp;", html);
+        Assert.Contains("&lt;hư hỏng&gt;", html);
+    }
+
+    // 40. LỌC TIÊU ĐỀ TRÙNG LẶP THUẦN TÚY NHƯNG BẢO TOÀN 100% SỐ LIỆU CÔNG NỢ
+    [Fact]
+    public void EmailHtmlFormatter_BoLocTieuDeThua_KhongLamMatSoLieuCongNo()
+    {
+        var emailDto = new ThongTinEmailGuiDto
+        {
+            NguoiNhanEmail = "khachhang@congtyabc.com",
+            TenNguoiNhan = "Công ty ABC",
+            TieuDe = "Đối soát công nợ",
+            NoiDung = @"Kính gửi Quý khách,
+
+TỔNG HỢP CÔNG NỢ
+Tổng hợp các khoản công nợ theo thời hạn:
+Tổng số dư công nợ của Quý khách theo sổ sách kế toán là: 80,000,000 đ
+- Khoản đã đến hạn (đề nghị thanh toán): 50,000,000 đ
+
+Trân trọng,
+Kế toán"
+        };
+
+        string html = EmailHtmlFormatter.TaoHtmlEmail(emailDto, "Công ty ABC");
+
+        // Khung tổng hợp công nợ chỉ có tiêu đề khung chính 'Tổng hợp công nợ đối soát'
+        Assert.Contains("Tổng hợp công nợ đối soát", html);
+        // Số liệu công nợ 80,000,000 đ và 50,000,000 đ được bảo toàn nguyên vẹn
+        Assert.Contains("80,000,000 đ", html);
+        Assert.Contains("50,000,000 đ", html);
+    }
+
+    // 41. LƯU EMAIL NHẬN THỰC TẾ VÀO AUDIT LOG KHI CÓ REDIRECT VÀ BẢO TOÀN EMAIL DỰ KIẾN
+    [Fact]
+    public async Task GuiEmailNhacNo_LuuEmailNhanThucTeVaCheDoGuiVaoAudit_TestRecipientRedirect()
+    {
+        var (repoBaoCao, repoKh, repoNhatKy, emailSender, duyetStore) = CreateMocks();
+        emailSender.EmailNhanThucTeToReturn = "redirect-test@company.com";
+        emailSender.CheDoGuiToReturn = "GuiThat";
+
+        var xemUseCase = new XemDuLieuNhacNoKhachHangUseCase(repoBaoCao, repoKh, FakeCurrentUserService.KeToanCongNo());
+        var duLieu = await xemUseCase.ExecuteAsync(1, DateTime.Today);
+
+        var pheDuyetUseCase = new PheDuyetEmailNhacNoUseCase(xemUseCase, duyetStore, FakeCurrentUserService.KeToanCongNo());
+        var ketQuaDuyet = await pheDuyetUseCase.ExecuteAsync(new YeuCauDuyetEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "intended-customer@client.com",
+            TieuDe = "Tiêu đề thư",
+            NoiDung = "Nội dung thư",
+            GiongVan = GiongVanEmail.TieuChuan
+        });
+
+        var guiUseCase = new GuiEmailNhacNoUseCase(xemUseCase, emailSender, repoNhatKy, duyetStore, FakeCurrentUserService.KeToanCongNo());
+        var ketQuaGui = await guiUseCase.ExecuteAsync(new YeuCauGuiEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "intended-customer@client.com",
+            TieuDe = "Tiêu đề thư",
+            NoiDung = "Nội dung thư",
+            GiongVan = GiongVanEmail.TieuChuan,
+            CheDoGui = "Smtp",
+            NguonSoan = "AI",
+            DaDuyet = true,
+            MaPheDuyet = ketQuaDuyet.MaPheDuyet,
+            HashDuLieuCongNo = duLieu.HashDuLieuCongNo,
+            IdempotencyKey = $"SEND-AUDIT-{Guid.NewGuid():N}"
+        });
+
+        Assert.True(ketQuaGui.ThanhCong);
+        var audit = repoNhatKy.NhatKys.Single(n => n.NhatKyId == ketQuaGui.NhatKyId);
+        // Người nhận dự kiến lưu riêng, không bị ghi đè
+        Assert.Equal("intended-customer@client.com", audit.EmailNguoiNhan);
+        // Người nhận thực tế lưu chính xác từ kết quả sender
+        Assert.Equal("redirect-test@company.com", audit.EmailNhanThucTe);
+        // Chế độ gửi trong audit phản ánh dịch vụ thực tế
+        Assert.Equal("GuiThat", audit.CheDoGui);
+    }
+
+    // 42. KIỂM TRA IDEMPOTENCY Ở NHÁNH TRANH CHẤP INSERT: KHÁC NGƯỜI DUYỆT HOẶC KHÁC PAYLOAD THÌ BỊ TỪ CHỐI
+    [Fact]
+    public async Task GuiEmailNhacNo_TranhChapInsert_CungKeyKhacNguoiHoacKhacPayload_TuChoiNgay()
+    {
+        var (repoBaoCao, repoKh, repoNhatKy, emailSender, duyetStore) = CreateMocks();
+        var xemUseCase = new XemDuLieuNhacNoKhachHangUseCase(repoBaoCao, repoKh, FakeCurrentUserService.KeToanCongNo());
+        var duLieu = await xemUseCase.ExecuteAsync(1, DateTime.Today);
+
+        var testKey = $"CONFLICT-{Guid.NewGuid():N}";
+
+        // Giả lập trong CSDL đã có bản ghi do người dùng 'ktcn_a' thực hiện
+        var existingRecord = new NhatKyEmailNhacNo
+        {
+            NhatKyId = 1,
+            KhachHangId = 1,
+            MaKhachHang = "KH01",
+            TenKhachHang = "Công ty TNHH An Phú",
+            EmailNguoiNhan = "ketoan@anphu.vn",
+            NguoiDuyet = "ktcn_a", // Do ktcn_a duyệt
+            ThoiDiemDuyet = DateTime.Now,
+            ThoiDiemGui = DateTime.Now,
+            NgayChotBaoCao = DateTime.Today,
+            TieuDe = "Tiêu đề gốc",
+            NoiDung = "Nội dung gốc",
+            GiongVan = GiongVanEmail.TieuChuan,
+            TrangThaiGui = TrangThaiGuiEmail.TiepNhan,
+            IdempotencyKey = testKey,
+            MaPheDuyet = "APPROVAL-01",
+            PayloadHash = "ORIGINAL-PAYLOAD-HASH"
+        };
+        repoNhatKy.NhatKys.Add(existingRecord);
+
+        // Giờ user 'ktcn_b' cố tình gửi với cùng IdempotencyKey
+        var pheDuyetUseCase = new PheDuyetEmailNhacNoUseCase(xemUseCase, duyetStore, FakeCurrentUserService.KeToanCongNo("ktcn_b"));
+        var ketQuaDuyet = await pheDuyetUseCase.ExecuteAsync(new YeuCauDuyetEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "ketoan@anphu.vn",
+            TieuDe = "Tiêu đề gốc",
+            NoiDung = "Nội dung gốc",
+            GiongVan = GiongVanEmail.TieuChuan
+        });
+
+        var guiUseCase = new GuiEmailNhacNoUseCase(xemUseCase, emailSender, repoNhatKy, duyetStore, FakeCurrentUserService.KeToanCongNo("ktcn_b"));
+        var ex = await Assert.ThrowsAsync<QuyTacNghiepVuException>(() => guiUseCase.ExecuteAsync(new YeuCauGuiEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "ketoan@anphu.vn",
+            TieuDe = "Tiêu đề gốc",
+            NoiDung = "Nội dung gốc",
+            GiongVan = GiongVanEmail.TieuChuan,
+            CheDoGui = "MoPhong",
+            NguonSoan = "AI",
+            DaDuyet = true,
+            MaPheDuyet = ketQuaDuyet.MaPheDuyet,
+            HashDuLieuCongNo = duLieu.HashDuLieuCongNo,
+            IdempotencyKey = testKey // Cùng key nhưng khác người duyệt!
+        }));
+
+        Assert.Contains("người dùng khác", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Empty(emailSender.EmailsSent); // Sender tuyệt đối không được gọi!
+    }
+
+    // 43. LỖI CSDL KHÔNG PHẢI TRÙNG KHÓA: PHẢI NÉM INVALIDOPERATIONEXCEPTION, KHÔNG MÔ TẢ THÀNH 'ĐANG XỬ LÝ ĐỒNG THỜI'
+    [Fact]
+    public async Task GuiEmailNhacNo_LoiDatabaseKhongPhaiTrungKhoa_NemInvalidOperationException()
+    {
+        var (repoBaoCao, repoKh, repoNhatKy, emailSender, duyetStore) = CreateMocks();
+        repoNhatKy.ShouldThrow = true; // Giả lập lỗi mất kết nối DB khi insert
+        var xemUseCase = new XemDuLieuNhacNoKhachHangUseCase(repoBaoCao, repoKh, FakeCurrentUserService.KeToanCongNo());
+        var duLieu = await xemUseCase.ExecuteAsync(1, DateTime.Today);
+
+        var pheDuyetUseCase = new PheDuyetEmailNhacNoUseCase(xemUseCase, duyetStore, FakeCurrentUserService.KeToanCongNo());
+        var ketQuaDuyet = await pheDuyetUseCase.ExecuteAsync(new YeuCauDuyetEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "test@customer.com",
+            TieuDe = "Tiêu đề",
+            NoiDung = "Nội dung",
+            GiongVan = GiongVanEmail.TieuChuan
+        });
+
+        var guiUseCase = new GuiEmailNhacNoUseCase(xemUseCase, emailSender, repoNhatKy, duyetStore, FakeCurrentUserService.KeToanCongNo());
+
+        // Lỗi kết nối CSDL thông thường ném InvalidOperationException, không được báo nhầm thành "đang xử lý đồng thời"
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => guiUseCase.ExecuteAsync(new YeuCauGuiEmailDto
+        {
+            KhachHangId = 1,
+            NgayChotBaoCao = DateTime.Today,
+            EmailNguoiNhan = "test@customer.com",
+            TieuDe = "Tiêu đề",
+            NoiDung = "Nội dung",
+            GiongVan = GiongVanEmail.TieuChuan,
+            CheDoGui = "MoPhong",
+            NguonSoan = "AI",
+            DaDuyet = true,
+            MaPheDuyet = ketQuaDuyet.MaPheDuyet,
+            HashDuLieuCongNo = duLieu.HashDuLieuCongNo,
+            IdempotencyKey = $"SEND-ERR-{Guid.NewGuid():N}"
+        }));
+
+        Assert.Contains("Lỗi cơ sở dữ liệu khi ghi nhận yêu cầu gửi email", ex.Message);
+        Assert.DoesNotContain("đang xử lý đồng thời", ex.Message);
+        Assert.Empty(emailSender.EmailsSent);
     }
 
     private class MockGeminiChatClient : IChatClient

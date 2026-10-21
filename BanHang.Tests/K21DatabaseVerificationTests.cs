@@ -77,6 +77,20 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         _scriptsDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "BanHang.DataStore.SQL", "Scripts"));
     }
 
+    private class ColumnSchemaDto
+    {
+        public string DATA_TYPE { get; set; } = string.Empty;
+        public string IS_NULLABLE { get; set; } = string.Empty;
+        public string? COLUMN_DEFAULT { get; set; }
+    }
+
+    private class CheckConstraintSchemaDto
+    {
+        public string definition { get; set; } = string.Empty;
+        public bool is_disabled { get; set; }
+        public bool is_not_trusted { get; set; }
+    }
+
     private void AssertSafeDatabase(string connectionString)
     {
         var builder = new SqlConnectionStringBuilder(connectionString);
@@ -92,6 +106,11 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
             throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Tuyệt đối không thao tác DROP/CREATE trên database demo QuanLyBanHangCongNo_K21_Verify của profile Verify_K21!");
         }
 
+        if (string.Equals(db, "QuanLyBanHangCongNo_Email_AutoTest", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: K21DatabaseVerificationTests không được chạm vào database QuanLyBanHangCongNo_Email_AutoTest của bài test Email Idempotency!");
+        }
+
         if (string.Equals(db, "master", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "tempdb", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "model", StringComparison.OrdinalIgnoreCase) ||
@@ -100,9 +119,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
             throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Không thao tác ghi trên CSDL hệ thống '{db}'!");
         }
 
-        if (!db.EndsWith("_AutoTest", StringComparison.OrdinalIgnoreCase) && !db.EndsWith("_Test", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(db, AutoTestDatabaseName, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database kiểm chứng tự động có hậu tố _AutoTest hoặc _Test. Database hiện tại: '{db}'");
+            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database '{AutoTestDatabaseName}'. Database hiện tại: '{db}'");
         }
     }
 
@@ -135,7 +154,10 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // 1. Tạo database kiểm chứng mới tinh dành riêng cho test tự động
+        // 1. Kiểm tra chốt an toàn trước mọi thao tác tạo/xóa CSDL
+        AssertSafeDatabase(AutoTestConnectionString);
+
+        // 2. Tạo database kiểm chứng mới tinh dành riêng cho test tự động K21
         using (var masterConn = new SqlConnection(MasterConnectionString))
         {
             await masterConn.OpenAsync();
@@ -148,9 +170,6 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
                 CREATE DATABASE [{AutoTestDatabaseName}];";
             await masterConn.ExecuteAsync(sqlCreateDb);
         }
-
-        // 2. Kiểm tra chốt an toàn
-        AssertSafeDatabase(AutoTestConnectionString);
 
         // 3. Khởi tạo schema và nạp dữ liệu mẫu ban đầu để các test độc lập có môi trường sẵn sàng
         using (var autoTestConn = new SqlConnection(AutoTestConnectionString))
@@ -192,14 +211,14 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         }
 
         // 2. Kiểm tra cột SoNgayNo trong dbo.KhachHangs
-        var colInfo = await conn.QuerySingleOrDefaultAsync<dynamic>(@"
+        var colInfo = await conn.QuerySingleOrDefaultAsync<ColumnSchemaDto>(@"
             SELECT DATA_TYPE, IS_NULLABLE, COLUMN_DEFAULT
             FROM INFORMATION_SCHEMA.COLUMNS
             WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'KhachHangs' AND COLUMN_NAME = 'SoNgayNo'");
 
         Assert.NotNull(colInfo);
-        Assert.Equal("int", (string)colInfo.DATA_TYPE);
-        Assert.Equal("NO", (string)colInfo.IS_NULLABLE);
+        Assert.Equal("int", colInfo.DATA_TYPE);
+        Assert.Equal("NO", colInfo.IS_NULLABLE);
 
         // 3. Kiểm tra CHECK constraint SoNgayNo >= 0
         var checkConstraint = await conn.QuerySingleOrDefaultAsync<string>(@"
@@ -406,13 +425,13 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         await ExecuteScriptFileAsync(conn, "Migration_Add_SoNgayNo_To_KhachHangs.sql");
 
         // Xác nhận lần đầu thêm cột thành công (cột đã xuất hiện và là INT NOT NULL)
-        var colAfter1 = await conn.QuerySingleOrDefaultAsync<dynamic>(@"
+        var colAfter1 = await conn.QuerySingleOrDefaultAsync<ColumnSchemaDto>(@"
             SELECT DATA_TYPE, IS_NULLABLE 
             FROM INFORMATION_SCHEMA.COLUMNS 
             WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = 'KhachHangs' AND COLUMN_NAME = 'SoNgayNo'");
         Assert.NotNull(colAfter1);
-        Assert.Equal("int", (string)colAfter1.DATA_TYPE);
-        Assert.Equal("NO", (string)colAfter1.IS_NULLABLE);
+        Assert.Equal("int", colAfter1.DATA_TYPE);
+        Assert.Equal("NO", colAfter1.IS_NULLABLE);
 
         // Xác nhận toàn bộ khách hàng cũ được khởi tạo SoNgayNo = 0
         var allOldCustomers = (await conn.QueryAsync<int>("SELECT SoNgayNo FROM dbo.KhachHangs")).ToList();
@@ -453,15 +472,15 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
         Assert.Equal("0", cleanDef);
 
         // 5.2 CHECK constraint thực sự bảo đảm SoNgayNo >= 0, đang ENABLED (is_disabled = 0) và TRUSTED (is_not_trusted = 0)
-        var checkInfo = await conn.QuerySingleOrDefaultAsync<dynamic>(@"
+        var checkInfo = await conn.QuerySingleOrDefaultAsync<CheckConstraintSchemaDto>(@"
             SELECT cc.definition, cc.is_disabled, cc.is_not_trusted
             FROM sys.check_constraints cc
             WHERE cc.parent_object_id = OBJECT_ID('dbo.KhachHangs')
               AND (cc.definition LIKE '%SoNgayNo%' OR cc.name LIKE '%SoNgayNo%')");
         Assert.NotNull(checkInfo);
-        Assert.False((bool)checkInfo.is_disabled, "CHECK constraint phải đang ENABLED (is_disabled = false)");
-        Assert.False((bool)checkInfo.is_not_trusted, "CHECK constraint phải TRUSTED (is_not_trusted = false)");
-        string checkDef = (string)checkInfo.definition;
+        Assert.False(checkInfo.is_disabled, "CHECK constraint phải đang ENABLED (is_disabled = false)");
+        Assert.False(checkInfo.is_not_trusted, "CHECK constraint phải TRUSTED (is_not_trusted = false)");
+        string checkDef = checkInfo.definition;
         string cleanCheck = checkDef.Replace("(", "").Replace(")", "").Replace("[", "").Replace("]", "").Replace(" ", "");
         Assert.Contains("SoNgayNo>=0", cleanCheck);
 

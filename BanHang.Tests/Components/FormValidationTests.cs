@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Reflection;
 using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.Extensions.DependencyInjection;
 using DuAn_BanHangVaCongNoKhachHang.Pages;
 using Xunit;
 
@@ -153,7 +154,8 @@ namespace BanHang.Tests.Components
             formModelField.SetValue(page, model);
             initMethod.Invoke(page, null);
             var editContext = (EditContext)editContextField.GetValue(page)!;
-            editContext.EnableDataAnnotationsValidation();
+            var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider();
+            editContext.EnableDataAnnotationsValidation(services);
 
             var fieldIdentifier = new FieldIdentifier(model, nameof(model.SoNgayNo));
             var parsingStore = new ValidationMessageStore(editContext);

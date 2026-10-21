@@ -19,19 +19,19 @@ using Xunit;
 namespace BanHang.Tests;
 
 /// <summary>
-/// Kiểm thử tích hợp Idempotency bền vững (Durable Idempotency) trên DB Verify (QuanLyBanHangCongNo_K21_Verify).
+/// Kiểm thử tích hợp Idempotency bền vững (Durable Idempotency) trên DB AutoTest riêng (QuanLyBanHangCongNo_Email_AutoTest).
 /// Sử dụng fake sender để đảm bảo:
 /// 1. Đồng thời hai scope/kết nối -> chỉ gọi sender đúng 1 lần.
 /// 2. Retry sau khi tạo lại service -> trả về phản hồi idempotent từ CSDL, sender không bị gọi lại.
 /// 3. Cùng IdempotencyKey nhưng khác payload -> báo lỗi xung đột (QuyTacNghiepVuException).
 /// 4. Bản ghi ở trạng thái DangXuLy hoặc ChuaRoKetQua -> chặn gửi lại, ném ngoại lệ nghiệp vụ.
-/// CHỐT AN TOÀN: Tuyệt đối không chạm vào DB chính QuanLyBanHangCongNo.
+/// CHỐT AN TOÀN: Tuyệt đối không chạm vào DB chính QuanLyBanHangCongNo, DB demo QuanLyBanHangCongNo_K21_Verify và DB K21 AutoTest.
 /// </summary>
 public class DurableIdempotencyIntegrationTests : IAsyncLifetime
 {
     private const string MasterConnectionString = "Server=(localdb)\\MSSQLLocalDB;Database=master;Trusted_Connection=True;TrustServerCertificate=True;";
-    private const string VerifyDatabaseName = "QuanLyBanHangCongNo_K21_Verify";
-    private const string VerifyConnectionString = $"Server=(localdb)\\MSSQLLocalDB;Database={VerifyDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+    private const string AutoTestDatabaseName = "QuanLyBanHangCongNo_Email_AutoTest";
+    private const string AutoTestConnectionString = $"Server=(localdb)\\MSSQLLocalDB;Database={AutoTestDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
 
     private readonly string _scriptsDir;
     private readonly ISqlConnectionFactory _connectionFactory;
@@ -43,17 +43,23 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
         string? foundDir = null;
         while (dirInfo != null)
         {
-            var candidate = Path.Combine(dirInfo.FullName, "BanHang.DataStore.SQL", "Scripts");
-            if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "01_Safe_CreateSchema.sql")))
+            var candidate1 = Path.Combine(dirInfo.FullName, "BanHang.DataStore.SQL", "Scripts");
+            if (Directory.Exists(candidate1) && File.Exists(Path.Combine(candidate1, "01_Safe_CreateSchema.sql")))
             {
-                foundDir = candidate;
+                foundDir = candidate1;
+                break;
+            }
+            var candidate2 = Path.Combine(dirInfo.FullName, "DuAn_BanHangVaCongNoKhachHang", "BanHang.DataStore.SQL", "Scripts");
+            if (Directory.Exists(candidate2) && File.Exists(Path.Combine(candidate2, "01_Safe_CreateSchema.sql")))
+            {
+                foundDir = candidate2;
                 break;
             }
             dirInfo = dirInfo.Parent;
         }
 
-        _scriptsDir = foundDir ?? Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "BanHang.DataStore.SQL", "Scripts"));
-        _connectionFactory = new SqlConnectionFactory(VerifyConnectionString);
+        _scriptsDir = foundDir ?? throw new DirectoryNotFoundException("Không tìm thấy thư mục BanHang.DataStore.SQL/Scripts");
+        _connectionFactory = new SqlConnectionFactory(AutoTestConnectionString);
     }
 
     private void AssertSafeDatabase(string connectionString)
@@ -66,6 +72,16 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
             throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Tuyệt đối không thao tác trên CSDL chính QuanLyBanHangCongNo!");
         }
 
+        if (string.Equals(db, "QuanLyBanHangCongNo_K21_Verify", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Tuyệt đối không thao tác ghi/xóa trên database demo QuanLyBanHangCongNo_K21_Verify của profile Verify_K21!");
+        }
+
+        if (string.Equals(db, "QuanLyBanHangCongNo_K21_AutoTest", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Bộ test Email Idempotency phải dùng database riêng QuanLyBanHangCongNo_Email_AutoTest, không được chạm vào database QuanLyBanHangCongNo_K21_AutoTest của test K21!");
+        }
+
         if (string.Equals(db, "master", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "tempdb", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "model", StringComparison.OrdinalIgnoreCase) ||
@@ -74,9 +90,9 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
             throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Không thao tác ghi trên CSDL hệ thống '{db}'!");
         }
 
-        if (!db.EndsWith("_K21_Verify", StringComparison.OrdinalIgnoreCase))
+        if (!string.Equals(db, AutoTestDatabaseName, StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database QuanLyBanHangCongNo_K21_Verify. Database hiện tại: '{db}'");
+            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database '{AutoTestDatabaseName}'. Database hiện tại: '{db}'");
         }
     }
 
@@ -96,7 +112,7 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
     private async Task ExecuteScriptFileAsync(SqlConnection conn, string fileName)
     {
         var filePath = Path.Combine(_scriptsDir, fileName);
-        if (!File.Exists(filePath)) return;
+        Assert.True(File.Exists(filePath), $"Tệp script không tồn tại: {filePath}");
 
         var scriptContent = await File.ReadAllTextAsync(filePath);
         var batches = SplitSqlBatches(scriptContent);
@@ -109,33 +125,49 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        AssertSafeDatabase(VerifyConnectionString);
+        AssertSafeDatabase(AutoTestConnectionString);
 
-        // 1. Đảm bảo DB Verify tồn tại
+        // 1. Đảm bảo DB AutoTest cho Email tồn tại
         using (var masterConn = new SqlConnection(MasterConnectionString))
         {
             await masterConn.OpenAsync();
             var sqlCheckDb = $@"
-                IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'{VerifyDatabaseName}')
+                IF NOT EXISTS (SELECT 1 FROM sys.databases WHERE name = N'{AutoTestDatabaseName}')
                 BEGIN
-                    CREATE DATABASE [{VerifyDatabaseName}];
+                    CREATE DATABASE [{AutoTestDatabaseName}];
                 END;";
             await masterConn.ExecuteAsync(sqlCheckDb);
         }
 
         // 2. Chạy migration schema nếu cần
-        using (var verifyConn = new SqlConnection(VerifyConnectionString))
+        using (var autoTestConn = new SqlConnection(AutoTestConnectionString))
         {
-            await verifyConn.OpenAsync();
-            await ExecuteScriptFileAsync(verifyConn, "01_Safe_CreateSchema.sql");
-            await ExecuteScriptFileAsync(verifyConn, "02_Safe_CreateNguoiDungs.sql");
-            await ExecuteScriptFileAsync(verifyConn, "03_Safe_SeedSampleData.sql");
-            await ExecuteScriptFileAsync(verifyConn, "Migration_Create_NhatKyEmailNhacNos.sql");
-            await ExecuteScriptFileAsync(verifyConn, "Migration_Upgrade_NhatKyEmailNhacNos_DurableIdempotency.sql");
+            await autoTestConn.OpenAsync();
+            await ExecuteScriptFileAsync(autoTestConn, "01_Safe_CreateSchema.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "02_Safe_CreateNguoiDungs.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "03_Safe_SeedSampleData.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "Migration_Create_NhatKyEmailNhacNos.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "Migration_Upgrade_NhatKyEmailNhacNos_DurableIdempotency.sql");
+
+            // Dọn dẹp dữ liệu test cũ nếu có
+            await autoTestConn.ExecuteAsync("DELETE FROM dbo.NhatKyEmailNhacNos WHERE IdempotencyKey LIKE 'CONCUR-%' OR IdempotencyKey LIKE 'RETRY-%' OR IdempotencyKey LIKE 'CONFLICT-%' OR IdempotencyKey LIKE 'DANGXULY-%' OR IdempotencyKey LIKE 'CHUARO-%';");
         }
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync()
+    {
+        AssertSafeDatabase(AutoTestConnectionString);
+        try
+        {
+            using var conn = new SqlConnection(AutoTestConnectionString);
+            await conn.OpenAsync();
+            await conn.ExecuteAsync("DELETE FROM dbo.NhatKyEmailNhacNos WHERE IdempotencyKey LIKE 'CONCUR-%' OR IdempotencyKey LIKE 'RETRY-%' OR IdempotencyKey LIKE 'CONFLICT-%' OR IdempotencyKey LIKE 'DANGXULY-%' OR IdempotencyKey LIKE 'CHUARO-%';");
+        }
+        catch
+        {
+            // Bỏ qua lỗi dọn dẹp nếu DB không sẵn sàng khi hoàn tất test
+        }
+    }
 
     #region Mock Helpers
 
@@ -242,7 +274,7 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
         var xemDuLieuUseCase = new MockXemDuLieuUseCase();
 
         // Scope 1
-        var repoScope1 = new NhatKyEmailRepository(new SqlConnectionFactory(VerifyConnectionString));
+        var repoScope1 = new NhatKyEmailRepository(new SqlConnectionFactory(AutoTestConnectionString));
         var useCaseScope1 = new GuiEmailNhacNoUseCase(
             xemDuLieuUseCase,
             fakeSender,
@@ -252,7 +284,7 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
             FakeCurrentUserService.KeToanCongNo("ktcn"));
 
         // Scope 2
-        var repoScope2 = new NhatKyEmailRepository(new SqlConnectionFactory(VerifyConnectionString));
+        var repoScope2 = new NhatKyEmailRepository(new SqlConnectionFactory(AutoTestConnectionString));
         var useCaseScope2 = new GuiEmailNhacNoUseCase(
             xemDuLieuUseCase,
             fakeSender,
@@ -271,8 +303,8 @@ public class DurableIdempotencyIntegrationTests : IAsyncLifetime
         Assert.All(results, r => Assert.True(r.ThanhCong));
         Assert.Equal(1, fakeSender.SendCallCount); // Sender chỉ được gọi đúng 1 lần!
 
-        // Kiểm tra trong CSDL Verify: Chỉ có duy nhất 1 bản ghi với IdempotencyKey này
-        using var conn = new SqlConnection(VerifyConnectionString);
+        // Kiểm tra trong CSDL AutoTest: Chỉ có duy nhất 1 bản ghi với IdempotencyKey này
+        using var conn = new SqlConnection(AutoTestConnectionString);
         var count = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(1) FROM dbo.NhatKyEmailNhacNos WHERE IdempotencyKey = @Key;",
             new { Key = testKey });

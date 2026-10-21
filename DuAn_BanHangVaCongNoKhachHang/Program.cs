@@ -176,9 +176,11 @@ else if (string.Equals(aiProvider, "Gemini", StringComparison.OrdinalIgnoreCase)
 {
     var apiKey = builder.Configuration["AiSettings:ApiKey"]?.Trim();
     var modelId = builder.Configuration["AiSettings:ModelId"]?.Trim();
+    // Luôn ưu tiên cấu hình người dùng (User Secrets / appsettings / biến môi trường).
+    // Chỉ áp dụng giá trị dự phòng khi ModelId để trống.
     if (string.IsNullOrWhiteSpace(modelId))
     {
-        modelId = "gemini-1.5-flash"; // Mô hình Flash hỗ trợ Free Tier từ Google AI Studio
+        modelId = "gemini-3.6-flash"; // Mô hình Flash GA phù hợp cho project mới có Free Tier (Google AI Studio, đối chiếu ngày 21/10/2026: https://ai.google.dev/gemini-api/docs/models/gemini)
     }
     var endpoint = builder.Configuration["AiSettings:Endpoint"]?.Trim();
     if (string.IsNullOrWhiteSpace(endpoint))

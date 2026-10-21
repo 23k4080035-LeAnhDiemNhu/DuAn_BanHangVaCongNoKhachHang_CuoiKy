@@ -43,7 +43,7 @@ public static class EmailHtmlFormatter
         string rawContent = emailDto.NoiDung?.Trim() ?? string.Empty;
 
         // Phân tách các phần trong nội dung đã duyệt
-        var (greeting, introParagraphs, debtSummaryLines, invoices, closingParagraphs, signatureLines) =
+        var (greeting, introParagraphs, debtSummaryLines, invoices, unparsedInvoiceLines, closingParagraphs, signatureLines) =
             PhanTichNoiDung(rawContent);
 
         var bodyBuilder = new StringBuilder();
@@ -75,10 +75,41 @@ public static class EmailHtmlFormatter
             bodyBuilder.Append(TaoKhungTongCongNoHtml(debtSummaryLines));
         }
 
-        // 4. Bảng hóa đơn chi tiết (Mã HĐ, Hạn thanh toán, Số tiền còn nợ, Tình trạng)
+        // 4. Bảng hóa đơn chi tiết (hoặc hiển thị nguyên văn nếu không chuyển được thành bảng)
         if (invoices.Any())
         {
             bodyBuilder.Append(TaoBangHoaDonHtml(invoices));
+
+            // Nếu có dòng ghi chú hoặc hóa đơn không parse được thành bảng, hiển thị nguyên văn để bảo toàn 100% nội dung
+            if (unparsedInvoiceLines.Any())
+            {
+                bodyBuilder.Append(@"
+              <div style=""margin: 10px 0 16px 0; padding: 10px 14px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px;"">
+                <div style=""font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 6px; text-transform: uppercase;"">Ghi chú đối soát bổ sung:</div>");
+                foreach (var unparsed in unparsedInvoiceLines)
+                {
+                    bodyBuilder.Append($@"
+                <div style=""font-size: 13px; color: #334155; line-height: 1.5; margin-bottom: 4px;"">
+                  {HtmlEncodeUtf8(unparsed)}
+                </div>");
+                }
+                bodyBuilder.Append("</div>");
+            }
+        }
+        else if (unparsedInvoiceLines.Any())
+        {
+            // Nếu không chuyển được thành bảng, hiển thị nguyên văn đã HTML-encode
+            bodyBuilder.Append(@"
+              <div style=""font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 18px; margin-bottom: 8px;"">
+                Chi tiết các hóa đơn:
+              </div>
+              <div style=""background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 18px; margin-bottom: 18px; font-family: monospace; font-size: 13px; line-height: 1.6; color: #1e293b;"">");
+            foreach (var unparsed in unparsedInvoiceLines)
+            {
+                bodyBuilder.Append($@"
+                <div>{HtmlEncodeUtf8(unparsed)}</div>");
+            }
+            bodyBuilder.Append("</div>");
         }
 
         // 5. Lời kết và đề nghị thanh toán
@@ -168,28 +199,40 @@ public static class EmailHtmlFormatter
                   <td style=""padding: 16px 20px;"">");
 
         sb.Append(@"
-                    <div style=""font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 6px;"">
+                    <div style=""font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; margin-bottom: 8px;"">
                       Tổng hợp công nợ đối soát
                     </div>");
+
+        bool daHienThiTongNo = false;
 
         foreach (var rawLine in lines)
         {
             string line = rawLine.Trim();
             if (string.IsNullOrWhiteSpace(line)) continue;
 
-            // Tổng số dư công nợ
+            // Bỏ qua các dòng tiêu đề trùng lặp thuần túy không chứa số liệu
+            if (IsRedundantSummaryHeading(line))
+            {
+                continue;
+            }
+
+            // Tổng số dư công nợ (chỉ hiển thị nổi bật 1 lần duy nhất)
             if (line.Contains("tổng số dư công nợ", StringComparison.OrdinalIgnoreCase) ||
                 line.Contains("tổng dư nợ", StringComparison.OrdinalIgnoreCase) ||
                 line.Contains("tổng công nợ", StringComparison.OrdinalIgnoreCase))
             {
-                sb.Append($@"
-                    <div style=""font-size: 17px; font-weight: 700; color: #1e3a8a; margin-bottom: 6px;"">
+                if (!daHienThiTongNo)
+                {
+                    sb.Append($@"
+                    <div style=""font-size: 18px; font-weight: 700; color: #1e3a8a; margin-bottom: 8px; line-height: 1.4;"">
                       {HtmlEncodeUtf8(line.TrimStart('-', '•', '+', '*').Trim())}
                     </div>");
+                    daHienThiTongNo = true;
+                }
             }
             // Khoản đã đến hạn (nhấn mạnh đề nghị thanh toán)
             else if (line.Contains("đã đến hạn", StringComparison.OrdinalIgnoreCase) ||
-                     line.Contains("quá hạn", StringComparison.OrdinalIgnoreCase) && !line.Contains("nhóm", StringComparison.OrdinalIgnoreCase))
+                     (line.Contains("quá hạn", StringComparison.OrdinalIgnoreCase) && !line.Contains("nhóm", StringComparison.OrdinalIgnoreCase)))
             {
                 sb.Append($@"
                     <div style=""font-size: 14px; font-weight: 600; color: #b91c1c; margin-top: 4px;"">
@@ -231,6 +274,30 @@ public static class EmailHtmlFormatter
         return sb.ToString();
     }
 
+    private static bool IsRedundantSummaryHeading(string line)
+    {
+        string cleaned = line.Trim('-', '*', '•', '—', '_', ':', ' ');
+        if (cleaned.StartsWith("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Equals("BẢNG SỐ LIỆU ĐỐI SOÁT CÔNG NỢ CHI TIẾT", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        // Nếu dòng chứa chữ số thì KHÔNG phải tiêu đề thừa (phải giữ lại để bảo toàn số liệu)
+        if (Regex.IsMatch(line, @"\d")) return false;
+
+        if (cleaned.Equals("Tổng hợp công nợ đối soát", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Equals("Tổng hợp công nợ", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Equals("TỔNG HỢP CÔNG NỢ", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Equals("Tổng hợp các khoản công nợ theo thời hạn", StringComparison.OrdinalIgnoreCase) ||
+            cleaned.Equals("Chi tiết phân bổ theo các nhóm hạn nợ", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
     private static string TaoBangHoaDonHtml(List<InvoiceRow> invoices)
     {
         var sb = new StringBuilder();
@@ -270,6 +337,10 @@ public static class EmailHtmlFormatter
                 badgeStyle = "display: inline-block; padding: 3px 8px; font-size: 11px; font-weight: 500; color: #065f46; background-color: #d1fae5; border: 1px solid #a7f3d0; border-radius: 12px; white-space: nowrap;";
             }
 
+            string badgeHtml = string.IsNullOrWhiteSpace(inv.TinhTrang)
+                ? "<span style=\"color: #64748b;\">-</span>"
+                : $"<span style=\"{badgeStyle}\">{HtmlEncodeUtf8(inv.TinhTrang)}</span>";
+
             sb.Append($@"
                   <tr style=""border-bottom: 1px solid #e2e8f0; background-color: {bg};"">
                     <td style=""padding: 10px 12px; font-weight: 600; color: #0f172a; border-bottom: 1px solid #e2e8f0;"">
@@ -282,7 +353,7 @@ public static class EmailHtmlFormatter
                       {HtmlEncodeUtf8(inv.DuNo)}
                     </td>
                     <td style=""padding: 10px 12px; text-align: center; border-bottom: 1px solid #e2e8f0;"">
-                      <span style=""{badgeStyle}"">{HtmlEncodeUtf8(inv.TinhTrang)}</span>
+                      {badgeHtml}
                     </td>
                   </tr>");
         }
@@ -299,6 +370,7 @@ public static class EmailHtmlFormatter
         List<string> IntroParagraphs,
         List<string> DebtSummaryLines,
         List<InvoiceRow> Invoices,
+        List<string> UnparsedInvoiceLines,
         List<string> ClosingParagraphs,
         List<string> SignatureLines
     ) PhanTichNoiDung(string rawContent)
@@ -312,6 +384,7 @@ public static class EmailHtmlFormatter
         var introParagraphs = new List<string>();
         var debtSummaryLines = new List<string>();
         var invoices = new List<InvoiceRow>();
+        var unparsedInvoiceLines = new List<string>();
         var closingParagraphs = new List<string>();
         var signatureLines = new List<string>();
 
@@ -329,8 +402,10 @@ public static class EmailHtmlFormatter
                 continue;
             }
 
-            // Dòng phân cách ASCII cũ (nếu có)
-            if (Regex.IsMatch(line, @"^[-=—_]{4,}$") || line.Contains("--- BẢNG SỐ LIỆU", StringComparison.OrdinalIgnoreCase))
+            // Dòng phân cách ASCII hoặc tiêu đề rời bảng số liệu đối soát do hệ thống/AI ghép -> Bỏ qua hoàn toàn
+            if (Regex.IsMatch(line, @"^[-=—_]{4,}$") ||
+                line.Contains("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase) ||
+                line.Contains("--- BẢNG SỐ LIỆU", StringComparison.OrdinalIgnoreCase))
             {
                 if (stage < 1) stage = 1;
                 continue;
@@ -359,9 +434,7 @@ public static class EmailHtmlFormatter
             if (line.Contains("Bảng chi tiết các hóa đơn", StringComparison.OrdinalIgnoreCase) ||
                 line.Contains("BẢNG HÓA ĐƠN", StringComparison.OrdinalIgnoreCase) ||
                 line.Contains("Danh sách các hóa đơn", StringComparison.OrdinalIgnoreCase) ||
-                line.Contains("Danh sách hóa đơn", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Mã HĐ |", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Số HĐ |", StringComparison.OrdinalIgnoreCase))
+                line.Contains("Danh sách hóa đơn", StringComparison.OrdinalIgnoreCase))
             {
                 stage = 2;
                 continue;
@@ -369,12 +442,15 @@ public static class EmailHtmlFormatter
 
             // Nhận diện kết thúc / Đề nghị thanh toán / Chữ ký
             if (line.StartsWith("Kính đề nghị", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Đề nghị", StringComparison.OrdinalIgnoreCase) ||
                 line.StartsWith("Quý khách vui lòng", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Vui lòng", StringComparison.OrdinalIgnoreCase) ||
                 line.StartsWith("Để đảm bảo", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Các khoản công nợ", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Các hóa đơn", StringComparison.OrdinalIgnoreCase) ||
                 line.StartsWith("Nếu Quý khách", StringComparison.OrdinalIgnoreCase) ||
-                line.StartsWith("Nếu có bất kỳ", StringComparison.OrdinalIgnoreCase))
+                line.StartsWith("Nếu có bất kỳ", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Mọi thắc mắc", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Thông tin chuyển khoản", StringComparison.OrdinalIgnoreCase) ||
+                line.StartsWith("Số tài khoản", StringComparison.OrdinalIgnoreCase))
             {
                 stage = 3;
                 closingParagraphs.Add(line);
@@ -392,11 +468,16 @@ public static class EmailHtmlFormatter
             // Xử lý theo từng giai đoạn
             if (stage == 1)
             {
-                // Trong giai đoạn summary, nếu gặp hóa đơn dạng pipe hoặc bullet thì chuyển sang stage 2
-                if (KiemTraDongHoaDon(line))
+                // Trong giai đoạn summary, nếu gặp hóa đơn hoặc bảng pipe thì chuyển sang stage 2
+                if (TryParseInvoiceRow(line, out var invRow, out bool isHeaderOrSep))
                 {
                     stage = 2;
-                    ThemHoaDon(line, invoices);
+                    invoices.Add(invRow!);
+                }
+                else if (isHeaderOrSep)
+                {
+                    stage = 2;
+                    // Bỏ qua header bảng vì giao diện HTML đã có <thead> riêng
                 }
                 else
                 {
@@ -405,9 +486,13 @@ public static class EmailHtmlFormatter
             }
             else if (stage == 2)
             {
-                if (KiemTraDongHoaDon(line))
+                if (TryParseInvoiceRow(line, out var invRow, out bool isHeaderOrSep))
                 {
-                    ThemHoaDon(line, invoices);
+                    invoices.Add(invRow!);
+                }
+                else if (isHeaderOrSep)
+                {
+                    // Header hoặc đường kẻ phân cách markdown -> Bỏ qua, không làm ô nhiễm dữ liệu
                 }
                 else
                 {
@@ -416,10 +501,17 @@ public static class EmailHtmlFormatter
                     {
                         debtSummaryLines.Add(line);
                     }
-                    else
+                    else if (line.StartsWith("Các khoản công nợ", StringComparison.OrdinalIgnoreCase) ||
+                             line.StartsWith("Các hóa đơn", StringComparison.OrdinalIgnoreCase))
                     {
                         stage = 3;
                         closingParagraphs.Add(line);
+                    }
+                    else
+                    {
+                        // Dòng hóa đơn thay đổi cách viết hoặc nội dung kế toán sửa tay không thể parse thành bảng:
+                        // BẢO TOÀN NGUYÊN VĂN, TUYỆT ĐỐI KHÔNG ÂM THẦM BỎ
+                        unparsedInvoiceLines.Add(line);
                     }
                 }
             }
@@ -438,97 +530,150 @@ public static class EmailHtmlFormatter
             else
             {
                 // stage == 0: Đoạn mở đầu
-                introParagraphs.Add(line);
+                // Kiểm tra xem dòng này có phải là bảng hóa đơn xuất hiện sớm không
+                if (TryParseInvoiceRow(line, out var invRow, out bool isHeaderOrSep))
+                {
+                    stage = 2;
+                    invoices.Add(invRow!);
+                }
+                else if (isHeaderOrSep)
+                {
+                    stage = 2;
+                }
+                else
+                {
+                    introParagraphs.Add(line);
+                }
             }
         }
 
-        return (greeting, introParagraphs, debtSummaryLines, invoices, closingParagraphs, signatureLines);
+        introParagraphs.RemoveAll(p => p.Contains("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase));
+        closingParagraphs.RemoveAll(p => p.Contains("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase));
+        unparsedInvoiceLines.RemoveAll(p => p.Contains("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase));
+        debtSummaryLines.RemoveAll(p => p.Contains("BẢNG SỐ LIỆU ĐỐI SOÁT", StringComparison.OrdinalIgnoreCase));
+
+        return (greeting, introParagraphs, debtSummaryLines, invoices, unparsedInvoiceLines, closingParagraphs, signatureLines);
     }
 
-    private static bool KiemTraDongHoaDon(string line)
+    private static bool TryParseInvoiceRow(string rawLine, out InvoiceRow? row, out bool isHeaderOrSeparator)
     {
+        row = null;
+        isHeaderOrSeparator = false;
+
+        if (string.IsNullOrWhiteSpace(rawLine)) return false;
+        string line = rawLine.Trim();
+
+        // 1. Kiểm tra dòng phân cách Markdown (|---|---| hoặc ---)
+        if (Regex.IsMatch(line, @"^\|?(\s*:?-+:?\s*\|)+\s*:?-+:?\s*\|?$") || Regex.IsMatch(line, @"^[-=—_]{3,}$"))
+        {
+            isHeaderOrSeparator = true;
+            return false;
+        }
+
+        // 2. Định dạng bảng Pipe: hỗ trợ có hoặc không có dấu | ở đầu và cuối dòng
         if (line.Contains('|'))
         {
-            var parts = line.Split('|');
-            if (parts.Length >= 4 && !parts[0].Contains("Mã HĐ", StringComparison.OrdinalIgnoreCase) && !parts[0].Contains("Số HĐ", StringComparison.OrdinalIgnoreCase))
+            string trimmed = line;
+            if (trimmed.StartsWith("|")) trimmed = trimmed.Substring(1);
+            if (trimmed.EndsWith("|")) trimmed = trimmed.Substring(0, trimmed.Length - 1);
+
+            var parts = trimmed.Split('|').Select(p => p.Trim()).ToArray();
+
+            // Kiểm tra dòng tiêu đề bảng
+            if (parts.Any(p => p.Equals("Mã HĐ", StringComparison.OrdinalIgnoreCase) ||
+                               p.Equals("Số HĐ", StringComparison.OrdinalIgnoreCase) ||
+                               p.Contains("Hạn thanh toán", StringComparison.OrdinalIgnoreCase) ||
+                               p.Contains("Hạn TT", StringComparison.OrdinalIgnoreCase) ||
+                               p.Contains("Số tiền còn nợ", StringComparison.OrdinalIgnoreCase) ||
+                               p.Contains("Dư nợ", StringComparison.OrdinalIgnoreCase)))
             {
+                isHeaderOrSeparator = true;
+                return false;
+            }
+
+            if (parts.Length == 4)
+            {
+                row = new InvoiceRow
+                {
+                    MaHoaDon = parts[0],
+                    HanThanhToan = parts[1],
+                    DuNo = parts[2],
+                    TinhTrang = parts[3]
+                };
+                return true;
+            }
+            else if (parts.Length >= 5)
+            {
+                // Định dạng 5 cột: Số HĐ | Ngày lập | Hạn TT | Dư nợ | Tình trạng
+                row = new InvoiceRow
+                {
+                    MaHoaDon = parts[0],
+                    HanThanhToan = parts[2],
+                    DuNo = parts[3],
+                    TinhTrang = parts[4]
+                };
+                return true;
+            }
+            else if (parts.Length == 3)
+            {
+                // Định dạng 3 cột: Mã HĐ | Hạn thanh toán | Số tiền còn nợ
+                row = new InvoiceRow
+                {
+                    MaHoaDon = parts[0],
+                    HanThanhToan = parts[1],
+                    DuNo = parts[2],
+                    TinhTrang = string.Empty
+                };
                 return true;
             }
         }
 
-        if (Regex.IsMatch(line, @"^\+?\s*HĐ\s+[A-Za-z0-9_-]+", RegexOptions.IgnoreCase))
+        // 3. Regex định dạng dòng bullet mẫu 1:
+        // + HĐ HD001 (Ngày lập: 01/10/2026, Hạn trả: 15/10/2026): 50,000,000 đ [Quá hạn 6 ngày]
+        var match1 = Regex.Match(line, @"^[-+*•]?\s*(?:HĐ|Hóa đơn)\s+([A-Za-z0-9_-]+).*?Hạn\s*(?:thanh toán|trả|TT)?[:\s]+([0-9/]+).*?:\s*([0-9.,]+)\s*đ?\s*(?:\[|\()(.*?)(?:\]|\))?$", RegexOptions.IgnoreCase);
+        if (match1.Success)
         {
+            row = new InvoiceRow
+            {
+                MaHoaDon = match1.Groups[1].Value.Trim(),
+                HanThanhToan = match1.Groups[2].Value.Trim(),
+                DuNo = match1.Groups[3].Value.Trim() + " đ",
+                TinhTrang = match1.Groups[4].Value.Trim()
+            };
             return true;
         }
 
-        return false;
-    }
-
-    private static void ThemHoaDon(string line, List<InvoiceRow> list)
-    {
-        // Định dạng 1: Pipe table: Mã HĐ | Hạn thanh toán | Số tiền còn nợ | Tình trạng
-        if (line.Contains('|'))
-        {
-            var parts = line.Split('|').Select(p => p.Trim()).ToArray();
-            if (parts.Length >= 4)
-            {
-                if (parts[0].Contains("Mã", StringComparison.OrdinalIgnoreCase) || parts[0].Contains("Số HĐ", StringComparison.OrdinalIgnoreCase))
-                {
-                    return; // Header line
-                }
-
-                if (parts.Length == 4)
-                {
-                    list.Add(new InvoiceRow
-                    {
-                        MaHoaDon = parts[0],
-                        HanThanhToan = parts[1],
-                        DuNo = parts[2],
-                        TinhTrang = parts[3]
-                    });
-                    return;
-                }
-                else if (parts.Length >= 5)
-                {
-                    // Format: Số HĐ | Ngày lập | Hạn TT | Dư nợ | Tình trạng
-                    list.Add(new InvoiceRow
-                    {
-                        MaHoaDon = parts[0],
-                        HanThanhToan = parts[2],
-                        DuNo = parts[3],
-                        TinhTrang = parts[4]
-                    });
-                    return;
-                }
-            }
-        }
-
-        // Định dạng 2: + HĐ HD001 (Ngày lập: 01/10/2026, Hạn trả: 15/10/2026): 50,000,000 đ [Quá hạn 6 ngày]
-        var match = Regex.Match(line, @"^\+?\s*HĐ\s+([A-Za-z0-9_-]+).*?Hạn\s*(?:thanh toán|trả):\s*([0-9/]+).*?:\s*([0-9.,]+)\s*đ?\s*\[(.*?)\]", RegexOptions.IgnoreCase);
-        if (match.Success)
-        {
-            list.Add(new InvoiceRow
-            {
-                MaHoaDon = match.Groups[1].Value.Trim(),
-                HanThanhToan = match.Groups[2].Value.Trim(),
-                DuNo = match.Groups[3].Value.Trim() + " đ",
-                TinhTrang = match.Groups[4].Value.Trim()
-            });
-            return;
-        }
-
-        // Định dạng 3: - HĐ HD001: Hạn thanh toán 15/10/2026 - Còn nợ 50,000,000 đ - Quá hạn 6 ngày
-        var match2 = Regex.Match(line, @"^[-+*]?\s*HĐ\s*([A-Za-z0-9_-]+).*?(?:Hạn|Hạn TT|Hạn thanh toán)[:\s]+([0-9/]+).*?([0-9.,]+)\s*đ?.*?(Quá hạn.*|Chưa đến hạn|Đến hạn.*|Trong hạn)", RegexOptions.IgnoreCase);
+        // 4. Regex định dạng dòng bullet mẫu 2:
+        // - HĐ HD001: Hạn thanh toán 15/10/2026 - Còn nợ 50,000,000 đ - Quá hạn 6 ngày
+        var match2 = Regex.Match(line, @"^[-+*•]?\s*(?:HĐ|Hóa đơn)\s*([A-Za-z0-9_-]+).*?(?:Hạn|Hạn TT|Hạn thanh toán)[:\s]+([0-9/]+).*?(?:Còn nợ|Dư nợ|Số tiền)?[:\s]*([0-9.,]+)\s*đ?.*?(Quá hạn.*|Chưa đến hạn.*|Đến hạn.*|Trong hạn.*)", RegexOptions.IgnoreCase);
         if (match2.Success)
         {
-            list.Add(new InvoiceRow
+            row = new InvoiceRow
             {
                 MaHoaDon = match2.Groups[1].Value.Trim(),
                 HanThanhToan = match2.Groups[2].Value.Trim(),
                 DuNo = match2.Groups[3].Value.Trim() + " đ",
                 TinhTrang = match2.Groups[4].Value.Trim()
-            });
+            };
+            return true;
         }
+
+        // 5. Regex định dạng linh hoạt hơn (kế toán sửa tay):
+        // HD001 - Hạn 15/10/2026 - 50.000.000 đ
+        var match3 = Regex.Match(line, @"^[-+*•]?\s*(?:HĐ|Hóa đơn)?\s*([A-Za-z0-9_-]+)\s*[-:]\s*(?:Hạn|Hạn TT)?\s*([0-9]{1,2}/[0-9]{1,2}/[0-9]{4})\s*[-:]\s*([0-9.,]+)\s*(?:đ|VNĐ)?(?:\s*[-:]\s*(.*))?$", RegexOptions.IgnoreCase);
+        if (match3.Success)
+        {
+            row = new InvoiceRow
+            {
+                MaHoaDon = match3.Groups[1].Value.Trim(),
+                HanThanhToan = match3.Groups[2].Value.Trim(),
+                DuNo = match3.Groups[3].Value.Trim() + " đ",
+                TinhTrang = match3.Groups[4].Success ? match3.Groups[4].Value.Trim() : string.Empty
+            };
+            return true;
+        }
+
+        return false;
     }
 
     /// <summary>

@@ -31,13 +31,19 @@
 - **Yêu cầu của thầy**: Interface repository nằm ở UseCases, Plugin cài đặt; file .razor inject interface, không inject lớp cụ thể.
 - **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Thư mục Interface: `BanHang.UseCases/PluginInterfaces/DataStore/` chứa 6 interface: `IHoaDonRepository.cs`, `IKhachHangRepository.cs`, `ISanPhamRepository.cs`, `IThanhToanRepository.cs`, `IBaoCaoTuoiNoRepository.cs`, `INguoiDungRepository.cs`.
-  - Cài đặt Repository: Nằm tại plugin `BanHang.DataStore.SQL/`.
-  - Composition Root: `DuAn_BanHangVaCongNoKhachHang/Program.cs` dòng 96–126 đăng ký dependency injection qua interface (ví dụ dòng 101, 107, 114, 119, 124). Tên namespace `BanHang.DataStore.SQL` chỉ xuất hiện duy nhất tại `Program.cs`.
+  - Thư mục Interface: `BanHang.UseCases/PluginInterfaces/DataStore/` chứa 7 interface: `IHoaDonRepository.cs`, `IKhachHangRepository.cs`, `ISanPhamRepository.cs`, `IThanhToanRepository.cs`, `IBaoCaoTuoiNoRepository.cs`, `INguoiDungRepository.cs`, `INhatKyEmailRepository.cs`. Cùng các port interfaces `PluginInterfaces/Ai/IAiEmailDraftingService.cs`, `PluginInterfaces/Email/IEmailSender.cs`, `PluginInterfaces/Excel/IBaoCaoTuoiNoExcelExporter.cs`.
+  - Cài đặt Repository & Plugins: Nằm tại plugin `BanHang.DataStore.SQL/` và `BanHang.Reports.Excel/`.
+  - Composition Root: `DuAn_BanHangVaCongNoKhachHang/Program.cs`:
+    - Dòng 94–135 đăng ký Repository và Use Cases cốt lõi qua Interface.
+    - Dòng 137–213 đăng ký AI Provider (`IChatClient` và `IAiEmailDraftingService`).
+    - Dòng 215–247 đăng ký Email Sender (`IEmailSender`).
+    - Dòng 249–257 đăng ký Audit Repository và Email UseCases (`ISoanEmailNhacNoUseCase`, `IPheDuyetEmailNhacNoUseCase`, `IGuiEmailNhacNoUseCase`).
+    - Tên namespace `BanHang.DataStore.SQL` chỉ xuất hiện duy nhất tại `Program.cs`.
   - Tầng giao diện: Tất cả các trang Razor chỉ inject UseCase interface:
     - `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`: Dòng 9–11 (`@inject IXemDanhSachKhachHangUseCase`, `@inject IXemDanhSachSanPhamHoatDongUseCase`, `@inject ITaoHoaDonBanChiuUseCase`).
     - `DuAn_BanHangVaCongNoKhachHang/Pages/TaoThanhToanPage.razor`: Dòng 8–10 (`@inject IXemDanhSachKhachHangUseCase`, `@inject IXemTruocPhanBoFifoUseCase`, `@inject ITaoThanhToanUseCase`).
     - `DuAn_BanHangVaCongNoKhachHang/Pages/BaoCaoTuoiNoPage.razor`: Dòng 7 (`@inject IXemBaoCaoTuoiNoUseCase`).
+    - `DuAn_BanHangVaCongNoKhachHang/Pages/EmailNhacNoPage.razor`: Dòng 11–13 (`@inject IXemDuLieuNhacNoKhachHangUseCase`, `@inject ISoanEmailNhacNoUseCase`, `@inject IPheDuyetEmailNhacNoUseCase`, `@inject IGuiEmailNhacNoUseCase`).
 - **Bằng chứng kiểm thử / Demo**: Grep toàn bộ thư mục `DuAn_BanHangVaCongNoKhachHang/Pages` không có bất kỳ file `.razor` nào inject trực tiếp class cụ thể của Repository.
 - **Phần còn thiếu & Công việc cần thực hiện**: Không có.
 
@@ -48,15 +54,16 @@
 - **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
   - **Luật 1 (Kiểm soát hạn mức tín dụng khi lập hóa đơn mới)**:
-    - *Định nghĩa nghiệp vụ*: `BanHang.CoreBusiness/KhachHang.cs`: Dòng 60–63 cài đặt method:
+    - *Định nghĩa nghiệp vụ*: `BanHang.CoreBusiness/KhachHang.cs`: Dòng 66–69 cài đặt method:
       ```csharp
       public bool KiemTraVuotHanMucKhiMua(decimal soTienDonHangMoi) => (SoDuCongNo + soTienDonHangMoi) > HanMucCongNo;
       ```
     - *Thực tế luồng lưu trong transaction*: `BanHang.DataStore.SQL/HoaDonRepository.cs`:
-      - Dòng 78–86: Khóa khách hàng theo hàng bằng `WITH (UPDLOCK, HOLDLOCK)`.
-      - Dòng 192–196: Đọc số dư công nợ thực tế `congNoHienTai` trong cùng transaction.
-      - Dòng 198: Gán đúng vào entity: `khachHang.SoDuCongNo = congNoHienTai;`.
-      - Dòng 204–213: Gọi trực tiếp phương thức nghiệp vụ của CoreBusiness để kiểm tra:
+      - Dòng 74: Mở transaction `connection.BeginTransaction(IsolationLevel.ReadCommitted)`.
+      - Dòng 79–87: Khóa khách hàng theo hàng bằng `WITH (UPDLOCK, HOLDLOCK)`.
+      - Dòng 193–196: Đọc số dư công nợ thực tế `congNoHienTai` trong cùng transaction.
+      - Dòng 199: Gán đúng vào entity: `khachHang.SoDuCongNo = congNoHienTai;`.
+      - Dòng 204–212: Gọi trực tiếp phương thức nghiệp vụ của CoreBusiness để kiểm tra:
         ```csharp
         if (khachHang.KiemTraVuotHanMucKhiMua(tongTienMoi))
         {
@@ -68,7 +75,7 @@
             };
         }
         ```
-    - *Giao diện Blazor đối soát trước*: `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`: Dòng 418 tái sử dụng cùng quy tắc của Core:
+    - *Giao diện Blazor đối soát trước*: `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`: Dòng 478 tái sử dụng cùng quy tắc của Core:
       ```csharp
       private bool VuotHanMucHienTai => khachHangHienTai != null && khachHangHienTai.KiemTraVuotHanMucKhiMua(TongTienHoaDonMoi);
       ```
@@ -215,16 +222,18 @@
 - **Yêu cầu của thầy**: Cặp header–line ghi trong 1 transaction.
 - **Trạng thái**: **Đạt**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - **Luồng Hóa đơn**: `BanHang.DataStore.SQL/HoaDonRepository.cs`: Dòng 64 mở transaction (`connection.BeginTransaction(IsolationLevel.ReadCommitted)`).
-    - Ghi Header: Dòng 283–294 (`INSERT INTO dbo.HoaDons`).
-    - Ghi Lines: Dòng 307–319 (`INSERT INTO dbo.ChiTietHoaDons`).
-    - Trừ tồn kho: Dòng 323–347 (`UPDATE dbo.SanPhams`).
-    - Hoàn tất: Dòng 372 (`transaction.Commit()`). Lỗi bất kỳ bước nào rollback toàn bộ tại dòng 385, 396.
-  - **Luồng Thu tiền**: `BanHang.DataStore.SQL/ThanhToanRepository.cs`: Dòng 93 mở transaction.
-    - Ghi Header phiếu thu: Dòng 248–261 (`INSERT INTO dbo.ThanhToans`).
-    - Ghi Lines phân bổ: Dòng 263–275 (`INSERT INTO dbo.PhanBoThanhToans`).
-    - Cập nhật số tiền đã trả trên hóa đơn: Dòng 269–274 (`UPDATE dbo.HoaDons SET DaThanhToan = DaThanhToan + ...`).
-    - Hoàn tất: Dòng 278 (`transaction.Commit()`).
+  - **Luồng Hóa đơn**: `BanHang.DataStore.SQL/HoaDonRepository.cs`:
+    - Dòng 74 mở transaction (`connection.BeginTransaction(IsolationLevel.ReadCommitted)`).
+    - Ghi Header: Dòng 303–321 (`INSERT INTO dbo.HoaDons`).
+    - Ghi Lines: Dòng 325–346 (`INSERT INTO dbo.ChiTietHoaDons`).
+    - Trừ tồn kho: Dòng 349–374 (`UPDATE dbo.SanPhams`).
+    - Hoàn tất: Dòng 377 (`transaction.Commit()`). Lỗi bất kỳ bước nào rollback toàn bộ tại dòng 367, 390.
+  - **Luồng Thu tiền**: `BanHang.DataStore.SQL/ThanhToanRepository.cs`:
+    - Dòng 93 mở transaction (`connection.BeginTransaction(IsolationLevel.ReadCommitted)`).
+    - Ghi Header phiếu thu: Dòng 240–256 (`INSERT INTO dbo.ThanhToans`).
+    - Ghi Lines phân bổ: Dòng 260–282 (`INSERT INTO dbo.PhanBoThanhToans`).
+    - Cập nhật số tiền đã trả trên hóa đơn: Dòng 266–287 (`UPDATE dbo.HoaDons SET DaThanhToan = DaThanhToan + ...`).
+    - Hoàn tất: Dòng 290 (`transaction.Commit()`). Lỗi rollback tại dòng 110, 303.
 - **Bằng chứng kiểm thử / Demo**:
   - `BanHang.Tests/TruTonKhoHoaDonIntegrationTests.cs`: Dòng 248–300 kiểm thử khi 1 sản phẩm thiếu tồn, toàn bộ hóa đơn và chi tiết bị rollback, không có bản ghi mồ côi nào được ghi.
   - `BanHang.Tests/ThanhToanIntegrationTests.cs`: Kiểm thử phân bổ ghi đồng thời phiếu thu và chi tiết phân bổ.
@@ -427,47 +436,49 @@
 
 ---
 
-#### K4.3: Tính năng nâng cao: Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc Trợ lý AI
+#### K4.3: Tính năng nâng cao: Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc Trợ lý AI (Mục 10 PDF)
 - **Yêu cầu của thầy**: Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật.
-- **Trạng thái**: **Đạt (Phần kết xuất và nội dung file .xlsx đã kiểm thử tự động; phần tải file trên trình duyệt thực tế chờ người dùng xác nhận)**
-    - **Nhóm bản Báo Cáo Thuyết Minh A4 (Chính văn đồ án - Cỡ chữ in thực tế ĐẠT $\ge$ 9.0 pt)**:
-      1. `docs/uml/BaoCao_ClassDiagram_KienTrucTongQuan.puml` & `.svg` (1104 x 851 px): Clean Architecture chuẩn: Presentation $\rightarrow$ UseCases $\rightarrow$ CoreBusiness; Plugins $\rightarrow$ UseCases (DIP). CoreBusiness độc lập 100%, không phụ thuộc Plugins. Cỡ chữ in trên A4 Landscape đạt **9.4 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
-      2. `docs/uml/BaoCao_UseCase.puml` & `.svg` (639 x 713 px): 2 Actor (`NhanVienBanHang`, `KeToanCongNo`), phân quyền rõ ràng, bố cục cân đối trang dọc. Cỡ chữ in đạt **15.5 pt** (ĐẠT $\ge$ 9pt, rất to rõ).
-      3. `docs/uml/BaoCao_DomainModel.puml` & `.svg` (626 x 1009 px): 5 Entity cốt lõi, Header-Line (1-n), quan hệ `ThanhToan 1 *-- 0..* PhanBoThanhToan` (chuẩn hóa nghiệp vụ phiếu thu chưa phân bổ khi khách nộp tiền thừa), phương thức kiểm tra hạn mức, cột tính toán PERSISTED. Cỡ chữ in đạt **10.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
-      4. `docs/uml/BaoCao_Sequence_TaoHoaDon.puml` & `.svg` (820 x 1421 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, mở Tx tại Repository, khóa UPDLOCK $\rightarrow$ gọi Luật 1 hạn mức trong transaction sau khi khóa khách hàng và đọc công nợ thực tế $\rightarrow$ cấp mã HDxxx $\rightarrow$ trừ tồn atomic $\rightarrow$ Commit. Cỡ chữ in đạt **9.3 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
-      5. `docs/uml/BaoCao_Sequence_ThanhToanFIFO.puml` & `.svg` (919 x 1675 px): Tập trung luồng chính: Lifeline gộp `Xử lý nghiệp vụ (UseCase + Repository)`, Xem trước FIFO $\rightarrow$ Bấm lưu $\rightarrow$ Mở Tx tại Repo $\rightarrow$ Cấp mã PTxxx $\rightarrow$ Khóa UPDLOCK $\rightarrow$ Chạy lại FIFO & Đối chiếu snapshot $\rightarrow$ Ghi nhận Header/Line (0..* dòng phân bổ) $\rightarrow$ Commit. Cỡ chữ in đạt **10.2 pt** (ĐẠT $\ge$ 9pt, dễ đọc).
-    - **Nhóm bản Phân rã Chi tiết (Phụ lục Báo cáo - Ghi nhận trung thực: CHƯA ĐẠT 9.0 pt do mật độ chi tiết cao)**:
-      - *Luồng Lập Hóa Đơn Bán Chịu*:
-        - P1: `docs/uml/Sequence_TaoHoaDon_Phan1_KiemTra.puml` & `.svg`: Bước `[01]`–`[14]`, chữ in **~4.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-        - P2: `docs/uml/Sequence_TaoHoaDon_Phan2_KhoaDuLieu.puml` & `.svg`: Bước `[15]`–`[38]`, chữ in **~3.6 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-        - P3: `docs/uml/Sequence_TaoHoaDon_Phan3_CapMaCommit.puml` & `.svg`: Bước `[39]`–`[69]`, chữ in **~3.4 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-      - *Luồng Thu Tiền & Phân Bổ FIFO*:
-        - P1: `docs/uml/Sequence_ThanhToanFIFO_Phan1_XemTruoc.puml` & `.svg`: Bước `[01]`–`[18]`, chữ in **~3.7 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-        - P2: `docs/uml/Sequence_ThanhToanFIFO_Phan2_KhoaDoiSoat.puml` & `.svg`: Bước `[19]`–`[44]`, chữ in **~3.1 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-        - P3: `docs/uml/Sequence_ThanhToanFIFO_Phan3_GhiNhanCommit.puml` & `.svg`: Bước `[45]`–`[68]`, chữ in **~4.2 pt** (Chưa đạt 9pt, tra cứu phụ lục).
-    - **Nhóm bản Tham khảo Toàn cảnh (Full Reference)**:
-      - `docs/uml/ClassDiagram.puml` & `.svg` (4488 x 1348 px): Toàn bộ chi tiết 4 tầng. Chữ in nếu ép A4: **~2.0 pt** (Chưa đạt 9pt).
-      - `docs/uml/DomainModel.puml` & `.svg` (1502 x 1015 px): Toàn bộ thuộc tính & ghi chú SQL. Chữ in nếu ép A4: **~5.5 pt** (Chưa đạt 9pt).
-      - `docs/uml/Sequence_TaoHoaDon.puml` & `.svg` (2732 x 3545 px): Toàn bộ luồng gồm cả 6 nhánh break rollback. Chữ in: **~1.8 pt** (Chưa đạt 9pt).
-      - `docs/uml/Sequence_ThanhToanFIFO.puml` & `.svg` (2863 x 3084 px): Toàn bộ luồng gồm cả xem trước và lưu kèm mọi nhánh lỗi. Chữ in: **~1.9 pt** (Chưa đạt 9pt).
-      - `docs/uml/Sequence_TaoHoaDon_Phan2_Transaction.puml` & `.svg` (2294 x 2770 px): Bản 2 phần cũ ([15]–[69]), chữ in: **~2.4 pt** (Chưa đạt 9pt).
-      - `docs/uml/Sequence_ThanhToanFIFO_Phan2_Transaction.puml` & `.svg` (2594 x 2588 px): Bản 2 phần cũ ([19]–[68]), chữ in: **~2.15 pt** (Chưa đạt 9pt).
-    - **Tài liệu PDF chính thức phục vụ báo cáo và kiểm chứng**:
-      - `docs/uml/BaoCao_UML_A4.pdf`: Bản PDF 5 trang dành cho **chính văn báo cáo thuyết minh** đồ án. Đã loại bỏ khung kiểm chứng nét đứt và nhãn kiểm thử, bố trí sẵn lề an toàn 20mm, chữ đạt chuẩn từ 9.3 pt đến 15.5 pt.
-      - `docs/uml/KiemChung_BoCuc_A4.pdf`: Tài liệu kiểm chứng 13 trang A4 tiêu chuẩn (vùng in có lề 20 mm kẻ nét đứt). Minh chứng tỷ lệ co thực tế, bảng đối soát kích thước chữ và kết luận ĐẠT / CHƯA ĐẠT cho từng sơ đồ một cách khách quan, trung thực (dòng thông số chân trang 2 dòng ngắt dòng chuẩn xác không bị cắt lề).
-    - Tên file: `BaoCaoTuoiNo_{yyyyMMdd}.xlsx` chứa ngày chốt số liệu, không lộ thông tin nhạy cảm.
+- **Trạng thái**: **Đạt (Dự án triển khai và đạt cả 2 tính năng: Xuất báo cáo Excel từ dữ liệu thật VÀ Trợ lý AI soạn/gửi email nhắc nợ đạt đủ Mục 10 PDF)**
+- **Đường dẫn tương đối & Số dòng làm bằng chứng**:
+
+  #### 1. Tính năng A: Xuất Báo Cáo Tuổi Nợ Excel (.xlsx) Từ Dữ Liệu Thật (ClosedXML)
+  - **Tầng Plugin Báo Cáo**: `BanHang.Reports.Excel/ClosedXmlBaoCaoTuoiNoExcelExporter.cs`:
+    - Tạo file Excel chuẩn XML (`.xlsx`) từ danh sách nợ và kết quả phân tích 4 nhóm tuổi nợ của CSDL thật.
+    - Cố định tiêu đề (Freeze Panes), định dạng số tiền `decimal` rõ ràng, tự động căn chỉnh độ rộng cột, tính toán tổng cộng và tiền chưa phân bổ.
+    - Cơ chế phòng chống Formula Injection: Kiểm tra chuỗi bắt đầu bằng `=`, `+`, `-`, `@` để chuyển sang dạng text thuần (`HasFormula = false`).
+  - **Tầng UseCase**: `BanHang.UseCases/BaoCaoTuoiNoScreen/XuatBaoCaoTuoiNoExcelUseCase.cs`:
+    - Xác thực đăng nhập và quyền vai trò (`KeToanCongNo` mới được xuất báo cáo).
+    - So sánh snapshot số dư và tổng nợ với dữ liệu DB tại thời điểm xuất: Nếu dữ liệu thay đổi so với màn hình người dùng đang xem, từ chối xuất và yêu cầu làm mới để bảo đảm tính nhất quán của dữ liệu kế toán.
+    - Đặt tên file xuất tự động: `BaoCaoTuoiNo_{yyyyMMdd}.xlsx` theo ngày chốt số liệu.
+
+  #### 2. Tính năng B: Trợ Lý AI Soạn Email Nhắc Nợ & Phê Duyệt Gửi An Toàn (Mục 10 PDF)
+  - **Đối chiếu Yêu cầu Mục 10 PDF & Kiến trúc Clean Architecture**:
+    - *Yêu cầu đề bài*: Tích hợp Generative AI qua `IChatClient` (thư viện `Microsoft.Extensions.AI.Abstractions`) với UseCase riêng biệt.
+    - *Tuân thủ Dependency Inversion Principle (DIP)*: Để bảo vệ tầng CoreBusiness và UseCases không bị ô nhiễm bởi package bên ngoài, tầng `BanHang.UseCases` định nghĩa Port nghiệp vụ `IAiEmailDraftingService` (nhận DTO ngữ cảnh nợ, trả về nháp email B2B).
+    - *Adapter & Composition Root*:
+      - Tầng WebApp `DuAn_BanHangVaCongNoKhachHang/Services/AiChatClientEmailDraftingService.cs` đóng vai trò Adapter: inject `IChatClient` (từ `Microsoft.Extensions.AI.Abstractions`) và gọi Gemini / OpenAI / Fake client.
+      - `Program.cs` (Dòng 137–213): Cấu hình `IChatClient` linh hoạt theo cấu hình: hỗ trợ `FakeChatClient` (nội bộ, không tốn API key), `OpenAI`, hoặc `Gemini`. Hệ thống luôn ưu tiên cấu hình mô hình của người dùng trong User Secrets (`AiSettings:ModelId`); chỉ khi để trống mới áp dụng giá trị dự phòng là mô hình Flash GA `gemini-3.6-flash` phù hợp cho project mới có Free Tier (Google AI Studio trên endpoint OpenAI compatibility, đối chiếu tài liệu chính thức ngày 21/10/2026: https://ai.google.dev/gemini-api/docs/models/gemini). Hạn mức và quyền truy cập mô hình phụ thuộc project, mô hình và cấp sử dụng; kiểm tra trực tiếp trong Google AI Studio. Bộ kiểm thử tự động dùng mock client độc lập, không khẳng định kết nối API thật thành công nếu chưa cấu hình API key hợp lệ.
+    - *UseCases riêng biệt*:
+      - `BanHang.UseCases/EmailNhacNoScreen/SoanEmailNhacNoUseCase.cs`: Soạn email nhắc nợ AI ngữ cảnh B2B theo snapshot công nợ thực tế (`IXemDuLieuNhacNoKhachHangUseCase`), phân loại theo hóa đơn quá hạn và hóa đơn chưa đến hạn, prompt engineering theo tone chuẩn mực doanh nghiệp, có fallback dự phòng nếu AI mất kết nối.
+      - `BanHang.UseCases/EmailNhacNoScreen/PheDuyetEmailNhacNoUseCase.cs`: Phê duyệt nội dung nháp phía máy chủ (Server-side approval), lưu trữ snapshot đã duyệt, ngăn chặn gửi tự động khi chưa có sự xác nhận của kế toán.
+      - `BanHang.UseCases/EmailNhacNoScreen/GuiEmailNhacNoUseCase.cs`: Xác thực người duyệt, phát hiện dữ liệu công nợ thay đổi so với thời điểm duyệt (stale debt detection), cơ chế chống gửi trùng bền vững (Idempotency Key & Payload Hash) với kiểm tra tranh chấp INSERT khóa duy nhất (kiểm tra `dup.NguoiDuyet == currentUser` và `dup.PayloadHash == payloadHash`), gọi `IEmailSender` và lưu audit log.
+  - **Độ tin cậy gửi email & Bảo toàn dữ liệu đã duyệt**:
+    - `DuAn_BanHangVaCongNoKhachHang/Services/SmtpEmailSender.cs`:
+      - Phân biệt chính xác: lỗi ở giai đoạn kết nối/xác thực (`ConnectAsync`/`AuthenticateAsync`) trả về `ThatBai`; lỗi gián đoạn mạng ở giai đoạn `SendAsync` trả về `ChuaRoKetQua` (không tự gửi lại); lỗi ở giai đoạn ngắt kết nối (`DisconnectAsync`) sau khi máy chủ SMTP đã tiếp nhận thành công vẫn giữ nguyên kết quả `TiepNhan`.
+      - Bảo lưu kiểm tra TLS/SSL nghiêm ngặt.
+    - `DuAn_BanHangVaCongNoKhachHang/Services/EmailHtmlFormatter.cs`:
+      - Bảo toàn 100% nội dung kế toán đã duyệt khi kết xuất HTML. Hỗ trợ bảng pipe `|` có hoặc không có dấu ở đầu/cuối dòng.
+      - Các dòng hóa đơn hoặc ghi chú kế toán sửa tay không parse được vào bảng được bảo toàn nguyên vẹn (HTML-encoded) bên dưới bảng, tuyệt đối không âm thầm nuốt bỏ dòng nào.
+      - Lọc bỏ tiêu đề lặp mà không làm mất bất kỳ số liệu công nợ nào.
+    - `BanHang.DataStore.SQL/NhatKyEmailRepository.cs`:
+      - Cập nhật và lưu trữ `EmailNhanThucTe` và `CheDoGui` phản ánh đúng dịch vụ thực tế (đặc biệt khi bật `TestRecipientRedirect`), đồng thời bảo toàn `EmailNguoiNhan` dự kiến không bị ghi đè.
+
 - **Bằng chứng kiểm thử / Demo**:
-  - `BanHang.Tests/BaoCaoTuoiNoExcelTests.cs`: 7 test cases tự động:
-    1. `Test01_ClosedXmlExporter_XuatFile_DocLaiDungCauTrucVaGiaTriSo`: Đọc lại file .xlsx sinh ra bằng ClosedXML, kiểm tra ngày chốt, freeze panes, STT, tên text, hạn mức/tuổi nợ/tổng nợ là số `decimal`, kiểm tra công thức injection không bị thực thi (`HasFormula = false`), khớp hàng tổng và tiền chưa phân bổ.
-    2. `Test02_ClosedXmlExporter_DuLieuTrong_TaoFileHopLe`: Kiểm tra khi danh sách rỗng vẫn tạo file Excel hợp lệ, có thông báo không có dữ liệu, hàng tổng = 0 đ.
-    3. `Test03_XuatExcelUseCase_ChuaDangNhap_BiTuChoi`: Chặn người dùng nặc danh (ném `UnauthorizedAccessException`).
-    4. `Test04_XuatExcelUseCase_SaiVaiTro_NhanVienBanHang_BiTuChoi`: Chặn vai trò Nhân viên bán hàng (ném `UnauthorizedAccessException`).
-    5. `Test05_XuatExcelUseCase_KeToanCongNo_XuatThanhCong`: Xác thực Kế toán công nợ xuất file thành công, đúng tên file theo ngày chốt.
-    6. `Test06_XuatExcelUseCase_DuLieuThayDoiSoVoiSnapshot_PhatHienVaTuChoi`: Phát hiện dữ liệu DB thay đổi so với snapshot đang xem trên màn hình, chặn xuất và trả thông báo tiếng Việt rõ ràng.
-    7. `Test07_XuatExcelUseCase_NgayNhapChuaApDung_KhongAnhHuongNgayXuat`: Khẳng định việc thay đổi ngày nhập liệu mà chưa áp dụng sẽ không làm sai lệch ngày chốt và dữ liệu của file xuất ra.
-  - Kết quả chạy kiểm thử toàn solution: **276/276 tests Passed 100%**.
-  - *Phân biệt trạng thái*: Việc tạo file, cấu trúc dữ liệu, kiểm tra quyền và phát hiện thay đổi đã được kiểm thử tự động 100%; thao tác tải tệp trực tiếp trên trình duyệt thực tế chờ người dùng nhấn nút "Xuất Excel" để trải nghiệm.
-- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Tiêu chí K4.3 đã hoàn thành trọn vẹn theo đúng yêu cầu đề bài.
+  - `BanHang.Tests/BaoCaoTuoiNoExcelTests.cs`: 7 test cases tự động cho xuất Excel ClosedXML (kiểm tra ngày chốt, freeze panes, STT, định dạng số, formula injection, phân quyền, stale snapshot).
+  - `BanHang.Tests/EmailNhacNoUnitTests.cs`: 43 test cases unit test toàn diện (Mock AI, Mock SMTP, bao quát quy tắc soạn thảo, phê duyệt máy chủ, stale debt detection, chống gửi trùng idempotency key & payload hash, tranh chấp INSERT duplicate key, xử lý kết quả SMTP TiepNhan/ThatBai/ChuaRoKetQua, bảo toàn HTML bảng pipe và unparsed lines, audit log).
+  - `BanHang.Tests/DurableIdempotencyIntegrationTests.cs`: 4 integration tests kiểm thử chống gửi trùng bền vững trên CSDL test an toàn.
+  - Kết quả chạy kiểm thử toàn solution: **345/345 tests Passed 100%** (Failed: 0, Skipped: 0).
+- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Cả 2 tính năng nâng cao đều đã hoàn thành trọn vẹn và đạt kiểm thử tự động 100%.
 
 ---
 
@@ -563,7 +574,7 @@
 | | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Đạt** |
 | **4. Bảo mật & Nâng cao (15%)** | **K4.1** | Đăng nhập, đăng xuất, ít nhất 2 vai trò | **Đạt** |
 | | **K4.2** | Gõ trực tiếp URL trang quản trị bị chặn | **Đạt** |
-| | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Đạt** (File .xlsx đã kiểm thử tự động, tải trình duyệt chờ xác nhận) |
+| | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Đạt** (Đạt cả 2: Xuất báo cáo Excel ClosedXML và Trợ lý AI Mục 10 PDF; 345/345 tests Passed) |
 | **5. Hồ sơ & Vấn đáp (15%)** | **K5.1** | Sơ đồ PlantUML (Use Case, Class, Sequence) khớp code | **Đạt** (Đã render cục bộ 19/19 tệp SVG, PDF vector & kiểm chứng PDF A4 lề 20mm 13 trang) |
 | | **K5.2** | Vấn đáp: chỉ đúng dòng cài luật & Dependency Rule | **Chưa xác minh** |
 | | **K5.3** | Lịch sử commit rải đều trên ít nhất 3 tuần | **Thiếu** |
@@ -573,7 +584,9 @@
 ## III. DANH SÁCH CÔNG VIỆC CẦN HOÀN THIỆN THEO MỨC ƯU TIÊN
 
 ### Ưu tiên cao:
-*(Không còn mục điểm 0 nào về mã nguồn, tính năng hay hồ sơ thiết kế UML; tiêu chí K5.3 thuộc về lịch sử Git quá khứ, nhóm cam kết giữ trung thực không giả lập commit).*
+*(Không còn mục điểm 0 nào về mã nguồn, tính năng, CSDL, tài liệu hay hồ sơ thiết kế UML; tiêu chí K5.3 thuộc về lịch sử Git quá khứ, nhóm cam kết giữ trung thực không giả lập commit).*
 
-### Ưu tiên trung bình:
-1. **Hoàn thiện `README.md`**: Bổ sung hướng dẫn chi tiết cách cấu hình chuỗi kết nối, tài khoản mẫu và cách chạy ứng dụng từ Visual Studio / CLI.
+### Đã hoàn thành:
+1. **Hoàn thiện `README.md`**: Cấu trúc project thực tế, yêu cầu môi trường, thứ tự chạy 5 script CSDL & migration, cơ chế tạo/băm tài khoản PBKDF2, cấu hình mẫu an toàn không chứa bí mật, lựa chọn profile chạy và lệnh kiểm thử tự động, phân biệt Classic Blazor Server với Blazor Web App.
+2. **Kiểm thử tự động toàn diện**: 345/345 test cases Passed 100% trên CSDL test cách ly an toàn (`QuanLyBanHangCongNo_K21_AutoTest` và `QuanLyBanHangCongNo_Test`).
+3. **Đồng bộ hồ sơ đánh giá `GRADING.md`**: Cập nhật chính xác số dòng, đường dẫn và bằng chứng thực tế mới nhất, đối chiếu chi tiết Mục 10 PDF về Clean Architecture & `IChatClient` Adapter.

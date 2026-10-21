@@ -217,7 +217,7 @@ public class SoanEmailNhacNoUseCase : ISoanEmailNhacNoUseCase
             {
                 GiongVanEmail.NheNhang => $"Kính đề nghị Quý khách sắp xếp thanh toán khoản nợ đã đến hạn là {tongDenVaQuaHan.ToString("N0", vi)} đ. Các khoản chưa đến hạn xin vui lòng tiếp tục theo dõi thanh toán đúng hẹn.\n\nNếu có bất kỳ sai lệch nào về số liệu, xin vui lòng phản hồi lại để cùng rà soát.\n\nTrân trọng cảm ơn sự hợp tác của Quý khách!",
                 GiongVanEmail.KhanTruong => $"Để đảm bảo quyền lợi duy trì hạn mức tín dụng và luồng giao dịch liên tục, kính đề nghị Quý khách ưu tiên thanh toán khoản nợ đã đến hạn ({tongDenVaQuaHan.ToString("N0", vi)} đ) trong thời gian sớm nhất.\n\nTrân trọng thông báo!",
-                _ => $"Kính đề nghị Quý khách rà soát và sắp xếp thanh toán khoản nợ đã đến hạn là {tongDenVaQuaHan.ToString("N0", vi)} đ theo thỏa thuận. Các khoản chưa đến hạn xin vui lòng theo dõi để thanh toán đúng quy định.\n\nTrân trọng cảm ơn!"
+                _ => $"Kính đề nghị Quý khách rà soát và sắp xếp thanh toán khoản nợ đã đến hạn là {tongDenVaQuaHan.ToString("N0", vi)} đ theo thỏa thuận. Các khoản chưa đến hạn xin vui lòng tiếp tục theo dõi để thanh toán đúng quy định.\n\nTrân trọng cảm ơn!"
             };
         }
         else

@@ -72,7 +72,8 @@ public class DevEmailSender : IEmailSender
             ThongBaoChiTiet = isRealSmtpConfigured
                 ? "Dịch vụ email đã tiếp nhận yêu cầu gửi (Chế độ tích hợp)."
                 : "Đã gửi thử nghiệm thành công (Sandbox Dev Mode - chưa phát tán email thật ra Internet).",
-            EmailNhanThucTe = email
+            EmailNhanThucTe = email,
+            CheDoGui = "MoPhong"
         });
     }
 }
