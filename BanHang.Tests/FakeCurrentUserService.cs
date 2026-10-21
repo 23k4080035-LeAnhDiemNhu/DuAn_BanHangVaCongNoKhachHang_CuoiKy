@@ -27,7 +27,7 @@ public class FakeCurrentUserService : ICurrentUserService
         _hoTen = hoTen;
     }
 
-    public static FakeCurrentUserService KeToanCongNo() => new(true, VaiTroConstants.KeToanCongNo, "ktcn", "Kế Toán Công Nợ Demo");
+    public static FakeCurrentUserService KeToanCongNo(string tenDangNhap = "ktcn") => new(true, VaiTroConstants.KeToanCongNo, tenDangNhap, $"Kế Toán ({tenDangNhap})");
     public static FakeCurrentUserService NhanVienBanHang() => new(true, VaiTroConstants.NhanVienBanHang, "nvbh", "Nhân Viên Bán Hàng Demo");
     public static FakeCurrentUserService Anonymous() => new(false, null, null, null);
     public static FakeCurrentUserService Role(string role) => new(true, role, "custom_user", "Custom User");

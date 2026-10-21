@@ -8,6 +8,9 @@ using BanHang.UseCases.KhachHangScreen;
 using BanHang.UseCases.PluginInterfaces.DataStore;
 using BanHang.UseCases.PluginInterfaces.Reports;
 using BanHang.UseCases.PluginInterfaces.Security;
+using BanHang.UseCases.EmailNhacNoScreen;
+using BanHang.UseCases.PluginInterfaces.AI;
+using BanHang.UseCases.PluginInterfaces.Email;
 using BanHang.UseCases.SanPhamScreen;
 using BanHang.UseCases.Security;
 using BanHang.UseCases.ThanhToanScreen;
@@ -16,6 +19,7 @@ using DuAn_BanHangVaCongNoKhachHang.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.Extensions.AI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -128,6 +132,129 @@ builder.Services.AddScoped<IBaoCaoTuoiNoRepository, BaoCaoTuoiNoRepository>();
 builder.Services.AddScoped<IXemBaoCaoTuoiNoUseCase, XemBaoCaoTuoiNoUseCase>();
 builder.Services.AddScoped<IBaoCaoTuoiNoExcelExporter, ClosedXmlBaoCaoTuoiNoExcelExporter>();
 builder.Services.AddScoped<IXuatBaoCaoTuoiNoExcelUseCase, XuatBaoCaoTuoiNoExcelUseCase>();
+
+// Đăng ký dịch vụ AI (Độc lập cấu hình: Fake hoặc OpenAI/Provider thật)
+var aiProvider = builder.Configuration["AiSettings:Provider"]?.Trim() ?? "Fake";
+if (string.Equals(aiProvider, "Fake", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddSingleton<IChatClient, FakeChatClient>();
+}
+else if (string.Equals(aiProvider, "OpenAI", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(aiProvider, "Real", StringComparison.OrdinalIgnoreCase))
+{
+    var apiKey = builder.Configuration["AiSettings:ApiKey"]?.Trim();
+    var modelId = builder.Configuration["AiSettings:ModelId"]?.Trim() ?? "gpt-4o-mini";
+    var endpoint = builder.Configuration["AiSettings:Endpoint"]?.Trim();
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        throw new InvalidOperationException(
+            "Cấu hình AI nhà cung cấp 'OpenAI' đang được bật nhưng thiếu ApiKey. " +
+            "Vui lòng cấu hình qua User Secrets ('dotnet user-secrets set \"AiSettings:ApiKey\" \"...\"') hoặc biến môi trường AISETTINGS__APIKEY. " +
+            "Hệ thống tuyệt đối không âm thầm chuyển sang mô phỏng.");
+    }
+
+    builder.Services.AddSingleton<IChatClient>(sp =>
+    {
+        OpenAI.OpenAIClient openAiClient;
+        if (!string.IsNullOrWhiteSpace(endpoint))
+        {
+            var options = new OpenAI.OpenAIClientOptions
+            {
+                Endpoint = new Uri(endpoint)
+            };
+            openAiClient = new OpenAI.OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey), options);
+        }
+        else
+        {
+            openAiClient = new OpenAI.OpenAIClient(apiKey);
+        }
+        return openAiClient.GetChatClient(modelId).AsIChatClient();
+    });
+}
+else if (string.Equals(aiProvider, "Gemini", StringComparison.OrdinalIgnoreCase))
+{
+    var apiKey = builder.Configuration["AiSettings:ApiKey"]?.Trim();
+    var modelId = builder.Configuration["AiSettings:ModelId"]?.Trim();
+    if (string.IsNullOrWhiteSpace(modelId))
+    {
+        modelId = "gemini-1.5-flash"; // Mô hình Flash hỗ trợ Free Tier từ Google AI Studio
+    }
+    var endpoint = builder.Configuration["AiSettings:Endpoint"]?.Trim();
+    if (string.IsNullOrWhiteSpace(endpoint))
+    {
+        endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/";
+    }
+
+    if (string.IsNullOrWhiteSpace(apiKey))
+    {
+        throw new InvalidOperationException(
+            "Cấu hình AI nhà cung cấp 'Gemini' đang được bật nhưng thiếu ApiKey. " +
+            "Vui lòng lấy API key từ Google AI Studio (https://aistudio.google.com/) và cấu hình qua User Secrets " +
+            "('dotnet user-secrets set \"AiSettings:ApiKey\" \"...\"') hoặc biến môi trường AISETTINGS__APIKEY. " +
+            "Hệ thống tuyệt đối không âm thầm chuyển sang mô phỏng.");
+    }
+
+    builder.Services.AddSingleton<IChatClient>(sp =>
+    {
+        var options = new OpenAI.OpenAIClientOptions
+        {
+            Endpoint = new Uri(endpoint)
+        };
+        var geminiClient = new OpenAI.OpenAIClient(new System.ClientModel.ApiKeyCredential(apiKey), options);
+        return geminiClient.GetChatClient(modelId).AsIChatClient();
+    });
+}
+else
+{
+    throw new InvalidOperationException($"Nhà cung cấp AI '{aiProvider}' không được hỗ trợ. Các giá trị hợp lệ: 'Fake', 'OpenAI', 'Gemini'.");
+}
+
+builder.Services.AddScoped<IAiEmailDraftingService, AiChatClientEmailDraftingService>();
+
+// Đăng ký dịch vụ Gửi Email (Độc lập cấu hình: Dev/Sandbox hoặc Real SMTP)
+var emailMode = builder.Configuration["EmailSettings:Mode"]?.Trim() ?? "Dev";
+if (string.Equals(emailMode, "Dev", StringComparison.OrdinalIgnoreCase) ||
+    string.Equals(emailMode, "Sandbox", StringComparison.OrdinalIgnoreCase))
+{
+    builder.Services.AddScoped<IEmailSender, DevEmailSender>();
+}
+else if (string.Equals(emailMode, "Real", StringComparison.OrdinalIgnoreCase) ||
+         string.Equals(emailMode, "Smtp", StringComparison.OrdinalIgnoreCase))
+{
+    var smtpServer = builder.Configuration["EmailSettings:SmtpServer"]?.Trim();
+    var password = builder.Configuration["EmailSettings:Password"];
+
+    if (string.IsNullOrWhiteSpace(smtpServer))
+    {
+        throw new InvalidOperationException(
+            "Chế độ gửi email thật ('Real/SMTP') đang được bật nhưng thiếu cấu hình máy chủ 'EmailSettings:SmtpServer'. " +
+            "Hệ thống tuyệt đối không âm thầm chuyển sang mô phỏng.");
+    }
+    if (string.IsNullOrWhiteSpace(password))
+    {
+        throw new InvalidOperationException(
+            "Chế độ gửi email thật ('Real/SMTP') đang được bật nhưng thiếu mật khẩu 'EmailSettings:Password'. " +
+            "Vui lòng cấu hình qua User Secrets ('dotnet user-secrets set \"EmailSettings:Password\" \"...\"') hoặc biến môi trường EMAILSETTINGS__PASSWORD. " +
+            "Hệ thống tuyệt đối không âm thầm chuyển sang mô phỏng.");
+    }
+
+    builder.Services.AddScoped<IEmailSender, SmtpEmailSender>();
+}
+else
+{
+    throw new InvalidOperationException($"Chế độ gửi email '{emailMode}' không hợp lệ. Các giá trị hợp lệ: 'Dev', 'Real'.");
+}
+
+builder.Services.AddScoped<INhatKyEmailRepository, NhatKyEmailRepository>();
+builder.Services.AddSingleton<IDuyetEmailStore, MemoryDuyetEmailStore>();
+builder.Services.AddSingleton<IEmailIdempotencyStore, MemoryEmailIdempotencyStore>();
+
+// UseCases soạn thảo, phê duyệt và gửi email nhắc nợ (Scoped)
+builder.Services.AddScoped<IXemDuLieuNhacNoKhachHangUseCase, XemDuLieuNhacNoKhachHangUseCase>();
+builder.Services.AddScoped<ISoanEmailNhacNoUseCase, SoanEmailNhacNoUseCase>();
+builder.Services.AddScoped<IPheDuyetEmailNhacNoUseCase, PheDuyetEmailNhacNoUseCase>();
+builder.Services.AddScoped<IGuiEmailNhacNoUseCase, GuiEmailNhacNoUseCase>();
 
 var app = builder.Build();
 

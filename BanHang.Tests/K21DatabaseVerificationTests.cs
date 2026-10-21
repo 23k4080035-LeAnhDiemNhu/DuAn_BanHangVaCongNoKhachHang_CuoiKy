@@ -29,21 +29,52 @@ namespace BanHang.Tests;
 public class K21DatabaseVerificationTests : IAsyncLifetime
 {
     private const string MasterConnectionString = "Server=(localdb)\\MSSQLLocalDB;Database=master;Trusted_Connection=True;TrustServerCertificate=True;";
-    private const string VerifyDatabaseName = "QuanLyBanHangCongNo_K21_Verify";
-    private const string VerifyConnectionString = $"Server=(localdb)\\MSSQLLocalDB;Database={VerifyDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
+    private const string AutoTestDatabaseName = "QuanLyBanHangCongNo_K21_AutoTest";
+    private const string AutoTestConnectionString = $"Server=(localdb)\\MSSQLLocalDB;Database={AutoTestDatabaseName};Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True;";
 
     private readonly string _scriptsDir;
 
     public K21DatabaseVerificationTests()
     {
-        // Đường dẫn tương đối từ bin/Debug/net8.0 đến BanHang.DataStore.SQL/Scripts
         var baseDir = AppContext.BaseDirectory;
-        _scriptsDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "BanHang.DataStore.SQL", "Scripts"));
-        if (!Directory.Exists(_scriptsDir))
+
+        // 1. Kiểm tra thư mục Scripts được đóng gói trực tiếp vào Output Directory của Test
+        var candidate1 = Path.Combine(baseDir, "Scripts");
+        if (Directory.Exists(candidate1) && File.Exists(Path.Combine(candidate1, "01_Safe_CreateSchema.sql")))
         {
-            // Thử fallback nếu chạy từ root
-            _scriptsDir = Path.GetFullPath(Path.Combine(Directory.GetCurrentDirectory(), "BanHang.DataStore.SQL", "Scripts"));
+            _scriptsDir = candidate1;
+            return;
         }
+
+        // 2. Tìm duyệt ngược lên cây thư mục cha từ AppContext.BaseDirectory
+        var dirInfo = new DirectoryInfo(baseDir);
+        string? foundDir = null;
+        while (dirInfo != null)
+        {
+            var candidate = Path.Combine(dirInfo.FullName, "BanHang.DataStore.SQL", "Scripts");
+            if (Directory.Exists(candidate) && File.Exists(Path.Combine(candidate, "01_Safe_CreateSchema.sql")))
+            {
+                foundDir = candidate;
+                break;
+            }
+            dirInfo = dirInfo.Parent;
+        }
+
+        if (foundDir != null)
+        {
+            _scriptsDir = foundDir;
+            return;
+        }
+
+        // 3. Fallback theo CurrentDirectory
+        var candidateCurrent = Path.Combine(Directory.GetCurrentDirectory(), "BanHang.DataStore.SQL", "Scripts");
+        if (Directory.Exists(candidateCurrent))
+        {
+            _scriptsDir = candidateCurrent;
+            return;
+        }
+
+        _scriptsDir = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", "BanHang.DataStore.SQL", "Scripts"));
     }
 
     private void AssertSafeDatabase(string connectionString)
@@ -56,6 +87,11 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
             throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Tuyệt đối không thao tác trên CSDL chính QuanLyBanHangCongNo!");
         }
 
+        if (string.Equals(db, "QuanLyBanHangCongNo_K21_Verify", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException("CHỐT AN TOÀN VI PHẠM: Tuyệt đối không thao tác DROP/CREATE trên database demo QuanLyBanHangCongNo_K21_Verify của profile Verify_K21!");
+        }
+
         if (string.Equals(db, "master", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "tempdb", StringComparison.OrdinalIgnoreCase) ||
             string.Equals(db, "model", StringComparison.OrdinalIgnoreCase) ||
@@ -64,9 +100,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
             throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Không thao tác ghi trên CSDL hệ thống '{db}'!");
         }
 
-        if (!db.EndsWith("_K21_Verify", StringComparison.OrdinalIgnoreCase) && !db.EndsWith("_Test", StringComparison.OrdinalIgnoreCase))
+        if (!db.EndsWith("_AutoTest", StringComparison.OrdinalIgnoreCase) && !db.EndsWith("_Test", StringComparison.OrdinalIgnoreCase))
         {
-            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database kiểm chứng có hậu tố _K21_Verify hoặc _Test. Database hiện tại: '{db}'");
+            throw new InvalidOperationException($"CHỐT AN TOÀN VI PHẠM: Chỉ cho phép thao tác trên database kiểm chứng tự động có hậu tố _AutoTest hoặc _Test. Database hiện tại: '{db}'");
         }
     }
 
@@ -99,30 +135,30 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        // 1. Tạo database kiểm chứng mới tinh
+        // 1. Tạo database kiểm chứng mới tinh dành riêng cho test tự động
         using (var masterConn = new SqlConnection(MasterConnectionString))
         {
             await masterConn.OpenAsync();
             var sqlCreateDb = $@"
-                IF EXISTS (SELECT 1 FROM sys.databases WHERE name = N'{VerifyDatabaseName}')
+                IF EXISTS (SELECT 1 FROM sys.databases WHERE name = N'{AutoTestDatabaseName}')
                 BEGIN
-                    ALTER DATABASE [{VerifyDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                    DROP DATABASE [{VerifyDatabaseName}];
+                    ALTER DATABASE [{AutoTestDatabaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                    DROP DATABASE [{AutoTestDatabaseName}];
                 END;
-                CREATE DATABASE [{VerifyDatabaseName}];";
+                CREATE DATABASE [{AutoTestDatabaseName}];";
             await masterConn.ExecuteAsync(sqlCreateDb);
         }
 
         // 2. Kiểm tra chốt an toàn
-        AssertSafeDatabase(VerifyConnectionString);
+        AssertSafeDatabase(AutoTestConnectionString);
 
         // 3. Khởi tạo schema và nạp dữ liệu mẫu ban đầu để các test độc lập có môi trường sẵn sàng
-        using (var verifyConn = new SqlConnection(VerifyConnectionString))
+        using (var autoTestConn = new SqlConnection(AutoTestConnectionString))
         {
-            await verifyConn.OpenAsync();
-            await ExecuteScriptFileAsync(verifyConn, "01_Safe_CreateSchema.sql");
-            await ExecuteScriptFileAsync(verifyConn, "02_Safe_CreateNguoiDungs.sql");
-            await ExecuteScriptFileAsync(verifyConn, "03_Safe_SeedSampleData.sql");
+            await autoTestConn.OpenAsync();
+            await ExecuteScriptFileAsync(autoTestConn, "01_Safe_CreateSchema.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "02_Safe_CreateNguoiDungs.sql");
+            await ExecuteScriptFileAsync(autoTestConn, "03_Safe_SeedSampleData.sql");
         }
     }
 
@@ -131,9 +167,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
     [Fact]
     public async Task K21_Test01_SafeSchema_TaoDayDu7Bang_VaCotSoNgayNo_HopLe()
     {
-        AssertSafeDatabase(VerifyConnectionString);
+        AssertSafeDatabase(AutoTestConnectionString);
 
-        using var conn = new SqlConnection(VerifyConnectionString);
+        using var conn = new SqlConnection(AutoTestConnectionString);
         await conn.OpenAsync();
 
         // Thực thi script tạo schema an toàn
@@ -191,9 +227,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
     [Fact]
     public async Task K21_Test02_SafeCreateNguoiDungs_VaSeedData_ThanhCongVaIdempotent()
     {
-        AssertSafeDatabase(VerifyConnectionString);
+        AssertSafeDatabase(AutoTestConnectionString);
 
-        using var conn = new SqlConnection(VerifyConnectionString);
+        using var conn = new SqlConnection(AutoTestConnectionString);
         await conn.OpenAsync();
 
         // 1. Chạy schema, người dùng, seed data
@@ -242,9 +278,9 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
     [Fact]
     public async Task K21_Test03_CheckConstraint_SoNgayNo_ChanSoAm_ChoPhepKhongVaSoDuong()
     {
-        AssertSafeDatabase(VerifyConnectionString);
+        AssertSafeDatabase(AutoTestConnectionString);
 
-        using var conn = new SqlConnection(VerifyConnectionString);
+        using var conn = new SqlConnection(AutoTestConnectionString);
         await conn.OpenAsync();
 
         // 1. Thêm khách hàng với SoNgayNo = 0 -> Thành công
@@ -283,10 +319,10 @@ public class K21DatabaseVerificationTests : IAsyncLifetime
     [Fact]
     public async Task K21_Test04_Migration_BaoToanDuLieuVaHanThanhToanHoaDonCu()
     {
-        // Kiểm thử migration trên database kiểm chứng
-        AssertSafeDatabase(VerifyConnectionString);
+        // Kiểm thử migration trên database kiểm chứng tự động
+        AssertSafeDatabase(AutoTestConnectionString);
 
-        using var conn = new SqlConnection(VerifyConnectionString);
+        using var conn = new SqlConnection(AutoTestConnectionString);
         await conn.OpenAsync();
 
         // Giả lập bảng KhachHangsLegacy trên schema tạm thời để kiểm thử quy trình migration

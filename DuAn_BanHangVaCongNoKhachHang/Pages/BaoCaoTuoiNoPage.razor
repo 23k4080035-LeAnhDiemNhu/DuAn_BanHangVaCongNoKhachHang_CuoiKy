@@ -3,9 +3,17 @@
 @using System.Globalization
 @using BanHang.CoreBusiness
 @using BanHang.UseCases.BaoCaoTuoiNoScreen
+@using BanHang.UseCases.EmailNhacNoScreen
+@using BanHang.UseCases.PluginInterfaces.AI
+@using Microsoft.Extensions.Configuration
 @using Microsoft.Extensions.Logging
+@inject IConfiguration Configuration
 @inject IXemBaoCaoTuoiNoUseCase XemBaoCaoTuoiNoUseCase
 @inject IXuatBaoCaoTuoiNoExcelUseCase XuatBaoCaoTuoiNoExcelUseCase
+@inject IXemDuLieuNhacNoKhachHangUseCase XemDuLieuNhacNoUseCase
+@inject ISoanEmailNhacNoUseCase SoanEmailNhacNoUseCase
+@inject IPheDuyetEmailNhacNoUseCase PheDuyetEmailNhacNoUseCase
+@inject IGuiEmailNhacNoUseCase GuiEmailNhacNoUseCase
 @inject IJSRuntime JSRuntime
 @inject ILogger<BaoCaoTuoiNoPage> Logger
 
@@ -14,7 +22,7 @@
 <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
     <div>
         <h3 class="mb-1 text-primary fw-bold">Báo Cáo Phân Tích Tuổi Nợ Khách Hàng</h3>
-        <p class="text-muted mb-0 small">Theo dõi công nợ theo 4 nhóm hạn nợ (Aging Schedule): 0–30, 31–60, 61–90 và trên 90 ngày.</p>
+        <p class="text-muted mb-0 small">Theo dõi công nợ theo 4 nhóm thời hạn: 0–30, 31–60, 61–90 và trên 90 ngày. Hỗ trợ AI soạn email nhắc nợ có kế toán duyệt.</p>
     </div>
 </div>
 
@@ -25,7 +33,7 @@
             <div class="d-flex align-items-center flex-wrap gap-2">
                 <label for="input-ngay-bao-cao" class="col-form-label fw-semibold text-nowrap mb-0">Ngày chốt báo cáo:</label>
                 <input type="date" id="input-ngay-bao-cao" class="form-control" style="width: auto;" @bind="ngayBaoCaoInput" />
-                <button class="btn btn-primary text-nowrap" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@(isLoading || isExporting)">
+                <button class="btn btn-primary text-nowrap rounded-pill px-3 shadow-sm" id="btn-xem-bao-cao" @onclick="TaiBaoCaoAsync" disabled="@(isLoading || isExporting)">
                     @if (isLoading)
                     {
                         <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -39,10 +47,10 @@
                 </button>
             </div>
             <div class="d-flex align-items-center flex-wrap gap-2">
-                <span class="badge bg-secondary p-2 fs-6 text-wrap">
+                <span class="badge bg-secondary p-2 fs-6 text-wrap rounded-pill px-3">
                     Số liệu áp dụng ngày: <strong id="lbl-ngay-ap-dung">@ngayBaoCaoApDung.ToString("dd/MM/yyyy")</strong>
                 </span>
-                <button class="btn btn-success text-nowrap fw-semibold shadow-sm" id="btn-xuat-excel" @onclick="XuatExcelAsync" disabled="@(isExporting || isLoading)">
+                <button class="btn btn-success text-nowrap fw-semibold shadow-sm rounded-pill px-3" id="btn-xuat-excel" @onclick="XuatExcelAsync" disabled="@(isExporting || isLoading)">
                     @if (isExporting)
                     {
                         <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
@@ -60,10 +68,11 @@
 </div>
 
 <!-- Chú thích quy ước nghiệp vụ đề 18 -->
-<div class="alert alert-secondary py-2 px-3 small mb-3" role="alert">
+<div class="alert alert-secondary py-2 px-3 small mb-3 shadow-sm border-0" role="alert">
     <ul class="mb-0 ps-3">
         <li><strong>Quy ước nhóm:</strong> Nhóm 0–30 bao gồm khoản chưa đến hạn và khoản quá hạn tối đa 30 ngày tính đến ngày chốt báo cáo.</li>
         <li><strong>Phạm vi thời gian:</strong> Báo cáo phản ánh các hóa đơn và phân bổ thanh toán đã ghi nhận đến hết ngày báo cáo (chưa tái dựng lại FIFO cho phiếu thu nhập lùi ngày).</li>
+        <li><strong>Soạn email nhắc nợ:</strong> Kế toán công nợ bấm nút "Soạn email nhắc nợ" để AI tạo bản nháp cá nhân hóa; kế toán duyệt và chỉnh sửa trước khi gửi.</li>
     </ul>
 </div>
 
@@ -93,29 +102,30 @@ else
 {
     @if (baoCaoResult.TienThuChuaPhanBo > 0)
     {
-        <div class="alert alert-warning py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2" role="alert">
+        <div class="alert alert-warning py-2 mb-3 d-flex justify-content-between align-items-center flex-wrap gap-2 shadow-sm border-0" role="alert">
             <div>
                 <strong>Tiền thu chưa phân bổ:</strong>
                 Tổng số tiền phiếu thu còn dư chưa cấn trừ tính đến ngày @ngayBaoCaoApDung.ToString("dd/MM/yyyy") là:
                 <strong class="text-danger text-nowrap">@baoCaoResult.TienThuChuaPhanBo.ToString("N0", cultureVi) đ</strong>
             </div>
-            <span class="badge bg-light text-dark border text-nowrap">Lưu riêng trên phiếu thu, không tự trừ vào dư nợ hóa đơn</span>
+            <span class="badge bg-light text-dark border text-nowrap rounded-pill px-3">Lưu riêng trên phiếu thu, không tự trừ vào dư nợ hóa đơn</span>
         </div>
     }
 
     <div class="table-responsive shadow-sm rounded">
-        <table class="table table-bordered table-hover align-middle mb-0" id="table-tuoi-no" style="min-width: 1100px;">
+        <table class="table table-bordered table-hover align-middle mb-0" id="table-tuoi-no" style="min-width: 1250px;">
             <thead class="table-dark text-center">
                 <tr>
-                    <th scope="col" style="width: 50px;" class="text-nowrap">STT</th>
-                    <th scope="col" style="width: 100px;" class="text-nowrap">Mã KH</th>
-                    <th scope="col" style="min-width: 240px;" class="text-start">Tên khách hàng</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 130px;">Hạn mức</th>
-                    <th scope="col" class="text-end text-info text-nowrap" style="width: 130px;">0–30 ngày</th>
-                    <th scope="col" class="text-end text-warning text-nowrap" style="width: 130px;">31–60 ngày</th>
-                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 130px;">61–90 ngày</th>
-                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 130px;">Trên 90 ngày</th>
-                    <th scope="col" class="text-end text-nowrap" style="width: 140px;">Tổng công nợ</th>
+                    <th scope="col" style="width: 45px;" class="text-nowrap">STT</th>
+                    <th scope="col" style="width: 90px;" class="text-nowrap">Mã KH</th>
+                    <th scope="col" style="min-width: 220px;" class="text-start">Tên khách hàng</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 120px;">Hạn mức</th>
+                    <th scope="col" class="text-end text-info text-nowrap" style="width: 120px;">0–30 ngày</th>
+                    <th scope="col" class="text-end text-warning text-nowrap" style="width: 120px;">31–60 ngày</th>
+                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 120px;">61–90 ngày</th>
+                    <th scope="col" class="text-end text-danger text-nowrap" style="width: 120px;">Trên 90 ngày</th>
+                    <th scope="col" class="text-end text-nowrap" style="width: 130px;">Tổng công nợ</th>
+                    <th scope="col" class="text-center text-nowrap" style="width: 160px;">Thao tác</th>
                 </tr>
             </thead>
             <tbody>
@@ -150,6 +160,21 @@ else
                         <td class="text-end fw-bold text-nowrap @(item.TongCongNo > 0 ? "text-dark" : "text-muted")">
                             @item.TongCongNo.ToString("N0", cultureVi) đ
                         </td>
+                        <td class="text-center text-nowrap">
+                            @if (item.TongCongNo > 0)
+                            {
+                                <button class="btn btn-sm btn-outline-primary rounded-pill px-3 shadow-sm"
+                                        id="@($"btn-soan-email-{item.KhachHangId}")"
+                                        @onclick="() => MoModalSoanEmailAsync(item.KhachHangId)"
+                                        title="Soạn email nhắc nợ hỗ trợ bởi AI và duyệt trước khi gửi">
+                                    <i class="bi bi-envelope-fill me-1"></i>Soạn email
+                                </button>
+                            }
+                            else
+                            {
+                                <span class="badge bg-light text-muted border rounded-pill px-2">Hết nợ</span>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
@@ -161,9 +186,558 @@ else
                     <td class="text-danger text-nowrap">@baoCaoResult.Tong_TuoiNo_61_90.ToString("N0", cultureVi) đ</td>
                     <td class="text-danger text-nowrap">@baoCaoResult.Tong_TuoiNo_Tren_90.ToString("N0", cultureVi) đ</td>
                     <td class="fs-6 text-primary text-nowrap">@baoCaoResult.Tong_CongNo.ToString("N0", cultureVi) đ</td>
+                    <td class="text-center text-muted text-nowrap">-</td>
                 </tr>
             </tfoot>
         </table>
+    </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL DUYỆT VÀ SOẠN EMAIL NHẮC NỢ (RESPONSIVE CHO DESKTOP & MOBILE 390x844px) -->
+<!-- ========================================================================= -->
+@if (hienThiModalSoanEmail)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.6);" role="dialog">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered" style="max-height: 92vh;">
+            <div class="modal-content shadow border-0 rounded-4">
+                <div class="modal-header bg-primary text-white py-3 px-4 rounded-top-4">
+                    <h5 class="modal-title fw-bold d-flex align-items-center flex-wrap gap-2">
+                        <span><i class="bi bi-envelope-check me-2"></i>Duyệt và Soạn Email Nhắc Nợ</span>
+                        @if (LaCheDoGuiThat)
+                        {
+                            <span class="badge bg-danger text-white border border-light fs-6 rounded-pill px-3 py-1 shadow-sm">
+                                <i class="bi bi-send-check me-1"></i>Chế độ: Gửi thật (SMTP)
+                            </span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-warning text-dark border fs-6 rounded-pill px-3 py-1">
+                                <i class="bi bi-cpu me-1"></i>Chế độ: Mô phỏng (Sandbox Dev)
+                            </span>
+                        }
+                        <span class="badge bg-info-subtle text-dark border fs-6 rounded-pill px-3 py-1">
+                            <i class="bi bi-pencil-square me-1"></i>Nguồn: @nguonSoanHienTai
+                        </span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="DongModalSoanEmail" disabled="@(dangGuiEmail || dangGoiAiSoan)"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4" style="overflow-y: auto; max-height: calc(90vh - 140px);">
+                    @if (LaCheDoGuiThat && !string.IsNullOrWhiteSpace(EmailRedirect))
+                    {
+                        <div class="alert alert-warning py-2 mb-3 rounded-3 small shadow-sm" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-1 text-danger"></i>
+                            <strong>Lưu ý cấu hình thử nghiệm:</strong> Thư gửi thật sẽ được chuyển hướng an toàn tới địa chỉ test: <strong>@EmailRedirect</strong>. Địa chỉ khách hàng (@emailNguoiNhanInput) sẽ được lưu trong nhật ký audit.
+                        </div>
+                    }
+                    @if (dangTaiDuLieuSoan)
+                    {
+                        <div class="text-center py-5">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2 text-muted">Đang tải dữ liệu công nợ xác thực từ máy chủ...</p>
+                        </div>
+                    }
+                    else if (duLieuSoanHienTai != null)
+                    {
+                        @if (!string.IsNullOrEmpty(thongBaoLoiModal))
+                        {
+                            <div class="alert alert-danger py-2 mb-3 rounded-3" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i> @thongBaoLoiModal
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(thongBaoThanhCongModal))
+                        {
+                            <div class="alert alert-success py-2 mb-3 rounded-3" role="alert">
+                                <i class="bi bi-check-circle-fill me-1"></i> @thongBaoThanhCongModal
+                            </div>
+                        }
+
+                        <!-- 1. THÔNG TIN KHÁCH HÀNG & EMAIL NHẬN -->
+                        <div class="card bg-light border-0 rounded-3 mb-3 p-3">
+                            <div class="row g-2 align-items-center">
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Khách hàng:</label>
+                                    <div class="fw-bold fs-6 text-dark">
+                                        @duLieuSoanHienTai.TenKhachHang
+                                        <span class="badge bg-secondary ms-1">@duLieuSoanHienTai.MaKhachHang</span>
+                                    </div>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <label class="form-label text-muted small mb-0">Ngày chốt báo cáo áp dụng:</label>
+                                    <div class="fw-bold text-primary">
+                                        <i class="bi bi-calendar3 me-1"></i>@ngayBaoCaoApDung.ToString("dd/MM/yyyy")
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <label for="input-email-nguoi-nhan" class="form-label fw-semibold mb-1">
+                                        Địa chỉ email nhận thư: <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email"
+                                           id="input-email-nguoi-nhan"
+                                           class="form-control @(duLieuSoanHienTai.EmailHopLe ? "is-valid" : "is-invalid") rounded-3"
+                                           @bind="emailNguoiNhanInput"
+                                           @bind:after="CapNhatEmailNguoiNhan"
+                                           placeholder="nhap.email@khachhang.com"
+                                           disabled="@(dangGuiEmail || dangGoiAiSoan)" />
+                                    @if (!duLieuSoanHienTai.EmailHopLe)
+                                    {
+                                        <div class="invalid-feedback d-block mt-1">
+                                            <i class="bi bi-exclamation-circle me-1"></i>
+                                            Địa chỉ email đang trống hoặc không đúng định dạng. Kế toán vẫn có thể soạn nháp nhưng không thể gửi cho đến khi nhập email hợp lệ.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. THỐNG KÊ CÔNG NỢ & TIỀN CHƯA PHÂN BỔ -->
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 border rounded-3 bg-white text-center">
+                                    <div class="text-muted small">0–30 ngày</div>
+                                    <div class="fw-bold text-info">@duLieuSoanHienTai.TuoiNo_0_30.ToString("N0", cultureVi) đ</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 border rounded-3 bg-white text-center">
+                                    <div class="text-muted small">31–60 ngày</div>
+                                    <div class="fw-bold text-warning">@duLieuSoanHienTai.TuoiNo_31_60.ToString("N0", cultureVi) đ</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 border rounded-3 bg-white text-center">
+                                    <div class="text-muted small">61–90 ngày</div>
+                                    <div class="fw-bold text-danger">@duLieuSoanHienTai.TuoiNo_61_90.ToString("N0", cultureVi) đ</div>
+                                </div>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <div class="p-2 border rounded-3 bg-white text-center">
+                                    <div class="text-muted small">Trên 90 ngày</div>
+                                    <div class="fw-bold text-danger">@duLieuSoanHienTai.TuoiNo_Tren_90.ToString("N0", cultureVi) đ</div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <div class="p-2 border rounded-3 bg-light d-flex justify-content-between align-items-center flex-wrap">
+                                    <span class="fw-semibold">Tổng công nợ tính đến ngày chốt:</span>
+                                    <span class="fs-5 fw-bold text-danger">@duLieuSoanHienTai.TongCongNo.ToString("N0", cultureVi) đ</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (duLieuSoanHienTai.TienThuChuaPhanBo > 0)
+                        {
+                            <div class="alert alert-warning py-2 mb-3 rounded-3" role="alert">
+                                <strong><i class="bi bi-shield-exclamation me-1"></i>Cảnh báo đối soát:</strong>
+                                Khách hàng có khoản tiền thu chưa phân bổ là <strong>@duLieuSoanHienTai.TienThuChuaPhanBo.ToString("N0", cultureVi) đ</strong>.
+                                Khoản này <em>không</em> tự động khấu trừ vào dư nợ trên. Kế toán cần rà soát kỹ lưỡng trước khi gửi nhắc nợ.
+                            </div>
+                        }
+
+                        <!-- 3. DANH SÁCH HÓA ĐƠN LIÊN QUAN -->
+                        @if (duLieuSoanHienTai.DanhSachHoaDon.Any())
+                        {
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold small text-muted mb-1">
+                                    Hóa đơn có dư nợ tính đến ngày @ngayBaoCaoApDung.ToString("dd/MM/yyyy"):
+                                </label>
+                                <div class="table-responsive border rounded-3" style="max-height: 150px; overflow-y: auto;">
+                                    <table class="table table-sm table-striped align-middle mb-0 small">
+                                        <thead class="table-light sticky-top">
+                                            <tr>
+                                                <th>Số HĐ</th>
+                                                <th>Ngày lập</th>
+                                                <th>Hạn TT</th>
+                                                <th class="text-end">Dư nợ</th>
+                                                <th class="text-center">Tình trạng</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach (var hd in duLieuSoanHienTai.DanhSachHoaDon)
+                                            {
+                                                <tr>
+                                                    <td class="fw-semibold">@hd.MaHoaDon</td>
+                                                    <td>@hd.NgayLap.ToString("dd/MM/yyyy")</td>
+                                                    <td>@hd.HanThanhToan.ToString("dd/MM/yyyy")</td>
+                                                    <td class="text-end fw-bold">@hd.DuNoTaiNgayChot.ToString("N0", cultureVi) đ</td>
+                                                    <td class="text-center">
+                                                        @if (hd.SoNgayQuaHan > 0)
+                                                        {
+                                                            <span class="badge bg-danger">Quá hạn @hd.SoNgayQuaHan ngày</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="badge bg-success">Chưa đến hạn</span>
+                                                        }
+                                                    </td>
+                                                </tr>
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        }
+
+                        <!-- 4. CHỌN GIỌNG VĂN, YÊU CẦU CHỈNH CÁCH VIẾT & NÚT TẠO BẢN NHÁP / DÙNG MẪU -->
+                        <div class="card border rounded-3 p-3 mb-3 bg-white">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                                <label class="form-label fw-bold mb-0">
+                                    <i class="bi bi-robot text-primary me-1"></i>Trợ lý AI - Soạn thảo email:
+                                </label>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-outline-secondary rounded-pill px-3 shadow-sm"
+                                            id="btn-dung-mau-co-san"
+                                            type="button"
+                                            @onclick="DungMauCoSanAsync"
+                                            disabled="@(dangGoiAiSoan || dangGuiEmail)">
+                                        <i class="bi bi-file-earmark-text me-1"></i>Dùng mẫu có sẵn
+                                    </button>
+                                    <button class="btn btn-sm btn-primary rounded-pill px-3 shadow-sm"
+                                            id="btn-tao-nhap-ai"
+                                            type="button"
+                                            @onclick="TaoBanNhapAiAsync"
+                                            disabled="@(dangGoiAiSoan || dangGuiEmail)">
+                                        @if (dangGoiAiSoan)
+                                        {
+                                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                            <span>AI đang soạn...</span>
+                                        }
+                                        else
+                                        {
+                                            <i class="bi bi-magic me-1"></i>
+                                            <span>@(string.IsNullOrWhiteSpace(noiDungEmail) ? "AI tạo bản nháp" : "AI soạn lại")</span>
+                                        }
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="d-flex align-items-center flex-wrap gap-3 mb-2">
+                                <span class="small text-muted fw-semibold">Giọng văn:</span>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="giongVanRadio" id="gvNheNhang"
+                                           value="@GiongVanEmail.NheNhang"
+                                           checked="@(giongVanChon == GiongVanEmail.NheNhang)"
+                                           @onchange="() => DoiGiongVan(GiongVanEmail.NheNhang)"
+                                           disabled="@(dangGoiAiSoan || dangGuiEmail)" />
+                                    <label class="form-check-label small" for="gvNheNhang">Nhẹ nhàng</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="giongVanRadio" id="gvTieuChuan"
+                                           value="@GiongVanEmail.TieuChuan"
+                                           checked="@(giongVanChon == GiongVanEmail.TieuChuan)"
+                                           @onchange="() => DoiGiongVan(GiongVanEmail.TieuChuan)"
+                                           disabled="@(dangGoiAiSoan || dangGuiEmail)" />
+                                    <label class="form-check-label small" for="gvTieuChuan">Tiêu chuẩn</label>
+                                </div>
+                                <div class="form-check form-check-inline mb-0">
+                                    <input class="form-check-input" type="radio" name="giongVanRadio" id="gvKhanTruong"
+                                           value="@GiongVanEmail.KhanTruong"
+                                           checked="@(giongVanChon == GiongVanEmail.KhanTruong)"
+                                           @onchange="() => DoiGiongVan(GiongVanEmail.KhanTruong)"
+                                           disabled="@(dangGoiAiSoan || dangGuiEmail)" />
+                                    <label class="form-check-label small" for="gvKhanTruong">Khẩn trương</label>
+                                </div>
+                            </div>
+
+                            <!-- Ô Yêu cầu chỉnh cách viết -->
+                            <div class="mb-2">
+                                <label for="input-yeu-cau-chinh-cach-viet" class="form-label small fw-semibold text-muted mb-1">
+                                    Yêu cầu chỉnh cách viết (tùy chọn):
+                                </label>
+                                <input type="text"
+                                       id="input-yeu-cau-chinh-cach-viet"
+                                       class="form-control form-control-sm rounded-3"
+                                       placeholder="Ví dụ: ngắn hơn, lịch sự hơn, nhấn mạnh khoản quá hạn..."
+                                       @bind="yeuCauChinhCachViet"
+                                       disabled="@(dangGoiAiSoan || dangGuiEmail)" />
+                                <div class="d-flex gap-1 mt-1 flex-wrap">
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2" style="font-size: 0.75rem;"
+                                            @onclick='() => yeuCauChinhCachViet = "ngắn hơn"' disabled="@(dangGoiAiSoan || dangGuiEmail)">
+                                        + Ngắn hơn
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2" style="font-size: 0.75rem;"
+                                            @onclick='() => yeuCauChinhCachViet = "lịch sự hơn"' disabled="@(dangGoiAiSoan || dangGuiEmail)">
+                                        + Lịch sự hơn
+                                    </button>
+                                    <button type="button" class="btn btn-xs btn-outline-secondary rounded-pill py-0 px-2" style="font-size: 0.75rem;"
+                                            @onclick='() => yeuCauChinhCachViet = "nhấn mạnh khoản quá hạn"' disabled="@(dangGoiAiSoan || dangGuiEmail)">
+                                        + Nhấn mạnh khoản quá hạn
+                                    </button>
+                                </div>
+                            </div>
+
+                            @if (!string.IsNullOrEmpty(thongBaoAi))
+                            {
+                                <div class="small text-primary mt-1">
+                                    <i class="bi bi-info-circle me-1"></i>@thongBaoAi
+                                </div>
+                            }
+                        </div>
+
+                        <!-- 5. Ô TIÊU ĐỀ VÀ NỘI DUNG CHO KẾ TOÁN CHỈNH SỬA VÀ DUYỆT -->
+                        <div class="mb-3">
+                            <label for="input-tieu-de-email" class="form-label fw-semibold mb-1">
+                                Tiêu đề email: <span class="text-danger">*</span>
+                            </label>
+                            <input type="text"
+                                   id="input-tieu-de-email"
+                                   class="form-control rounded-3"
+                                   @bind="tieuDeEmail"
+                                   @bind:after="XoaBanDuyetCu"
+                                   placeholder="Tiêu đề email nhắc nợ..."
+                                   disabled="@(dangGuiEmail || dangGoiAiSoan)" />
+                        </div>
+
+                        <div class="mb-2">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <label for="textarea-noi-dung-email" class="form-label fw-semibold mb-0">
+                                    Nội dung email (Kế toán kiểm tra, chỉnh sửa và duyệt): <span class="text-danger">*</span>
+                                </label>
+                                <span class="badge bg-light text-muted border">Kế toán có toàn quyền sửa</span>
+                            </div>
+                            <textarea id="textarea-noi-dung-email"
+                                      class="form-control font-monospace rounded-3"
+                                      rows="9"
+                                      style="font-size: 0.9rem;"
+                                      @bind="noiDungEmail"
+                                      @bind:after="XoaBanDuyetCu"
+                                      placeholder="Nội dung email sẽ hiển thị ở đây..."
+                                      disabled="@(dangGuiEmail || dangGoiAiSoan)"></textarea>
+                            <small class="text-muted d-block mt-1">
+                                <i class="bi bi-shield-check text-success me-1"></i>
+                                Nội dung gửi đi sẽ là chính xác những gì bạn nhìn thấy và chỉnh sửa tại đây.
+                            </small>
+                        </div>
+                    }
+                </div>
+
+                <div class="modal-footer py-2 px-3 bg-light rounded-bottom-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <button type="button"
+                            class="btn btn-secondary rounded-pill px-4"
+                            id="btn-huy-modal"
+                            @onclick="DongModalSoanEmail"
+                            disabled="@(dangGuiEmail || dangGoiAiSoan)">
+                        Hủy bỏ
+                    </button>
+
+                    <button type="button"
+                            class="btn btn-success rounded-pill px-4 shadow-sm fw-semibold"
+                            id="btn-xac-nhan-gui"
+                            @onclick="MoModalXacNhanCuoiAsync"
+                            disabled="@(!CoTheGuiEmail() || dangPheDuyet)">
+                        @if (dangPheDuyet)
+                        {
+                            <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                            <span>Đang duyệt...</span>
+                        }
+                        else
+                        {
+                            <i class="bi bi-send-check me-1"></i>
+                            <span>Phê duyệt & Gửi</span>
+                        }
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+<!-- ========================================================================= -->
+<!-- MODAL XÁC NHẬN GỬI BƯỚC CUỐI (DOUBLE CHECK TRÁNH GỬI NHẦM/GỬI TRÙNG) -->
+<!-- ========================================================================= -->
+@if (hienThiModalXacNhanGui)
+{
+    <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.7); z-index: 1060;" role="dialog">
+        <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+            <div class="modal-content shadow border-0 rounded-4">
+                <div class="modal-header @(ketQuaGuiHienTai?.ThanhCong == true ? "bg-primary" : (LaCheDoGuiThat ? "bg-danger" : "bg-success")) text-white py-3 px-4 rounded-top-4">
+                    <h5 class="modal-title fw-bold">
+                        @if (ketQuaGuiHienTai?.ThanhCong == true)
+                        {
+                            <i class="bi bi-envelope-check me-2"></i><span>Kết Quả Gửi Email Nhắc Nợ</span>
+                        }
+                        else
+                        {
+                            <i class="bi @(LaCheDoGuiThat ? "bi-shield-exclamation" : "bi-check2-circle") me-2"></i>
+                            <span>@(LaCheDoGuiThat ? "Xác Nhận Lần Cuối - Gửi Email Thật (SMTP)" : "Xác Nhận Lần Cuối - Gửi Thử Nghiệm (Sandbox)")</span>
+                        }
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" aria-label="Close" @onclick="DongModalXacNhan" disabled="@dangGuiEmail"></button>
+                </div>
+                <div class="modal-body p-3 p-md-4">
+                    @if (ketQuaGuiHienTai != null && ketQuaGuiHienTai.ThanhCong)
+                    {
+                        <!-- THÔNG BÁO KẾT QUẢ THÀNH CÔNG TRỰC TIẾP TRONG MODAL ĐANG XEM -->
+                        <div class="alert alert-success py-3 px-3 mb-3 rounded-3 shadow-sm" role="alert">
+                            <div class="d-flex align-items-center">
+                                <i class="bi bi-check-circle-fill text-success fs-3 me-3"></i>
+                                <div>
+                                    <h6 class="alert-heading fw-bold mb-1">
+                                        @(LaCheDoGuiThat ? "Đã Gửi Email Thành Công (Dịch Vụ SMTP Đã Tiếp Nhận)" : "Đã Gửi Thử Nghiệm Thành Công (Sandbox Dev Mode)")
+                                    </h6>
+                                    <div class="small">@ketQuaGuiHienTai.ThongBao</div>
+                                    <div class="mt-2 small text-muted">
+                                        Trạng thái: <span class="badge bg-success">@ketQuaGuiHienTai.TrangThai</span>
+                                        @if (ketQuaGuiHienTai.NhatKyId.HasValue)
+                                        {
+                                            <span class="ms-2">Mã nhật ký audit: <strong>#@ketQuaGuiHienTai.NhatKyId.Value</strong></span>
+                                        }
+                                        @if (LaCheDoGuiThat)
+                                        {
+                                            <div class="mt-1 fst-italic text-secondary">
+                                                <i class="bi bi-info-circle me-1"></i>Lưu ý: Thư đã được máy chủ SMTP tiếp nhận thành công. Trạng thái này không đồng nghĩa với việc người nhận đã mở hoặc đọc thư.
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(ketQuaGuiHienTai.CanhBaoAudit))
+                        {
+                            <div class="alert alert-warning py-2 px-3 mb-3 rounded-3" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                                <strong>Cảnh báo ghi nhật ký audit:</strong> @ketQuaGuiHienTai.CanhBaoAudit
+                                <div class="small mt-1 text-muted">Thư đã được gửi đi thành công; hệ thống không tự động gửi lại để tránh trùng lặp.</div>
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        @if (LaCheDoGuiThat)
+                        {
+                            <div class="alert alert-danger py-2 small mb-3 rounded-3 border-danger shadow-sm">
+                                <div class="fw-bold text-danger mb-1">
+                                    <i class="bi bi-exclamation-octagon-fill me-1"></i>CẢNH BÁO: CHẾ ĐỘ GỬI THẬT (SMTP)
+                                </div>
+                                <div>Hệ thống sẽ phát thư điện tử thật qua máy chủ SMTP bên ngoài. Vui lòng kiểm tra kỹ người nhận và nội dung trước khi bấm xác nhận.</div>
+                                @if (!string.IsNullOrWhiteSpace(EmailRedirect))
+                                {
+                                    <div class="mt-1 p-1 bg-white rounded border border-warning text-dark fw-semibold">
+                                        <i class="bi bi-arrow-right-circle-fill text-warning me-1"></i>Thử nghiệm an toàn: Thư sẽ chuyển hướng đến <code>@EmailRedirect</code> thay vì gửi trực tiếp tới khách hàng.
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else
+                        {
+                            <div class="alert alert-warning py-2 small mb-3 rounded-3 border-0">
+                                <i class="bi bi-cpu me-1"></i>
+                                <strong>Chế độ mô phỏng (Sandbox Dev Mode):</strong> Hệ thống thực hiện gửi thử nghiệm và lưu audit trail; tuyệt đối không phát thư thật ra ngoài Internet.
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(thongBaoLoiGuiModal))
+                        {
+                            <div class="alert alert-danger py-2 px-3 mb-3 rounded-3" role="alert">
+                                <i class="bi bi-x-circle-fill me-1"></i>
+                                <strong>Lỗi gửi email:</strong> @thongBaoLoiGuiModal
+                            </div>
+                        }
+                    }
+
+                    <div class="mb-2 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div>
+                            <label class="text-muted small d-block mb-1">Trạng thái phê duyệt:</label>
+                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1">
+                                <i class="bi bi-shield-check me-1"></i>Bản nháp đã được máy chủ phê duyệt
+                            </span>
+                        </div>
+                        <div>
+                            <label class="text-muted small d-block mb-1">Nguồn soạn thảo:</label>
+                            <span class="badge bg-info-subtle text-dark border px-2 py-1">@nguonSoanHienTai</span>
+                        </div>
+                        <div>
+                            <label class="text-muted small d-block mb-1">Chế độ gửi:</label>
+                            <span class="badge @(LaCheDoGuiThat ? "bg-danger text-white" : "bg-warning text-dark") px-2 py-1">
+                                @(LaCheDoGuiThat ? "Gửi thật (SMTP)" : "Mô phỏng")
+                            </span>
+                        </div>
+                        <div>
+                            <label class="text-muted small d-block mb-1">Ngày chốt số liệu:</label>
+                            <span class="badge bg-secondary">@ngayBaoCaoApDung.ToString("dd/MM/yyyy")</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="text-muted small d-block">Người nhận dự kiến:</label>
+                        <strong class="text-primary fs-6">@emailNguoiNhanInput</strong>
+                        <span class="text-muted">(@duLieuSoanHienTai?.TenKhachHang)</span>
+                    </div>
+
+                    @if (LaCheDoGuiThat && !string.IsNullOrWhiteSpace(EmailRedirect))
+                    {
+                        <div class="mb-2">
+                            <label class="text-muted small d-block">Người nhận thực tế (Cấu hình thử nghiệm):</label>
+                            <strong class="text-danger fs-6">@EmailRedirect</strong>
+                        </div>
+                    }
+
+                    <div class="mb-2">
+                        <label class="text-muted small d-block">Tiêu đề email:</label>
+                        <strong class="text-dark">@tieuDeEmail</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="text-muted small d-block fw-semibold mb-1">
+                            <i class="bi bi-envelope-paper me-1"></i>Nội dung email đầy đủ sẽ gửi:
+                        </label>
+                        <div class="border rounded-3 p-3 bg-light font-monospace"
+                             style="max-height: 200px; overflow-y: auto; white-space: pre-wrap; font-size: 0.85rem; line-height: 1.5;">
+                            @noiDungEmail
+                        </div>
+                    </div>
+
+                    @if (ketQuaGuiHienTai == null || !ketQuaGuiHienTai.ThanhCong)
+                    {
+                        <div class="alert alert-info py-2 small mb-0 rounded-3">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Máy chủ đã khóa bản duyệt này. Nếu có bất kỳ thay đổi nào về số liệu công nợ, người nhận hoặc nội dung, bản duyệt này sẽ tự động mất hiệu lực.
+                        </div>
+                    }
+                </div>
+                <div class="modal-footer py-2 px-3 bg-light rounded-bottom-4 d-flex justify-content-end gap-2">
+                    @if (ketQuaGuiHienTai != null && ketQuaGuiHienTai.ThanhCong)
+                    {
+                        <button type="button"
+                                class="btn btn-primary rounded-pill px-4 fw-semibold shadow-sm"
+                                id="btn-hoan-tat-dong"
+                                @onclick="DongTatCaModal">
+                            <i class="bi bi-check-lg me-1"></i>
+                            Hoàn tất & Đóng
+                        </button>
+                    }
+                    else
+                    {
+                        <button type="button"
+                                class="btn btn-outline-secondary rounded-pill px-3"
+                                id="btn-quay-lai-sua"
+                                @onclick="DongModalXacNhan"
+                                disabled="@dangGuiEmail">
+                            Quay lại chỉnh sửa
+                        </button>
+                        <button type="button"
+                                class="btn @(LaCheDoGuiThat ? "btn-danger" : "btn-success") rounded-pill px-4 fw-semibold shadow-sm"
+                                id="btn-gui-ngay"
+                                @onclick="ThucHienGuiEmailAsync"
+                                disabled="@(dangGuiEmail || string.IsNullOrWhiteSpace(maPheDuyetHienTai))">
+                            @if (dangGuiEmail)
+                            {
+                                <span class="spinner-border spinner-border-sm me-1" role="status"></span>
+                                <span>@(LaCheDoGuiThat ? "Đang gửi email thật..." : "Đang gửi thử nghiệm...")</span>
+                            }
+                            else
+                            {
+                                <i class="bi @(LaCheDoGuiThat ? "bi-send-exclamation" : "bi-send-fill") me-1"></i>
+                                <span>@(LaCheDoGuiThat ? "Xác nhận gửi thật" : "Gửi thử nghiệm")</span>
+                            }
+                        </button>
+                    }
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -248,5 +822,325 @@ else
         {
             isExporting = false;
         }
+    }
+
+    // =========================================================================
+    // TRẠNG THÁI & HÀNH ĐỘNG SOẠN VÀ DUYỆT EMAIL NHẮC NỢ
+    // =========================================================================
+    private bool hienThiModalSoanEmail = false;
+    private bool hienThiModalXacNhanGui = false;
+    private bool dangTaiDuLieuSoan = false;
+    private bool dangGoiAiSoan = false;
+    private bool dangGuiEmail = false;
+
+    private DuLieuKhachHangNhacNoDto? duLieuSoanHienTai;
+    private string emailNguoiNhanInput = string.Empty;
+    private GiongVanEmail giongVanChon = GiongVanEmail.TieuChuan;
+    private string tieuDeEmail = string.Empty;
+    private string noiDungEmail = string.Empty;
+    private string yeuCauChinhCachViet = string.Empty;
+    private string nguonSoanHienTai = "Mô phỏng";
+    private string thongBaoAi = string.Empty;
+    private string thongBaoLoiModal = string.Empty;
+    private string thongBaoThanhCongModal = string.Empty;
+    private string maPheDuyetHienTai = string.Empty;
+    private bool dangPheDuyet = false;
+    private KetQuaGuiEmailDto? ketQuaGuiHienTai;
+    private string thongBaoLoiGuiModal = string.Empty;
+
+    private bool LaCheDoGuiThat => 
+        string.Equals(Configuration["EmailSettings:Mode"], "Smtp", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Configuration["EmailSettings:SendMode"], "Smtp", StringComparison.OrdinalIgnoreCase);
+    private bool LaAiThat => 
+        string.Equals(Configuration["AiSettings:Provider"], "OpenAI", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Configuration["AiSettings:Provider"], "Gemini", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Configuration["AiSettings:Provider"], "Real", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Configuration["EmailSettings:AiProvider"], "OpenAI", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(Configuration["EmailSettings:AiProvider"], "Gemini", StringComparison.OrdinalIgnoreCase);
+
+    private string TenAiHienThi =>
+        string.Equals(Configuration["AiSettings:Provider"], "Gemini", StringComparison.OrdinalIgnoreCase) ? "Gemini" :
+        string.Equals(Configuration["AiSettings:Provider"], "OpenAI", StringComparison.OrdinalIgnoreCase) ? "OpenAI" : "AI";
+    private string? EmailRedirect => Configuration["EmailSettings:TestRecipientRedirect"];
+
+    private void XoaBanDuyetCu()
+    {
+        maPheDuyetHienTai = string.Empty;
+        ketQuaGuiHienTai = null;
+        thongBaoLoiGuiModal = string.Empty;
+    }
+
+    private async Task MoModalSoanEmailAsync(int khachHangId)
+    {
+        try
+        {
+            thongBaoLoiModal = string.Empty;
+            thongBaoThanhCongModal = string.Empty;
+            thongBaoAi = string.Empty;
+            tieuDeEmail = string.Empty;
+            noiDungEmail = string.Empty;
+            yeuCauChinhCachViet = string.Empty;
+            maPheDuyetHienTai = string.Empty;
+            giongVanChon = GiongVanEmail.TieuChuan;
+            nguonSoanHienTai = LaAiThat ? $"AI thật ({TenAiHienThi})" : "Mô phỏng";
+
+            hienThiModalSoanEmail = true;
+            dangTaiDuLieuSoan = true;
+
+            // Luôn lấy dữ liệu xác thực từ máy chủ theo đúng ngày chốt báo cáo đang áp dụng
+            duLieuSoanHienTai = await XemDuLieuNhacNoUseCase.ExecuteAsync(khachHangId, ngayBaoCaoApDung);
+            emailNguoiNhanInput = duLieuSoanHienTai.Email ?? string.Empty;
+
+            dangTaiDuLieuSoan = false;
+
+            // Tự động tạo bản nháp ban đầu để kế toán xem và chỉnh sửa
+            await TaoBanNhapAiAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi mở modal soạn email nhắc nợ cho khách hàng {KhachHangId}", khachHangId);
+            dangTaiDuLieuSoan = false;
+            thongBaoLoiModal = $"Không thể tải dữ liệu công nợ: {ex.Message}";
+        }
+    }
+
+    private void CapNhatEmailNguoiNhan()
+    {
+        if (duLieuSoanHienTai != null)
+        {
+            string email = emailNguoiNhanInput?.Trim() ?? string.Empty;
+            duLieuSoanHienTai.Email = email;
+            XoaBanDuyetCu();
+        }
+    }
+
+    private void DoiGiongVan(GiongVanEmail gv)
+    {
+        giongVanChon = gv;
+        XoaBanDuyetCu();
+    }
+
+    private async Task DungMauCoSanAsync()
+    {
+        if (duLieuSoanHienTai == null || dangGoiAiSoan || dangGuiEmail) return;
+
+        try
+        {
+            dangGoiAiSoan = true;
+            thongBaoAi = string.Empty;
+            thongBaoLoiModal = string.Empty;
+            XoaBanDuyetCu();
+
+            var yeuCau = new YeuCauSoanEmailDto
+            {
+                KhachHangId = duLieuSoanHienTai.KhachHangId,
+                NgayChotBaoCao = ngayBaoCaoApDung,
+                GiongVan = giongVanChon,
+                EmailTuyChinh = emailNguoiNhanInput,
+                ChiDungMauCoSan = true
+            };
+
+            var banNhap = await SoanEmailNhacNoUseCase.ExecuteAsync(yeuCau);
+            tieuDeEmail = banNhap.TieuDe;
+            noiDungEmail = banNhap.NoiDung;
+            nguonSoanHienTai = "Mẫu có sẵn";
+            thongBaoAi = "Đã nạp nội dung từ 'Mẫu có sẵn'. Bạn có thể kiểm tra và chỉnh sửa tự do.";
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi nạp mẫu có sẵn cho khách hàng {KhachHangId}", duLieuSoanHienTai.KhachHangId);
+            thongBaoLoiModal = $"Lỗi khi nạp mẫu có sẵn: {ex.Message}";
+        }
+        finally
+        {
+            dangGoiAiSoan = false;
+        }
+    }
+
+    private async Task TaoBanNhapAiAsync()
+    {
+        if (duLieuSoanHienTai == null || dangGoiAiSoan || dangGuiEmail) return;
+
+        try
+        {
+            dangGoiAiSoan = true;
+            thongBaoAi = string.Empty;
+            thongBaoLoiModal = string.Empty;
+            XoaBanDuyetCu();
+
+            var yeuCau = new YeuCauSoanEmailDto
+            {
+                KhachHangId = duLieuSoanHienTai.KhachHangId,
+                NgayChotBaoCao = ngayBaoCaoApDung,
+                GiongVan = giongVanChon,
+                EmailTuyChinh = emailNguoiNhanInput,
+                YeuCauChinhCachViet = yeuCauChinhCachViet
+            };
+
+            var banNhap = await SoanEmailNhacNoUseCase.ExecuteAsync(yeuCau);
+
+            if (!string.IsNullOrWhiteSpace(banNhap.ThongBaoLoiAi))
+            {
+                thongBaoLoiModal = banNhap.ThongBaoLoiAi;
+                // Giữ nguyên nội dung kế toán đang chỉnh, không ghi đè nếu đã có
+                if (string.IsNullOrWhiteSpace(noiDungEmail))
+                {
+                    thongBaoAi = "Chưa tạo được bản nháp bằng AI. Vui lòng bấm 'Dùng mẫu có sẵn' hoặc tự soạn nội dung.";
+                }
+                else
+                {
+                    thongBaoAi = "Chưa tạo được bằng AI. Nội dung kế toán đang chỉnh sửa được giữ nguyên.";
+                }
+            }
+            else
+            {
+                tieuDeEmail = banNhap.TieuDe;
+                noiDungEmail = banNhap.NoiDung;
+                nguonSoanHienTai = banNhap.NguonSoan;
+                thongBaoAi = $"Bản nháp đã được tạo thành công bởi [{banNhap.NguonSoan}] theo giọng văn '{giongVanChon}'. Bạn có thể chỉnh sửa tự do.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi gọi tạo bản nháp email cho khách hàng {KhachHangId}", duLieuSoanHienTai.KhachHangId);
+            thongBaoLoiModal = $"Lỗi khi soạn nháp: {ex.Message}. Nội dung hiện tại đã được giữ nguyên.";
+        }
+        finally
+        {
+            dangGoiAiSoan = false;
+        }
+    }
+
+    private bool CoTheGuiEmail()
+    {
+        return !dangGuiEmail &&
+               !dangGoiAiSoan &&
+               !dangTaiDuLieuSoan &&
+               !dangPheDuyet &&
+               duLieuSoanHienTai != null &&
+               duLieuSoanHienTai.EmailHopLe &&
+               !string.IsNullOrWhiteSpace(tieuDeEmail) &&
+               !string.IsNullOrWhiteSpace(noiDungEmail);
+    }
+
+    private async Task MoModalXacNhanCuoiAsync()
+    {
+        if (!CoTheGuiEmail() || dangPheDuyet || duLieuSoanHienTai == null) return;
+
+        try
+        {
+            dangPheDuyet = true;
+            thongBaoLoiModal = string.Empty;
+            thongBaoLoiGuiModal = string.Empty;
+            ketQuaGuiHienTai = null;
+
+            // Thực hiện phê duyệt tại máy chủ trước khi mở modal xác nhận gửi
+            var yeuCauDuyet = new YeuCauDuyetEmailDto
+            {
+                KhachHangId = duLieuSoanHienTai.KhachHangId,
+                NgayChotBaoCao = ngayBaoCaoApDung,
+                EmailNguoiNhan = emailNguoiNhanInput.Trim(),
+                TieuDe = tieuDeEmail.Trim(),
+                NoiDung = noiDungEmail.Trim(),
+                GiongVan = giongVanChon
+            };
+
+            var ketQuaDuyet = await PheDuyetEmailNhacNoUseCase.ExecuteAsync(yeuCauDuyet);
+            if (!ketQuaDuyet.ThanhCong)
+            {
+                thongBaoLoiModal = ketQuaDuyet.ThongBaoLoi ?? "Phê duyệt bản nháp thất bại.";
+                return;
+            }
+
+            maPheDuyetHienTai = ketQuaDuyet.MaPheDuyet;
+            hienThiModalXacNhanGui = true;
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi phê duyệt bản nháp email cho khách hàng {KhachHangId}", duLieuSoanHienTai.KhachHangId);
+            thongBaoLoiModal = $"Lỗi khi phê duyệt bản nháp: {ex.Message}";
+        }
+        finally
+        {
+            dangPheDuyet = false;
+        }
+    }
+
+    private async Task ThucHienGuiEmailAsync()
+    {
+        if (dangGuiEmail || duLieuSoanHienTai == null || string.IsNullOrWhiteSpace(maPheDuyetHienTai)) return;
+
+        try
+        {
+            dangGuiEmail = true;
+            thongBaoLoiGuiModal = string.Empty;
+
+            var yeuCauGui = new YeuCauGuiEmailDto
+            {
+                KhachHangId = duLieuSoanHienTai.KhachHangId,
+                NgayChotBaoCao = ngayBaoCaoApDung,
+                EmailNguoiNhan = emailNguoiNhanInput.Trim(),
+                TieuDe = tieuDeEmail.Trim(),
+                NoiDung = noiDungEmail.Trim(),
+                GiongVan = giongVanChon,
+                HashDuLieuCongNo = duLieuSoanHienTai.HashDuLieuCongNo,
+                MaPheDuyet = maPheDuyetHienTai,
+                IdempotencyKey = $"SEND-{maPheDuyetHienTai}",
+                DaDuyet = true,
+                CheDoGui = LaCheDoGuiThat ? "Smtp" : "Sandbox",
+                NguonSoan = nguonSoanHienTai
+            };
+
+            var ketQua = await GuiEmailNhacNoUseCase.ExecuteAsync(yeuCauGui);
+            ketQuaGuiHienTai = ketQua;
+
+            if (ketQua.ThanhCong)
+            {
+                // Giữ modal xác nhận mở để kế toán thấy kết quả ngay trong modal đang tương tác
+                thongBaoThanhCongModal = ketQua.ThongBao;
+                maPheDuyetHienTai = string.Empty; // Tiêu hủy bản duyệt cũ sau khi đã gửi thành công
+            }
+            else
+            {
+                thongBaoLoiGuiModal = ketQua.ThongBao ?? "Gửi email không thành công.";
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Lỗi khi thực hiện gửi email nhắc nợ cho khách hàng {KhachHangId}", duLieuSoanHienTai?.KhachHangId);
+            thongBaoLoiGuiModal = $"Lỗi khi gửi email: {ex.Message}";
+        }
+        finally
+        {
+            dangGuiEmail = false;
+        }
+    }
+
+    private void DongModalXacNhan()
+    {
+        if (dangGuiEmail) return;
+        hienThiModalXacNhanGui = false;
+        thongBaoLoiGuiModal = string.Empty;
+
+        if (ketQuaGuiHienTai != null && ketQuaGuiHienTai.ThanhCong)
+        {
+            DongTatCaModal();
+        }
+    }
+
+    private void DongTatCaModal()
+    {
+        hienThiModalXacNhanGui = false;
+        hienThiModalSoanEmail = false;
+        duLieuSoanHienTai = null;
+        maPheDuyetHienTai = string.Empty;
+        ketQuaGuiHienTai = null;
+        thongBaoLoiGuiModal = string.Empty;
+    }
+
+    private void DongModalSoanEmail()
+    {
+        if (dangGuiEmail || dangGoiAiSoan) return;
+        DongTatCaModal();
     }
 }

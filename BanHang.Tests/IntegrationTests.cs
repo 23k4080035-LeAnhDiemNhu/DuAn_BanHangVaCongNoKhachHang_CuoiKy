@@ -146,12 +146,35 @@ public class IntegrationTests : IAsyncLifetime
                         SoTienPhanBo DECIMAL(18,2) NOT NULL CHECK (SoTienPhanBo > 0),
                         NgayPhanBo DATETIME NOT NULL DEFAULT (GETDATE())
                     );
+                END
+
+                IF OBJECT_ID('dbo.NhatKyEmailNhacNos', 'U') IS NULL
+                BEGIN
+                    CREATE TABLE dbo.NhatKyEmailNhacNos
+                    (
+                        NhatKyId INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+                        KhachHangId INT NOT NULL,
+                        MaKhachHang NVARCHAR(50) NOT NULL,
+                        TenKhachHang NVARCHAR(200) NOT NULL,
+                        EmailNguoiNhan NVARCHAR(256) NOT NULL,
+                        NguoiDuyet NVARCHAR(100) NOT NULL,
+                        ThoiDiemDuyet DATETIME2 NOT NULL,
+                        ThoiDiemGui DATETIME2 NOT NULL,
+                        NgayChotBaoCao DATETIME2 NOT NULL,
+                        TieuDe NVARCHAR(500) NOT NULL,
+                        NoiDung NVARCHAR(MAX) NOT NULL,
+                        GiongVan INT NOT NULL DEFAULT 1,
+                        TrangThaiGui INT NOT NULL DEFAULT 0,
+                        ChiTietTrangThai NVARCHAR(1000) NULL,
+                        MaPhanHoiDichVu NVARCHAR(200) NULL
+                    );
                 END";
 
             await testConn.ExecuteAsync(sqlCreateSchema);
 
             // Làm sạch dữ liệu trong database test trước mỗi lần chạy
             await testConn.ExecuteAsync(@"
+                IF OBJECT_ID('dbo.NhatKyEmailNhacNos', 'U') IS NOT NULL DELETE FROM dbo.NhatKyEmailNhacNos;
                 DELETE FROM dbo.PhanBoThanhToans;
                 DELETE FROM dbo.ThanhToans;
                 DELETE FROM dbo.ChiTietHoaDons;
