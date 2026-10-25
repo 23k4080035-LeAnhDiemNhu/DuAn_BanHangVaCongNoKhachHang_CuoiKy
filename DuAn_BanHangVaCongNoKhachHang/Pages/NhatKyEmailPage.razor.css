@@ -1,0 +1,46 @@
+.font-mono {
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.bg-slate-subtle {
+    background-color: #f8fafc;
+}
+
+.text-slate-800 {
+    color: #1e293b;
+}
+
+.filter-card {
+    border: 1px solid #e2e8f0 !important;
+}
+
+.nhat-ky-table th {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    padding: 0.875rem 0.75rem;
+}
+
+.nhat-ky-table td {
+    padding: 0.875rem 0.75rem;
+    font-size: 0.875rem;
+}
+
+/* Tối ưu hóa hiển thị trên màn hình điện thoại 390px */
+@media (max-width: 576px) {
+    .filter-card {
+        padding: 1rem !important;
+    }
+
+    .nhat-ky-table th,
+    .nhat-ky-table td {
+        padding: 0.625rem 0.5rem;
+        font-size: 0.8125rem;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+}

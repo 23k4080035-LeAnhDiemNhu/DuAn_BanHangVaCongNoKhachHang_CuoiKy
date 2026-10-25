@@ -179,6 +179,74 @@ public class EmailNhacNoUnitTests
                 return Task.FromResult<IEnumerable<NhatKyEmailNhacNo>>(NhatKys.Where(n => n.KhachHangId == khachHangId).ToList());
             }
         }
+
+        public Task<(IEnumerable<NhatKyEmailNhacNo> DanhSach, int TongSoBanGhi)> LayDanhSachPhanTrangAsync(
+            string? tuKhoa,
+            DateTime? tuNgay,
+            DateTime? denNgay,
+            TrangThaiGuiEmail? trangThaiGui,
+            string? nguonSoan,
+            string? cheDoGui,
+            int pageIndex,
+            int pageSize)
+        {
+            lock (_lock)
+            {
+                var query = NhatKys.AsEnumerable();
+
+                if (!string.IsNullOrWhiteSpace(tuKhoa))
+                {
+                    string k = tuKhoa.Trim();
+                    query = query.Where(n =>
+                        (n.MaKhachHang?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (n.TenKhachHang?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (n.EmailNguoiNhan?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        (n.EmailNhanThucTe?.Contains(k, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                        n.NhatKyId.ToString() == k);
+                }
+
+                if (tuNgay.HasValue)
+                {
+                    query = query.Where(n => n.ThoiDiemGui >= tuNgay.Value.Date);
+                }
+
+                if (denNgay.HasValue)
+                {
+                    query = query.Where(n => n.ThoiDiemGui <= denNgay.Value.Date.AddDays(1).AddTicks(-1));
+                }
+
+                if (trangThaiGui.HasValue)
+                {
+                    query = query.Where(n => n.TrangThaiGui == trangThaiGui.Value);
+                }
+
+                if (!string.IsNullOrWhiteSpace(nguonSoan))
+                {
+                    query = query.Where(n => string.Equals(n.NguonSoan, nguonSoan.Trim(), StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (!string.IsNullOrWhiteSpace(cheDoGui))
+                {
+                    query = query.Where(n => string.Equals(n.CheDoGui, cheDoGui.Trim(), StringComparison.OrdinalIgnoreCase));
+                }
+
+                var ordered = query.OrderByDescending(n => n.ThoiDiemGui).ThenByDescending(n => n.NhatKyId).ToList();
+                int total = ordered.Count;
+                int skip = Math.Max(0, (pageIndex - 1) * pageSize);
+                var paged = ordered.Skip(skip).Take(pageSize).ToList();
+
+                return Task.FromResult(((IEnumerable<NhatKyEmailNhacNo>)paged, total));
+            }
+        }
+
+        public Task<NhatKyEmailNhacNo?> LayTheoIdAsync(int nhatKyId)
+        {
+            lock (_lock)
+            {
+                var found = NhatKys.FirstOrDefault(n => n.NhatKyId == nhatKyId);
+                return Task.FromResult(found);
+            }
+        }
     }
 
     private class MockEmailSender : IEmailSender

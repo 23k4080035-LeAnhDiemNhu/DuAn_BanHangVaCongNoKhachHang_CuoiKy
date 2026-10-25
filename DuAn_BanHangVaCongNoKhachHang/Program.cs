@@ -9,6 +9,7 @@ using BanHang.UseCases.PluginInterfaces.DataStore;
 using BanHang.UseCases.PluginInterfaces.Reports;
 using BanHang.UseCases.PluginInterfaces.Security;
 using BanHang.UseCases.EmailNhacNoScreen;
+using BanHang.UseCases.NhatKyEmailScreen;
 using BanHang.UseCases.PluginInterfaces.AI;
 using BanHang.UseCases.PluginInterfaces.Email;
 using BanHang.UseCases.SanPhamScreen;
@@ -257,6 +258,10 @@ builder.Services.AddScoped<IXemDuLieuNhacNoKhachHangUseCase, XemDuLieuNhacNoKhac
 builder.Services.AddScoped<ISoanEmailNhacNoUseCase, SoanEmailNhacNoUseCase>();
 builder.Services.AddScoped<IPheDuyetEmailNhacNoUseCase, PheDuyetEmailNhacNoUseCase>();
 builder.Services.AddScoped<IGuiEmailNhacNoUseCase, GuiEmailNhacNoUseCase>();
+
+// UseCases tra cứu và xem chi tiết nhật ký email nhắc nợ (Scoped)
+builder.Services.AddScoped<IXemDanhSachNhatKyEmailUseCase, XemDanhSachNhatKyEmailUseCase>();
+builder.Services.AddScoped<IXemChiTietNhatKyEmailUseCase, XemChiTietNhatKyEmailUseCase>();
 
 var app = builder.Build();
 

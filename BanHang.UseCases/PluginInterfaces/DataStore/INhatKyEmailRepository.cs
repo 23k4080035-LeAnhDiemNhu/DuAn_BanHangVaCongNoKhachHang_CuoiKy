@@ -24,4 +24,16 @@ public interface INhatKyEmailRepository
     Task<NhatKyEmailNhacNo?> LayTheoIdempotencyKeyAsync(string idempotencyKey);
 
     Task<IEnumerable<NhatKyEmailNhacNo>> LayLichSuTheoKhachHangAsync(int khachHangId);
+
+    Task<(IEnumerable<NhatKyEmailNhacNo> DanhSach, int TongSoBanGhi)> LayDanhSachPhanTrangAsync(
+        string? tuKhoa,
+        DateTime? tuNgay,
+        DateTime? denNgay,
+        TrangThaiGuiEmail? trangThaiGui,
+        string? nguonSoan,
+        string? cheDoGui,
+        int pageIndex,
+        int pageSize);
+
+    Task<NhatKyEmailNhacNo?> LayTheoIdAsync(int nhatKyId);
 }

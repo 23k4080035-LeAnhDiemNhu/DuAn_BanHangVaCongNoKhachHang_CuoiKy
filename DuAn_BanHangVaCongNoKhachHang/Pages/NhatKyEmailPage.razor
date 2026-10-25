@@ -1,0 +1,575 @@
+@page "/nhat-ky-email"
+@attribute [Authorize(Roles = VaiTroConstants.KeToanCongNo)]
+@using System.Globalization
+@using BanHang.CoreBusiness
+@using BanHang.UseCases.NhatKyEmailScreen
+@using DuAn_BanHangVaCongNoKhachHang.Components
+@inject IXemDanhSachNhatKyEmailUseCase XemDanhSachNhatKyEmailUseCase
+@inject IXemChiTietNhatKyEmailUseCase XemChiTietNhatKyEmailUseCase
+@inject NavigationManager NavigationManager
+
+<PageTitle>Nhật ký email nhắc nợ</PageTitle>
+
+<div class="nhat-ky-email-container pb-4">
+    <!-- TIÊU ĐỀ TRANG -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h3 class="fw-bold mb-1 page-title d-flex align-items-center gap-2">
+                <i class="bi bi-clock-history text-primary"></i>
+                <span>Nhật Ký Email Nhắc Nợ</span>
+            </h3>
+            <p class="text-muted small mb-0">
+                Theo dõi, tìm kiếm và đối soát toàn bộ lịch sử gửi thư nhắc nợ khách hàng (Audit Trail).
+            </p>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+            <a href="/bao-cao-tuoi-no" class="btn btn-outline-secondary rounded-pill px-3 py-2 btn-sm text-nowrap d-inline-flex align-items-center gap-1 shadow-sm">
+                <i class="bi bi-arrow-left"></i>
+                <span>Báo cáo tuổi nợ</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- KHỐI TÌM KIẾM VÀ BỘ LỌC -->
+    <div class="card border-0 rounded-4 shadow-sm p-3 p-md-4 mb-4 bg-white filter-card">
+        <div class="row g-3 align-items-end">
+            <!-- Ô tìm kiếm từ khóa -->
+            <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1">Tìm kiếm</label>
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-end-0 text-muted"><i class="bi bi-search"></i></span>
+                    <input type="text"
+                           class="form-control border-start-0"
+                           placeholder="Mã #, khách hàng, email..."
+                           @bind="boLoc.TuKhoa"
+                           @bind:event="oninput"
+                           @onkeydown="OnSearchKeyDown"
+                           id="txt-search-tu-khoa" />
+                </div>
+            </div>
+
+            <!-- Từ ngày -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Từ ngày</label>
+                <input type="date" class="form-control form-control-sm" @bind="boLoc.TuNgay" id="dt-tu-ngay" />
+            </div>
+
+            <!-- Đến ngày -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Đến ngày</label>
+                <input type="date" class="form-control form-control-sm" @bind="boLoc.DenNgay" id="dt-den-ngay" />
+            </div>
+
+            <!-- Trạng thái gửi -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Trạng thái gửi</label>
+                <select class="form-select form-select-sm" @bind="selectedTrangThaiString" id="sel-trang-thai">
+                    <option value="">-- Tất cả --</option>
+                    <option value="0">Đang xử lý</option>
+                    <option value="2">SMTP đã tiếp nhận</option>
+                    <option value="3">Gửi thất bại</option>
+                    <option value="4">Chưa rõ kết quả</option>
+                    <option value="1">Gửi mô phỏng</option>
+                </select>
+            </div>
+
+            <!-- Nguồn soạn -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Nguồn soạn</label>
+                <select class="form-select form-select-sm" @bind="boLoc.NguonSoan" id="sel-nguon-soan">
+                    <option value="">-- Tất cả --</option>
+                    <option value="AI">Trợ lý AI (Gemini)</option>
+                    <option value="MauCoSan">Mẫu có sẵn</option>
+                </select>
+            </div>
+
+            <!-- Chế độ gửi -->
+            <div class="col-6 col-md-2">
+                <label class="form-label small fw-bold text-secondary mb-1">Chế độ gửi</label>
+                <select class="form-select form-select-sm" @bind="boLoc.CheDoGui" id="sel-che-do-gui">
+                    <option value="">-- Tất cả --</option>
+                    <option value="GuiThat">SMTP (Thật)</option>
+                    <option value="MoPhong">Sandbox / Dev</option>
+                    <option value="TestRedirect">Test Redirect</option>
+                </select>
+            </div>
+
+            <!-- Nút Thao tác -->
+            <div class="col-12 col-md-4 d-flex align-items-center gap-2">
+                <button type="button"
+                        class="btn btn-primary btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1 shadow-sm"
+                        @onclick="ApDungBoLocAsync"
+                        id="btn-tim-kiem">
+                    <i class="bi bi-funnel-fill"></i>
+                    <span>Áp dụng lọc</span>
+                </button>
+                <button type="button"
+                        class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-2 fw-semibold d-inline-flex align-items-center gap-1"
+                        @onclick="XoaBoLocAsync"
+                        id="btn-xoa-bo-loc">
+                    <i class="bi bi-x-circle"></i>
+                    <span>Xóa bộ lọc</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- DANH SÁCH NHẬT KÝ -->
+    <TrangThaiDuLieu DangTai="@isLoading"
+                     CoLoi="@hasError"
+                     ThongBaoLoi="@errorMessage"
+                     KhongCoDuLieu="@(!isLoading && !hasError && (ketQua?.DanhSach == null || !ketQua.DanhSach.Any()))"
+                     ThongBaoTrong="Không tìm thấy bản ghi nhật ký email nào phù hợp với điều kiện tìm kiếm."
+                     OnThuLai="TaiDuLieuAsync">
+        <ChildContent>
+            @if (ketQua?.DanhSach != null && ketQua.DanhSach.Any())
+            {
+                <div class="card border-0 rounded-4 shadow-sm overflow-hidden bg-white mb-3">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 nhat-ky-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" class="text-center" style="width: 70px;">Mã #</th>
+                                    <th scope="col" style="min-width: 140px;">Thời gian gửi</th>
+                                    <th scope="col" style="min-width: 200px;">Khách hàng</th>
+                                    <th scope="col" style="min-width: 170px;">Người nhận dự kiến</th>
+                                    <th scope="col" style="min-width: 170px;">Người nhận thực tế</th>
+                                    <th scope="col" style="min-width: 130px;">Người duyệt</th>
+                                    <th scope="col" class="text-center" style="min-width: 140px;">Nguồn</th>
+                                    <th scope="col" class="text-center" style="min-width: 140px;">Chế độ</th>
+                                    <th scope="col" class="text-center" style="min-width: 160px;">Trạng thái gửi</th>
+                                    <th scope="col" class="text-center" style="width: 110px;">Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var item in ketQua.DanhSach)
+                                {
+                                    <tr>
+                                        <!-- Mã nhật ký -->
+                                        <td class="text-center fw-bold text-primary font-mono">
+                                            #@item.NhatKyId
+                                        </td>
+
+                                        <!-- Thời gian gửi -->
+                                        <td>
+                                            <div class="fw-semibold text-dark">@item.ThoiDiemGui.ToString("dd/MM/yyyy HH:mm")</div>
+                                            <small class="text-muted">Duyệt: @item.ThoiDiemDuyet.ToString("HH:mm")</small>
+                                        </td>
+
+                                        <!-- Khách hàng -->
+                                        <td>
+                                            <div class="fw-bold text-dark">@item.TenKhachHang</div>
+                                            <span class="badge bg-light text-secondary border font-mono">@item.MaKhachHang</span>
+                                        </td>
+
+                                        <!-- Người nhận dự kiến -->
+                                        <td>
+                                            <span class="text-dark font-mono small">@item.EmailNguoiNhan</span>
+                                        </td>
+
+                                        <!-- Người nhận thực tế -->
+                                        <td>
+                                            @if (!string.IsNullOrWhiteSpace(item.EmailNhanThucTe) && !string.Equals(item.EmailNhanThucTe, item.EmailNguoiNhan, StringComparison.OrdinalIgnoreCase))
+                                            {
+                                                <span class="text-warning-emphasis font-mono small fw-semibold" title="Đã chuyển hướng kiểm thử">
+                                                    <i class="bi bi-arrow-return-right"></i> @item.EmailNhanThucTe
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted font-mono small">
+                                                    @(string.IsNullOrWhiteSpace(item.EmailNhanThucTe) ? item.EmailNguoiNhan : item.EmailNhanThucTe)
+                                                </span>
+                                            }
+                                        </td>
+
+                                        <!-- Người duyệt -->
+                                        <td>
+                                            <span class="badge bg-slate-subtle text-slate-800 border">
+                                                <i class="bi bi-person-check-fill me-1"></i>@item.NguoiDuyet
+                                            </span>
+                                        </td>
+
+                                        <!-- Nguồn soạn -->
+                                        <td class="text-center">
+                                            @if (item.NguonSoan?.Trim() == "AI" || item.NguonSoan?.Trim() == "Gemini")
+                                            {
+                                                <span class="badge bg-indigo-subtle text-primary border border-primary-subtle rounded-pill px-2 py-1">
+                                                    <i class="bi bi-stars me-1"></i>Gemini AI
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-light text-secondary border rounded-pill px-2 py-1">
+                                                    <i class="bi bi-file-text me-1"></i>Mẫu sẵn
+                                                </span>
+                                            }
+                                        </td>
+
+                                        <!-- Chế độ gửi -->
+                                        <td class="text-center">
+                                            @if (item.CheDoGui?.Trim() == "GuiThat" || item.CheDoGui?.Trim() == "Real")
+                                            {
+                                                <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle rounded-pill px-2 py-1">
+                                                    <i class="bi bi-send-fill me-1"></i>SMTP
+                                                </span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-secondary-subtle text-secondary-emphasis border border-secondary-subtle rounded-pill px-2 py-1">
+                                                    <i class="bi bi-box me-1"></i>Sandbox
+                                                </span>
+                                            }
+                                        </td>
+
+                                        <!-- Trạng thái gửi -->
+                                        <td class="text-center">
+                                            <span class="badge @item.BadgeClassTrangThai rounded-pill px-3 py-1 d-inline-flex align-items-center gap-1">
+                                                <i class="bi @item.IconTrangThai"></i>
+                                                <span>@item.TenTrangThaiHienThi</span>
+                                            </span>
+                                        </td>
+
+                                        <!-- Nút Xem chi tiết -->
+                                        <td class="text-center">
+                                            <button type="button"
+                                                    class="btn btn-outline-primary btn-sm rounded-pill px-3 fw-semibold shadow-sm text-nowrap"
+                                                    id="btn-chi-tiet-@item.NhatKyId"
+                                                    @onclick="() => MoModalChiTietAsync(item.NhatKyId)">
+                                                <i class="bi bi-eye"></i> Chi tiết
+                                            </button>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- THANH PHÂN TRANG MÁY CHỦ -->
+                    <div class="card-footer bg-white border-top py-3 px-4 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div class="small text-muted">
+                            Hiển thị <strong>@LayViTriDau()</strong> – <strong>@LayViTriCuoi()</strong> trên tổng số <strong>@ketQua.TongSoBanGhi</strong> bản ghi nhật ký
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                                    disabled="@(!ketQua.CoTrangTruoc)"
+                                    @onclick="() => ChuyenTrangAsync(ketQua.PageIndex - 1)">
+                                <i class="bi bi-chevron-left"></i> Trang trước
+                            </button>
+
+                            <span class="badge bg-light text-dark border px-3 py-2 small fw-bold">
+                                Trang @ketQua.PageIndex / @Math.Max(1, ketQua.TongSoTrang)
+                            </span>
+
+                            <button type="button"
+                                    class="btn btn-sm btn-outline-secondary rounded-pill px-3"
+                                    disabled="@(!ketQua.CoTrangSau)"
+                                    @onclick="() => ChuyenTrangAsync(ketQua.PageIndex + 1)">
+                                Trang sau <i class="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+        </ChildContent>
+    </TrangThaiDuLieu>
+
+    <!-- MODAL XEM CHI TIẾT NHẬT KÝ AUDIT -->
+    @if (hienThiModalChiTiet && chiTietHienTai != null)
+    {
+        <div class="modal fade show d-block" tabindex="-1" style="background-color: rgba(15, 23, 42, 0.65); z-index: 1055;" role="dialog">
+            <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                <div class="modal-content rounded-4 border-0 shadow-lg overflow-hidden">
+                    <!-- Modal Header -->
+                    <div class="modal-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <h5 class="modal-title fw-bold text-dark mb-0">
+                                Chi tiết nhật ký gửi email
+                                <span class="text-primary font-mono ms-1">#@chiTietHienTai.NhatKyId</span>
+                            </h5>
+                            <span class="badge @chiTietHienTai.BadgeClassTrangThai rounded-pill px-3 py-1 ms-2 d-inline-flex align-items-center gap-1">
+                                <i class="bi @chiTietHienTai.IconTrangThai"></i>
+                                <span>@chiTietHienTai.TenTrangThaiHienThi</span>
+                            </span>
+                        </div>
+                        <button type="button"
+                                class="btn-close"
+                                aria-label="Close"
+                                @onclick="DongModalChiTiet"
+                                id="btn-close-modal-top"></button>
+                    </div>
+
+                    <!-- Modal Body -->
+                    <div class="modal-body p-4 bg-light-subtle">
+                        <!-- Khối 1: Thông tin khách hàng & Snapshot công nợ -->
+                        <div class="card border rounded-3 p-3 mb-3 bg-white shadow-none">
+                            <div class="fw-bold text-secondary text-uppercase small mb-2 d-flex align-items-center gap-1">
+                                <i class="bi bi-building"></i>
+                                <span>Khách hàng & Snapshot số liệu</span>
+                            </div>
+                            <div class="row g-2 small">
+                                <div class="col-md-6">
+                                    <span class="text-muted">Khách hàng:</span>
+                                    <strong class="ms-1 text-dark">@chiTietHienTai.TenKhachHang</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Mã khách hàng:</span>
+                                    <span class="badge bg-light text-secondary border font-mono ms-1">@chiTietHienTai.MaKhachHang</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Ngày chốt số liệu:</span>
+                                    <strong class="ms-1 font-mono text-dark">@chiTietHienTai.NgayChotBaoCao.ToString("dd/MM/yyyy")</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Giọng văn soạn thảo:</span>
+                                    <strong class="ms-1 text-dark">@chiTietHienTai.GiongVan</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Khối 2: Thông tin phê duyệt & Lộ trình gửi -->
+                        <div class="card border rounded-3 p-3 mb-3 bg-white shadow-none">
+                            <div class="fw-bold text-secondary text-uppercase small mb-2 d-flex align-items-center gap-1">
+                                <i class="bi bi-person-badge"></i>
+                                <span>Phê duyệt & Tiếp nhận gửi</span>
+                            </div>
+                            <div class="row g-2 small">
+                                <div class="col-md-6">
+                                    <span class="text-muted">Người duyệt:</span>
+                                    <strong class="ms-1 text-dark">@chiTietHienTai.NguoiDuyet</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Thời điểm duyệt:</span>
+                                    <strong class="ms-1 font-mono text-dark">@chiTietHienTai.ThoiDiemDuyet.ToString("dd/MM/yyyy HH:mm:ss")</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Thời điểm phát lệnh gửi:</span>
+                                    <strong class="ms-1 font-mono text-dark">@chiTietHienTai.ThoiDiemGui.ToString("dd/MM/yyyy HH:mm:ss")</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Người nhận dự kiến:</span>
+                                    <strong class="ms-1 font-mono text-dark">@chiTietHienTai.EmailNguoiNhan</strong>
+                                </div>
+                                <div class="col-12">
+                                    <span class="text-muted">Người nhận thực tế:</span>
+                                    <strong class="ms-1 font-mono text-dark">
+                                        @(string.IsNullOrWhiteSpace(chiTietHienTai.EmailNhanThucTe) ? chiTietHienTai.EmailNguoiNhan : chiTietHienTai.EmailNhanThucTe)
+                                    </strong>
+                                    @if (!string.IsNullOrWhiteSpace(chiTietHienTai.EmailNhanThucTe) && !string.Equals(chiTietHienTai.EmailNhanThucTe, chiTietHienTai.EmailNguoiNhan, StringComparison.OrdinalIgnoreCase))
+                                    {
+                                        <small class="text-warning-emphasis ms-2">(Áp dụng TestRecipientRedirect)</small>
+                                    }
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Khối 3: Cấu hình kỹ thuật & Idempotency -->
+                        <div class="card border rounded-3 p-3 mb-3 bg-white shadow-none">
+                            <div class="fw-bold text-secondary text-uppercase small mb-2 d-flex align-items-center gap-1">
+                                <i class="bi bi-shield-check"></i>
+                                <span>Kiểm soát Idempotency & Đối soát kỹ thuật</span>
+                            </div>
+                            <div class="row g-2 small font-mono">
+                                <div class="col-md-6">
+                                    <span class="text-muted">Nguồn soạn:</span>
+                                    <span class="ms-1 text-dark fw-bold">@chiTietHienTai.NguonSoanHienThi</span>
+                                </div>
+                                <div class="col-md-6">
+                                    <span class="text-muted">Chế độ gửi:</span>
+                                    <span class="ms-1 text-dark fw-bold">@chiTietHienTai.CheDoGuiHienThi</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(chiTietHienTai.IdempotencyKey))
+                                {
+                                    <div class="col-12 text-truncate" title="@chiTietHienTai.IdempotencyKey">
+                                        <span class="text-muted">Idempotency Key:</span>
+                                        <span class="ms-1 text-slate-800">@chiTietHienTai.IdempotencyKey</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(chiTietHienTai.PayloadHash))
+                                {
+                                    <div class="col-12 text-truncate" title="@chiTietHienTai.PayloadHash">
+                                        <span class="text-muted">Payload Hash:</span>
+                                        <span class="ms-1 text-slate-800">@chiTietHienTai.PayloadHash</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(chiTietHienTai.MaPheDuyet))
+                                {
+                                    <div class="col-md-6 text-truncate" title="@chiTietHienTai.MaPheDuyet">
+                                        <span class="text-muted">Mã phê duyệt:</span>
+                                        <span class="ms-1 text-slate-800">@chiTietHienTai.MaPheDuyet</span>
+                                    </div>
+                                }
+                                @if (!string.IsNullOrWhiteSpace(chiTietHienTai.MaPhanHoiDichVu))
+                                {
+                                    <div class="col-md-6 text-truncate" title="@chiTietHienTai.MaPhanHoiDichVu">
+                                        <span class="text-muted">Mã phản hồi dịch vụ:</span>
+                                        <span class="ms-1 text-slate-800">@chiTietHienTai.MaPhanHoiDichVu</span>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+
+                        <!-- Khối 4: Chi tiết phản hồi / Thông báo lỗi kỹ thuật -->
+                        @if (!string.IsNullOrWhiteSpace(chiTietHienTai.ChiTietTrangThai))
+                        {
+                            <div class="card border rounded-3 p-3 mb-3 bg-white shadow-none">
+                                <div class="fw-bold text-secondary text-uppercase small mb-1 d-flex align-items-center gap-1">
+                                    <i class="bi bi-info-circle"></i>
+                                    <span>Thông tin phản hồi từ dịch vụ</span>
+                                </div>
+                                <div class="small text-muted font-mono" style="word-break: break-word;">
+                                    @chiTietHienTai.ChiTietTrangThai
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Khối 5: Tiêu đề và Nội dung email đã duyệt -->
+                        <div class="card border rounded-3 p-3 bg-white shadow-none">
+                            <div class="fw-bold text-secondary text-uppercase small mb-2 d-flex align-items-center gap-1">
+                                <i class="bi bi-envelope-paper"></i>
+                                <span>Nội dung thư đã được duyệt</span>
+                            </div>
+                            <div class="mb-2">
+                                <span class="text-muted small">Tiêu đề:</span>
+                                <strong class="ms-1 text-dark fs-6 d-block mt-1">@chiTietHienTai.TieuDe</strong>
+                            </div>
+                            <div>
+                                <span class="text-muted small d-block mb-1">Nội dung chi tiết (Văn bản thuần an toàn):</span>
+                                <pre class="border rounded-3 p-3 bg-light text-dark small font-mono mb-0"
+                                     style="white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow-y: auto; line-height: 1.6;">@chiTietHienTai.NoiDung</pre>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div class="modal-footer py-3 px-4 bg-white border-top d-flex justify-content-end">
+                        <button type="button"
+                                class="btn btn-secondary rounded-pill px-4 fw-semibold shadow-sm"
+                                id="btn-close-modal-bottom"
+                                @onclick="DongModalChiTiet">
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private BoLocNhatKyEmailDto boLoc = new() { PageIndex = 1, PageSize = 10 };
+    private KetQuaDanhSachNhatKyEmailDto? ketQua;
+    private bool isLoading = true;
+    private bool hasError = false;
+    private string? errorMessage;
+
+    private string selectedTrangThaiString
+    {
+        get => boLoc.TrangThaiGui.HasValue ? ((int)boLoc.TrangThaiGui.Value).ToString() : "";
+        set
+        {
+            if (int.TryParse(value, out int val) && Enum.IsDefined(typeof(TrangThaiGuiEmail), val))
+            {
+                boLoc.TrangThaiGui = (TrangThaiGuiEmail)val;
+            }
+            else
+            {
+                boLoc.TrangThaiGui = null;
+            }
+        }
+    }
+
+    private bool hienThiModalChiTiet = false;
+    private NhatKyEmailItemDto? chiTietHienTai;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await TaiDuLieuAsync();
+    }
+
+    private async Task TaiDuLieuAsync()
+    {
+        try
+        {
+            isLoading = true;
+            hasError = false;
+            errorMessage = null;
+
+            ketQua = await XemDanhSachNhatKyEmailUseCase.ExecuteAsync(boLoc);
+        }
+        catch (Exception ex)
+        {
+            hasError = true;
+            errorMessage = $"Không thể tải danh sách nhật ký: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task ApDungBoLocAsync()
+    {
+        boLoc.PageIndex = 1;
+        await TaiDuLieuAsync();
+    }
+
+    private async Task XoaBoLocAsync()
+    {
+        boLoc = new BoLocNhatKyEmailDto { PageIndex = 1, PageSize = 10 };
+        selectedTrangThaiString = "";
+        await TaiDuLieuAsync();
+    }
+
+    private async Task ChuyenTrangAsync(int newPage)
+    {
+        if (ketQua == null || newPage < 1 || newPage > ketQua.TongSoTrang) return;
+        boLoc.PageIndex = newPage;
+        await TaiDuLieuAsync();
+    }
+
+    private async Task OnSearchKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            await ApDungBoLocAsync();
+        }
+    }
+
+    private async Task MoModalChiTietAsync(int nhatKyId)
+    {
+        try
+        {
+            chiTietHienTai = await XemChiTietNhatKyEmailUseCase.ExecuteAsync(nhatKyId);
+            if (chiTietHienTai != null)
+            {
+                hienThiModalChiTiet = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Không thể nạp chi tiết nhật ký #{nhatKyId}: {ex.Message}";
+            hasError = true;
+        }
+    }
+
+    private void DongModalChiTiet()
+    {
+        hienThiModalChiTiet = false;
+        chiTietHienTai = null;
+    }
+
+    private int LayViTriDau()
+    {
+        if (ketQua == null || ketQua.TongSoBanGhi == 0) return 0;
+        return (ketQua.PageIndex - 1) * ketQua.PageSize + 1;
+    }
+
+    private int LayViTriCuoi()
+    {
+        if (ketQua == null || ketQua.TongSoBanGhi == 0) return 0;
+        return Math.Min(ketQua.PageIndex * ketQua.PageSize, ketQua.TongSoBanGhi);
+    }
+}
