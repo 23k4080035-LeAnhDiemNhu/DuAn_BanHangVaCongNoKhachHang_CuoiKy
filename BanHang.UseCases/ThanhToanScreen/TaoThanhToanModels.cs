@@ -24,6 +24,16 @@ public class TaoThanhToanRequest
     public string? GhiChu { get; set; }
 
     /// <summary>
+    /// Thông tin đối soát chuyển khoản qua VietQR (chỉ dùng khi PhuongThuc == "ChuyenKhoan")
+    /// </summary>
+    public bool DaXacNhanTienVao { get; set; } = false;
+    public string? NoiDungChuyenKhoan { get; set; }
+    public string? TaiKhoanThuHuong { get; set; }
+    public string? NganHangThuHuong { get; set; }
+    public DateTime? ThoiDiemXacNhan { get; set; }
+    public string? NguoiXacNhan { get; set; }
+
+    /// <summary>
     /// Danh sách kết quả phân bổ mà người dùng đã xem trước.
     /// Nếu có giá trị, khi lưu sẽ đối soát; nếu dữ liệu thay đổi sẽ cảnh báo người dùng xem lại.
     /// </summary>

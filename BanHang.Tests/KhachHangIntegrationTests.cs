@@ -623,6 +623,7 @@ public class KhachHangIntegrationTests : IAsyncLifetime
             NgayThanhToan = DateTime.Today.AddDays(-2),
             SoTien = 3000000, // Trả hết HD1
             PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true,
             GhiChu = "Trả tiền đợt 1"
         });
 

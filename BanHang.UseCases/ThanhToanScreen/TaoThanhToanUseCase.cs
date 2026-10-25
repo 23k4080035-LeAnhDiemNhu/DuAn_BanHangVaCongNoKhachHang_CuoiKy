@@ -9,13 +9,19 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
 {
     private readonly IThanhToanRepository _thanhToanRepository;
     private readonly Common.ICurrentUserService _currentUserService;
+    private readonly IKhachHangRepository? _khachHangRepository;
+    private readonly IVietQrService _vietQrService;
 
     public TaoThanhToanUseCase(
         IThanhToanRepository thanhToanRepository,
-        Common.ICurrentUserService currentUserService)
+        Common.ICurrentUserService currentUserService,
+        IKhachHangRepository? khachHangRepository = null,
+        IVietQrService? vietQrService = null)
     {
         _thanhToanRepository = thanhToanRepository ?? throw new ArgumentNullException(nameof(thanhToanRepository));
         _currentUserService = currentUserService ?? throw new ArgumentNullException(nameof(currentUserService));
+        _khachHangRepository = khachHangRepository;
+        _vietQrService = vietQrService ?? new VietQrService();
     }
 
     public Task<string> LayMaPhieuThuTiepTheoAsync()
@@ -98,6 +104,98 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
                 ThanhCong = false,
                 ThongBao = "Ghi chú tối đa 500 ký tự."
             };
+        }
+
+        // Kiểm tra an toàn theo phương thức thanh toán
+        bool laChuyenKhoan = string.Equals(request.PhuongThuc, "ChuyenKhoan", StringComparison.OrdinalIgnoreCase)
+                          || string.Equals(request.PhuongThuc, "Chuyển khoản", StringComparison.OrdinalIgnoreCase);
+
+        if (laChuyenKhoan)
+        {
+            // 1. Kiểm tra xác định người dùng hiện tại và vai trò Kế toán công nợ
+            var isAuth = await _currentUserService.IsAuthenticatedAsync();
+            var tenDangNhap = await _currentUserService.GetTenDangNhapAsync();
+            if (!isAuth || string.IsNullOrWhiteSpace(tenDangNhap))
+            {
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = "Không xác định được danh tính người dùng hiện tại để xác nhận giao dịch chuyển khoản."
+                };
+            }
+
+            var laKeToan = await _currentUserService.IsInRoleAsync(CoreBusiness.VaiTroConstants.KeToanCongNo);
+            if (!laKeToan)
+            {
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = "Người xác nhận giao dịch chuyển khoản phải là tài khoản có vai trò Kế toán công nợ (KeToanCongNo)."
+                };
+            }
+
+            // 2. Kế toán phải kiểm tra và xác nhận tiền đã vào tài khoản trước khi lưu
+            if (!request.DaXacNhanTienVao)
+            {
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = "Kế toán phải kiểm tra tiền đã vào tài khoản và tích chọn xác nhận trước khi lưu phiếu thu chuyển khoản."
+                };
+            }
+
+            // 3. Số tiền chuyển khoản VietQR phải là số nguyên VND, > 0, tối đa 13 chữ số
+            var kiemTraTien = _vietQrService.KiemTraSoTienVietQr(request.SoTien);
+            if (!kiemTraTien.HopLe)
+            {
+                return new TaoThanhToanResult
+                {
+                    ThanhCong = false,
+                    ThongBao = kiemTraTien.Loi ?? "Số tiền thanh toán chuyển khoản không hợp lệ."
+                };
+            }
+
+            // 4. Lấy mã khách hàng từ repository nếu có, hoặc tạo mặc định
+            string maKhachHang;
+            if (_khachHangRepository != null)
+            {
+                var kh = await _khachHangRepository.LayKhachHangTheoIdAsync(request.KhachHangId);
+                if (kh == null)
+                {
+                    return new TaoThanhToanResult
+                    {
+                        ThanhCong = false,
+                        ThongBao = "Khách hàng không tồn tại trong hệ thống."
+                    };
+                }
+                maKhachHang = kh.MaKhachHang;
+            }
+            else
+            {
+                maKhachHang = $"KH{request.KhachHangId:D3}";
+            }
+
+            if (string.IsNullOrWhiteSpace(request.MaPhieuThu))
+            {
+                request.MaPhieuThu = await _thanhToanRepository.LayMaPhieuThuTiepTheoAsync();
+            }
+
+            // 5. Tự động sinh và ghi đè toàn bộ dữ liệu audit từ Server (hoàn toàn không tin client)
+            request.NguoiXacNhan = tenDangNhap.Trim();
+            request.ThoiDiemXacNhan = DateTime.Now;
+            request.TaiKhoanThuHuong = _vietQrService.Settings.AccountNumber;
+            request.NganHangThuHuong = _vietQrService.Settings.BankId;
+            request.NoiDungChuyenKhoan = _vietQrService.TaoNoiDungChuyenKhoan(request.MaPhieuThu, maKhachHang);
+        }
+        else
+        {
+            // Phương thức Tiền mặt: Tuyệt đối không lưu dữ liệu QR, tài khoản hoặc xác nhận chuyển khoản
+            request.DaXacNhanTienVao = false;
+            request.NoiDungChuyenKhoan = null;
+            request.TaiKhoanThuHuong = null;
+            request.NganHangThuHuong = null;
+            request.ThoiDiemXacNhan = null;
+            request.NguoiXacNhan = null;
         }
 
         // Chuyển xuống tầng DataStore để thực hiện nguyên tử trong Transaction có khóa khách hàng

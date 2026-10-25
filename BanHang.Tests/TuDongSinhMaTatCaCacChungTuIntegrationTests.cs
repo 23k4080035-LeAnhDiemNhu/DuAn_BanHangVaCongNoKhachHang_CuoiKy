@@ -155,7 +155,8 @@ public class TuDongSinhMaTatCaCacChungTuIntegrationTests : IAsyncLifetime
             KhachHangId = khachHangId,
             NgayThanhToan = DateTime.Today,
             SoTien = 1000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
         Assert.True(result1.ThanhCong);
         Assert.Equal("PT001", result1.MaPhieuThu);
@@ -233,7 +234,8 @@ public class TuDongSinhMaTatCaCacChungTuIntegrationTests : IAsyncLifetime
             KhachHangId = khachHangId,
             NgayThanhToan = DateTime.Today,
             SoTien = 100000 * i,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         })).ToList();
 
         var results = await Task.WhenAll(tasks);

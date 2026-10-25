@@ -230,7 +230,8 @@ public class BaoCaoTuoiNoIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang1Id,
             NgayThanhToan = new DateTime(2026, 10, 10),
             SoTien = 4000000m,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
         Assert.True(ttRes.ThanhCong);
 
@@ -350,7 +351,8 @@ public class BaoCaoTuoiNoIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang1Id,
             NgayThanhToan = new DateTime(2026, 9, 15),
             SoTien = 3000000m,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
         Assert.True(pt2.ThanhCong);
 

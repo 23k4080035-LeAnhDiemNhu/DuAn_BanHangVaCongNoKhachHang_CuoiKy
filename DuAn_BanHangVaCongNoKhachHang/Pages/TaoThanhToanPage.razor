@@ -8,6 +8,8 @@
 @inject IXemDanhSachKhachHangUseCase XemDanhSachKhachHangUseCase
 @inject IXemTruocPhanBoFifoUseCase XemTruocPhanBoFifoUseCase
 @inject ITaoThanhToanUseCase TaoThanhToanUseCase
+@inject IVietQrService VietQrService
+@inject IJSRuntime JSRuntime
 @inject NavigationManager NavigationManager
 @inject ILogger<TaoThanhToanPage> Logger
 @implements IDisposable
@@ -15,47 +17,67 @@
 <PageTitle>Lập phiếu thu tiền & Phân bổ FIFO</PageTitle>
 
 <div class="container-fluid px-0">
+    <!-- Tiêu đề trang & Quay lại -->
     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-        <div>
-            <h3 class="mb-1 text-primary fw-bold">Lập Phiếu Thu Tiền & Phân Bổ FIFO</h3>
-            <p class="text-muted mb-0 small">
-                Ghi nhận chứng từ thu tiền và tự động cấn trừ công nợ theo thứ tự hóa đơn từ cũ đến mới (FIFO).
-            </p>
+        <div class="d-flex align-items-center gap-3">
+            <div class="bg-primary bg-opacity-10 text-primary p-2 rounded-3 d-flex align-items-center justify-content-center" style="width: 48px; height: 48px;">
+                <i class="bi bi-receipt-cutoff fs-4"></i>
+            </div>
+            <div>
+                <h3 class="mb-0 text-slate-900 fw-bold">Lập Phiếu Thu Tiền & Phân Bổ FIFO</h3>
+                <p class="text-muted mb-0 small">
+                    Ghi nhận chứng từ thu tiền và tự động cấn trừ công nợ theo thứ tự hóa đơn từ cũ đến mới (FIFO).
+                </p>
+            </div>
         </div>
-        <a href="/thanh-toan" class="btn btn-outline-secondary btn-sm text-nowrap">
-            &larr; Quay lại danh sách
+        <a href="/thanh-toan" class="btn btn-outline-secondary btn-sm text-nowrap d-inline-flex align-items-center gap-1 shadow-sm">
+            <i class="bi bi-arrow-left"></i> Quay lại danh sách
         </a>
     </div>
 
-    <div class="alert alert-secondary py-2 px-3 small border-0 bg-light mb-3">
-        <strong>Nguyên tắc phân bổ FIFO:</strong> Số tiền thanh toán sẽ tự động cấn trừ lần lượt cho các hóa đơn có ngày lập cũ nhất trước. Nếu số tiền thu vượt tổng nợ, phần chênh lệch sẽ được giữ làm <em>tiền chưa phân bổ</em> của phiếu thu, không tạo dư nợ âm.
+    <!-- Thanh thông báo nguyên tắc FIFO -->
+    <div class="alert alert-info py-2 px-3 small border-0 bg-primary bg-opacity-10 text-primary rounded-3 d-flex align-items-center gap-2 mb-4">
+        <i class="bi bi-info-circle-fill fs-6 flex-shrink-0"></i>
+        <div>
+            <strong>Nguyên tắc phân bổ FIFO:</strong> Số tiền thanh toán sẽ tự động cấn trừ lần lượt cho các hóa đơn có ngày lập cũ nhất trước. Nếu thu vượt tổng nợ, phần chênh lệch được giữ làm <em>tiền chưa phân bổ</em> của phiếu thu (không tạo dư nợ âm).
+        </div>
     </div>
 
     @if (isLoadingData)
     {
-        <div class="d-flex align-items-center my-4">
-            <div class="spinner-border text-success me-3" role="status">
+        <div class="d-flex align-items-center justify-content-center p-5 bg-white rounded-3 shadow-sm border my-4">
+            <div class="spinner-border text-primary me-3" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
-            <span>Đang tải danh sách khách hàng...</span>
+            <span class="fw-semibold text-muted">Đang tải danh sách khách hàng & dữ liệu cấu hình...</span>
         </div>
     }
     else
     {
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger alert-dismissible fade show mb-3" role="alert">
-                <h6 class="alert-heading fw-bold mb-1">Không thể lưu phiếu thu!</h6>
-                <div>@errorMessage</div>
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm mb-3" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-octagon-fill fs-5 text-danger me-2"></i>
+                    <div>
+                        <strong class="d-block">Không thể lưu phiếu thu!</strong>
+                        <span>@errorMessage</span>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" @onclick="() => errorMessage = string.Empty" aria-label="Close"></button>
             </div>
         }
 
         @if (duLieuThayDoiSoVoiXemTruoc)
         {
-            <div class="alert alert-warning alert-dismissible fade show mb-3" role="alert">
-                <h6 class="alert-heading fw-bold mb-1">Cảnh báo: Dữ liệu công nợ đã thay đổi!</h6>
-                <div>@canhBaoThayDoiMessage</div>
+            <div class="alert alert-warning alert-dismissible fade show shadow-sm mb-3" role="alert">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-exclamation-triangle-fill fs-5 text-warning me-2"></i>
+                    <div>
+                        <strong class="d-block">Cảnh báo: Dữ liệu công nợ đã thay đổi!</strong>
+                        <span>@canhBaoThayDoiMessage</span>
+                    </div>
+                </div>
                 <button type="button" class="btn-close" @onclick="() => duLieuThayDoiSoVoiXemTruoc = false" aria-label="Close"></button>
             </div>
         }
@@ -64,17 +86,25 @@
         {
             <EditForm EditContext="@editContextThanhToan" OnValidSubmit="LuuThanhToanAsync" novalidate>
                 <DataAnnotationsValidator />
-                <div class="row g-3">
-                    <!-- Cột trái: Thông tin phiếu thu -->
-                    <div class="col-lg-5">
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-success text-white py-2">
-                                <span class="fw-semibold">1. Thông tin Khách hàng nộp tiền</span>
+                <div class="row g-4">
+                    <!-- Cột trái: Thông tin chứng từ thu & VietQR (khi chọn chuyển khoản) -->
+                    <div class="col-xl-5 col-lg-5">
+                        <!-- Card 1: Thông tin Chứng từ Thu tiền -->
+                        <div class="app-card mb-4">
+                            <div class="app-card-header header-primary">
+                                <span class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-file-earmark-text"></i> 1. Thông tin Chứng từ Thu tiền
+                                </span>
+                                <span class="badge bg-white text-primary font-mono fw-bold">@maPhieuThu</span>
                             </div>
-                            <div class="card-body">
+                            <div class="p-3 p-md-4">
+                                <!-- Chọn khách hàng -->
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold">Chọn khách hàng <span class="text-danger">*</span></label>
-                                    <select class="form-select @(CoLoi("KhachHangId") ? "is-invalid" : "")" @onchange="OnKhachHangSelected" value="@formModel.KhachHangId">
+                                    <label class="form-label fw-bold small text-slate-800">
+                                        Khách hàng nộp tiền <span class="text-danger">*</span>
+                                    </label>
+                                    <select class="form-select @(CoLoi("KhachHangId") ? "is-invalid" : "") shadow-sm" 
+                                            @onchange="OnKhachHangSelected" value="@formModel.KhachHangId">
                                         <option value="0">-- Chọn khách hàng nộp tiền --</option>
                                         @foreach (var kh in danhSachKhachHang)
                                         {
@@ -86,20 +116,21 @@
                                     <ValidationMessage For="@(() => formModel.KhachHangId)" class="text-danger small mt-1 d-block" />
                                 </div>
 
+                                <!-- Card tóm tắt công nợ khách hàng khi đã chọn -->
                                 @if (khachHangHienTai != null)
                                 {
-                                    <div class="p-3 rounded bg-light border">
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <span class="text-muted">Mã khách hàng:</span>
-                                            <span class="fw-semibold">@khachHangHienTai.MaKhachHang</span>
+                                    <div class="customer-summary-card mb-3">
+                                        <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom border-light-subtle">
+                                            <span class="text-muted small">Khách hàng:</span>
+                                            <span class="fw-bold text-slate-900 small">@khachHangHienTai.TenKhachHang (@khachHangHienTai.MaKhachHang)</span>
                                         </div>
-                                        <div class="d-flex justify-content-between mb-1">
-                                            <span class="text-muted">Hạn mức tín dụng:</span>
-                                            <span class="fw-bold">@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ</span>
+                                        <div class="d-flex justify-content-between align-items-center mb-1">
+                                            <span class="text-muted small">Hạn mức tín dụng:</span>
+                                            <span class="fw-semibold text-slate-700 small font-mono">@khachHangHienTai.HanMucCongNo.ToString("N0", viCulture) đ</span>
                                         </div>
-                                        <div class="d-flex justify-content-between pt-2 border-top">
-                                            <span class="text-muted">Tổng nợ cần thanh toán:</span>
-                                            <span class="fw-bold fs-6 @(khachHangHienTai.SoDuCongNo > 0 ? "text-danger" : "text-success")">
+                                        <div class="d-flex justify-content-between align-items-center pt-1 border-top border-light-subtle">
+                                            <span class="text-muted small fw-semibold">Tổng nợ cần thu:</span>
+                                            <span class="fw-bold font-mono @(khachHangHienTai.SoDuCongNo > 0 ? "text-danger fs-6" : "text-success")">
                                                 @khachHangHienTai.SoDuCongNo.ToString("N0", viCulture) đ
                                             </span>
                                         </div>
@@ -107,132 +138,291 @@
                                 }
                                 else
                                 {
-                                    <p class="text-muted fst-italic mb-0 small">Vui lòng chọn khách hàng để tra cứu số nợ hiện tại.</p>
+                                    <p class="text-muted fst-italic mb-3 small">Vui lòng chọn khách hàng để tra cứu số nợ hiện tại.</p>
                                 }
-                            </div>
-                        </div>
 
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-success text-white py-2">
-                                <span class="fw-semibold">2. Chi tiết Chứng từ Thu tiền</span>
-                            </div>
-                            <div class="card-body">
-                                <div class="mb-3">
-                                    <label class="form-label fw-bold">Mã phiếu thu</label>
-                                    <input type="text" class="form-control bg-light rounded-3 fw-bold text-success" value="@maPhieuThu" readonly maxlength="20" placeholder="Tự động tạo (VD: PT001)" />
-                                    <small class="text-muted">Mã phiếu thu được cấp tự động bởi hệ thống.</small>
-                                </div>
-
+                                <!-- Hàng Ngày thanh toán & Phương thức -->
                                 <div class="row g-2 mb-3">
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Ngày thanh toán <span class="text-danger">*</span></label>
-                                        <input type="date" class="form-control @(CoLoi("NgayThanhToan") ? "is-invalid" : "")" @bind="formModel.NgayThanhToan" @bind:after="OnNgayThanhToanChanged" />
+                                    <div class="col-sm-6">
+                                        <label class="form-label fw-bold small text-slate-800">
+                                            Ngày thanh toán <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="date" class="form-control @(CoLoi("NgayThanhToan") ? "is-invalid" : "") shadow-sm" 
+                                               @bind="formModel.NgayThanhToan" @bind:after="OnNgayThanhToanChanged" />
                                         <ValidationMessage For="@(() => formModel.NgayThanhToan)" class="text-danger small mt-1 d-block" />
                                     </div>
-                                    <div class="col-md-6">
-                                        <label class="form-label fw-bold">Phương thức <span class="text-danger">*</span></label>
-                                        <select class="form-select @(CoLoi("PhuongThuc") ? "is-invalid" : "")" @bind="formModel.PhuongThuc" @bind:after="OnPhuongThucChanged">
-                                            <option value="ChuyenKhoan">Chuyển khoản</option>
+                                    <div class="col-sm-6">
+                                        <label class="form-label fw-bold small text-slate-800">
+                                            Phương thức <span class="text-danger">*</span>
+                                        </label>
+                                        <select class="form-select @(CoLoi("PhuongThuc") ? "is-invalid" : "") shadow-sm" 
+                                                @bind="formModel.PhuongThuc" @bind:after="OnPhuongThucChanged">
+                                            <option value="ChuyenKhoan">Chuyển khoản (VietQR)</option>
                                             <option value="TienMat">Tiền mặt</option>
                                         </select>
                                         <ValidationMessage For="@(() => formModel.PhuongThuc)" class="text-danger small mt-1 d-block" />
                                     </div>
                                 </div>
 
+                                <!-- Ô nhập Số tiền thanh toán nổi bật -->
                                 <div class="mb-3">
-                                    <label class="form-label fw-bold">Số tiền nộp (VNĐ) <span class="text-danger">*</span></label>
-                                    <input type="text" inputmode="decimal" 
-                                           class="form-control form-control-lg fw-bold text-success text-end @(CoLoi("SoTien") ? "is-invalid" : "")" 
-                                           value="@soTienInput" 
-                                           @onchange="OnSoTienInputChanged" 
-                                           placeholder="0" />
+                                    <div class="d-flex justify-content-between align-items-center mb-1">
+                                        <label class="form-label fw-bold small text-slate-800 mb-0">
+                                            Số tiền thanh toán (VNĐ) <span class="text-danger">*</span>
+                                        </label>
+                                        <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 small">
+                                            Số tiền cấn trừ FIFO
+                                        </span>
+                                    </div>
+                                    <div class="input-group shadow-sm">
+                                        <input type="text" inputmode="decimal" 
+                                               class="form-control amount-highlight-input text-end @(CoLoi("SoTien") ? "is-invalid" : "")" 
+                                               value="@soTienInput" 
+                                               @onchange="OnSoTienInputChanged" 
+                                               placeholder="0" />
+                                        <span class="input-group-text bg-success bg-opacity-10 text-success fw-bold font-mono">VNĐ</span>
+                                    </div>
                                     <ValidationMessage For="@(() => formModel.SoTien)" class="text-danger small mt-1 d-block" />
-                                    <small class="text-muted">Số tiền dương, tối đa 2 chữ số thập phân.</small>
+                                    <small class="text-muted d-block mt-1">Số tiền nguyên lớn hơn 0, tối đa 13 chữ số theo chuẩn VietQR.</small>
                                 </div>
 
+                                <!-- Ghi chú -->
                                 <div class="mb-0">
-                                    <label class="form-label">Ghi chú</label>
-                                    <textarea class="form-control @(CoLoi("GhiChu") ? "is-invalid" : "")" rows="2" @bind="formModel.GhiChu" @bind:after="OnGhiChuChanged" maxlength="500" placeholder="Nội dung nộp tiền (tùy chọn)"></textarea>
+                                    <label class="form-label fw-semibold small text-slate-700">Nội dung ghi chú</label>
+                                    <textarea class="form-control @(CoLoi("GhiChu") ? "is-invalid" : "") shadow-sm" 
+                                              rows="2" @bind="formModel.GhiChu" @bind:after="OnGhiChuChanged" 
+                                              maxlength="500" placeholder="Thông tin bổ sung phiếu thu (tùy chọn)"></textarea>
                                     <ValidationMessage For="@(() => formModel.GhiChu)" class="text-danger small mt-1 d-block" />
                                 </div>
                             </div>
                         </div>
+
+                        <!-- Card VietQR: Chỉ xuất hiện khi chọn phương thức Chuyển khoản -->
+                        @if (formModel.PhuongThuc == "ChuyenKhoan")
+                        {
+                            <div class="vietqr-card mb-4" id="card-vietqr">
+                                <div class="app-card-header header-vietinbank">
+                                    <span class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-qr-code-scan"></i> Thanh toán qua VietQR
+                                    </span>
+                                    <span class="badge bg-white text-primary fw-bold font-mono">
+                                        @VietQrService.Settings.BankId (@VietQrService.Settings.BankBin)
+                                    </span>
+                                </div>
+                                <div class="p-3 p-md-4">
+                                    <!-- Cảnh báo quan trọng -->
+                                    <div class="alert alert-warning py-2 px-3 small border-0 mb-3" role="alert">
+                                        <div class="d-flex align-items-start gap-2">
+                                            <i class="bi bi-shield-exclamation fs-5 text-warning flex-shrink-0"></i>
+                                            <div>
+                                                <strong>Cảnh báo quan trọng:</strong> Mã VietQR chỉ tạo lệnh chuyển tiền nhanh, hoàn toàn <strong>không tự động xác nhận giao dịch</strong>. Kế toán phải trực tiếp kiểm tra tiền đã vào tài khoản trên ứng dụng ngân hàng trước khi xác nhận và lưu phiếu thu.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    @if (vietQrDto != null && vietQrDto.HopLe)
+                                    {
+                                        <!-- Khung hiển thị ảnh QR -->
+                                        <div class="text-center mb-3">
+                                            @if (!isQrImageError)
+                                            {
+                                                <div class="qr-box-wrapper">
+                                                    <img src="@vietQrDto.QrUrl" 
+                                                         alt="Mã VietQR thanh toán" 
+                                                         class="qr-image" 
+                                                         @onerror="() => isQrImageError = true" />
+                                                </div>
+                                                <p class="text-muted small mt-2 mb-0">
+                                                    <i class="bi bi-phone me-1"></i>Quét mã QR bằng ứng dụng ngân hàng để chuyển khoản đúng số tiền
+                                                </p>
+                                            }
+                                            else
+                                            {
+                                                <div class="p-3 border rounded-3 bg-light text-center">
+                                                    <div class="text-danger mb-2">
+                                                        <i class="bi bi-wifi-off fs-3 d-block"></i>
+                                                        <span class="small fw-semibold">Không thể tải ảnh QR từ máy chủ VietQR</span>
+                                                    </div>
+                                                    <p class="small text-muted mb-2">Dữ liệu form vẫn được giữ nguyên. Kế toán chuyển khoản thủ công theo thông tin bên dưới:</p>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" @onclick="() => isQrImageError = false">
+                                                        <i class="bi bi-arrow-clockwise me-1"></i>Thử tải lại ảnh QR
+                                                    </button>
+                                                </div>
+                                            }
+                                        </div>
+
+                                        <!-- Danh sách chi tiết tài khoản ngân hàng -->
+                                        <div class="p-3 rounded-3 bg-light border mb-3">
+                                            <div class="bank-detail-item">
+                                                <span class="text-muted small">Ngân hàng thụ hưởng:</span>
+                                                <span class="fw-bold text-slate-900 small">@vietQrDto.BankName (@vietQrDto.BankId)</span>
+                                            </div>
+                                            <div class="bank-detail-item">
+                                                <span class="text-muted small">Số tài khoản:</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-primary font-mono fs-6">@vietQrDto.AccountNumber</span>
+                                                    <button type="button" class="copy-chip-btn shadow-sm" 
+                                                            title="Sao chép số tài khoản" 
+                                                            @onclick="() => SaoChepAsync(vietQrDto.AccountNumber, true)">
+                                                        @if (isCopiedSoTaiKhoan)
+                                                        {
+                                                            <i class="bi bi-check2 text-success me-1"></i><span class="text-success">Đã chép</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-clipboard me-1"></i><span>Chép</span>
+                                                        }
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="bank-detail-item">
+                                                <span class="text-muted small">Chủ tài khoản:</span>
+                                                <span class="fw-bold text-slate-900 small">@vietQrDto.AccountName</span>
+                                            </div>
+                                            <div class="bank-detail-item">
+                                                <span class="text-muted small">Số tiền:</span>
+                                                <span class="fw-bold text-success font-mono fs-6">@vietQrDto.SoTienDinhDang</span>
+                                            </div>
+                                            <div class="bank-detail-item">
+                                                <span class="text-muted small">Nội dung chuyển khoản:</span>
+                                                <div class="d-flex align-items-center gap-2">
+                                                    <span class="fw-bold text-slate-900 font-mono small">@vietQrDto.NoiDungChuyenKhoan</span>
+                                                    <button type="button" class="copy-chip-btn shadow-sm" 
+                                                            title="Sao chép nội dung chuyển khoản" 
+                                                            @onclick="() => SaoChepAsync(vietQrDto.NoiDungChuyenKhoan, false)">
+                                                        @if (isCopiedNoiDung)
+                                                        {
+                                                            <i class="bi bi-check2 text-success me-1"></i><span class="text-success">Đã chép</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <i class="bi bi-clipboard me-1"></i><span>Chép</span>
+                                                        }
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Hộp kiểm xác nhận tiền đã vào tài khoản -->
+                                        <div class="confirmation-card">
+                                            <div class="form-check m-0">
+                                                <input class="form-check-input ms-0 me-2 mt-1" type="checkbox" id="chkXacNhanTienVao" 
+                                                       checked="@daXacNhanTienVao" @onchange="OnCheckboxXacNhanChanged" />
+                                                <label class="form-check-label fw-bold text-primary" for="chkXacNhanTienVao">
+                                                    Tôi đã kiểm tra thủ công qua ứng dụng ngân hàng và xác nhận tiền đã vào tài khoản
+                                                </label>
+                                                <div class="small text-muted ms-4 mt-1">
+                                                    <i class="bi bi-shield-check text-primary me-1"></i>Xác nhận thủ công của kế toán sau khi kiểm tra app ngân hàng, không phải xác nhận tự động từ VietQR.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    }
+                                    else if (vietQrDto != null && !vietQrDto.HopLe)
+                                    {
+                                        <div class="alert alert-danger small mb-0 rounded-3">
+                                            <i class="bi bi-x-circle me-1"></i>@vietQrDto.ThongBaoLoi
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <div class="text-center py-4 text-muted fst-italic small bg-light rounded-3 border">
+                                            <i class="bi bi-arrow-up-circle fs-4 d-block mb-1 text-secondary"></i>
+                                            Vui lòng chọn khách hàng và nhập số tiền nộp để tạo mã VietQR tương ứng.
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
                     </div>
 
-                    <!-- Cột phải: Xem trước phân bổ FIFO -->
-                    <div class="col-lg-7">
-                        <div class="card shadow-sm border-0 mb-3">
-                            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center py-2">
-                                <span class="fw-semibold">3. Kết quả Phân bổ Cấn trừ Nợ (FIFO)</span>
-                                <button type="button" class="btn btn-light btn-sm text-success fw-bold" @onclick="CapNhatXemTruocAsync">
-                                    Tải lại phân bổ
+                    <!-- Cột phải: Kết quả Phân bổ Cấn trừ Nợ (FIFO) -->
+                    <div class="col-xl-7 col-lg-7">
+                        <div class="app-card mb-4">
+                            <div class="app-card-header header-success">
+                                <span class="d-flex align-items-center gap-2">
+                                    <i class="bi bi-arrow-left-right"></i> 2. Kết quả Phân bổ Cấn trừ Nợ (FIFO)
+                                </span>
+                                <button type="button" class="btn btn-light btn-sm text-success fw-bold shadow-sm d-inline-flex align-items-center gap-1" 
+                                        @onclick="CapNhatXemTruocAsync">
+                                    <i class="bi bi-arrow-clockwise"></i> Tải lại phân bổ
                                 </button>
                             </div>
-                            <div class="card-body">
+                            <div class="p-3 p-md-4">
                                 @if (ketQuaXemTruoc != null)
                                 {
-                                    <div class="row g-2 text-center mb-3">
-                                        <div class="col-sm-3">
-                                            <div class="p-2 border rounded bg-light">
-                                                <small class="text-muted d-block">Tổng nợ hiện tại</small>
-                                                <span class="fw-bold text-danger">@tongCongNoXemTruoc.ToString("N0", viCulture) đ</span>
+                                    <!-- 4 thẻ widget thống kê dòng tiền -->
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-sm-3 col-6">
+                                            <div class="stat-widget">
+                                                <div class="stat-widget-title">Tổng nợ hiện tại</div>
+                                                <div class="stat-widget-value text-danger font-mono">
+                                                    @tongCongNoXemTruoc.ToString("N0", viCulture) đ
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="col-sm-3">
-                                            <div class="p-2 border rounded bg-light">
-                                                <small class="text-muted d-block">Số tiền thu</small>
-                                                <span class="fw-bold text-success">@formModel.SoTien.ToString("N0", viCulture) đ</span>
+                                        <div class="col-sm-3 col-6">
+                                            <div class="stat-widget">
+                                                <div class="stat-widget-title">Số tiền nộp</div>
+                                                <div class="stat-widget-value text-success font-mono">
+                                                    @formModel.SoTien.ToString("N0", viCulture) đ
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="col-sm-3">
-                                            <div class="p-2 border rounded bg-light">
-                                                <small class="text-muted d-block">Đã phân bổ</small>
-                                                <span class="fw-bold text-primary">@ketQuaXemTruoc.TongDaPhanBo.ToString("N0", viCulture) đ</span>
+                                        <div class="col-sm-3 col-6">
+                                            <div class="stat-widget">
+                                                <div class="stat-widget-title">Đã cấn trừ</div>
+                                                <div class="stat-widget-value text-primary font-mono">
+                                                    @ketQuaXemTruoc.TongDaPhanBo.ToString("N0", viCulture) đ
+                                                </div>
                                             </div>
                                         </div>
-                                        <div class="col-sm-3">
-                                            <div class="p-2 border rounded @(ketQuaXemTruoc.TienChuaPhanBo > 0 ? "bg-warning bg-opacity-25" : "bg-light")">
-                                                <small class="text-muted d-block">Chưa phân bổ (dư)</small>
-                                                <span class="fw-bold @(ketQuaXemTruoc.TienChuaPhanBo > 0 ? "text-dark" : "text-muted")">
+                                        <div class="col-sm-3 col-6">
+                                            <div class="stat-widget @(ketQuaXemTruoc.TienChuaPhanBo > 0 ? "border-warning bg-warning bg-opacity-10" : "")">
+                                                <div class="stat-widget-title">Chưa phân bổ (dư)</div>
+                                                <div class="stat-widget-value @(ketQuaXemTruoc.TienChuaPhanBo > 0 ? "text-dark" : "text-muted") font-mono">
                                                     @ketQuaXemTruoc.TienChuaPhanBo.ToString("N0", viCulture) đ
-                                                </span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     @if (ketQuaXemTruoc.TienChuaPhanBo > 0)
                                     {
-                                        <div class="alert alert-warning py-2 mb-3 small">
-                                            <strong>Tiền thu vượt tổng nợ:</strong> Số tiền thanh toán lớn hơn tổng dư nợ hiện tại (@tongCongNoXemTruoc.ToString("N0", viCulture) đ). Phần tiền thừa <strong>@ketQuaXemTruoc.TienChuaPhanBo.ToString("N0", viCulture) đ</strong> được giữ làm tiền chưa phân bổ của phiếu thu (không tạo dư nợ âm).
+                                        <div class="alert alert-warning py-2 px-3 mb-3 small rounded-3 border-0">
+                                            <i class="bi bi-info-circle me-1"></i>
+                                            <strong>Tiền thu vượt tổng nợ:</strong> Số tiền thanh toán lớn hơn tổng dư nợ hiện tại (@tongCongNoXemTruoc.ToString("N0", viCulture) đ). Phần chênh lệch thừa <strong>@ketQuaXemTruoc.TienChuaPhanBo.ToString("N0", viCulture) đ</strong> được giữ làm tiền chưa phân bổ của phiếu thu (không tạo dư nợ âm).
                                         </div>
                                     }
 
                                     @if (ketQuaXemTruoc.SoHoaDonBiLoaiBoDoLapSauNgayThu > 0)
                                     {
-                                        <div class="alert alert-info py-2 mb-3 small">
+                                        <div class="alert alert-info py-2 px-3 mb-3 small rounded-3 border-0">
+                                            <i class="bi bi-calendar-event me-1"></i>
                                             <strong>Chứng từ ghi lùi ngày:</strong> Có @ketQuaXemTruoc.SoHoaDonBiLoaiBoDoLapSauNgayThu hóa đơn được lập sau ngày thanh toán (@formModel.NgayThanhToan.ToString("dd/MM/yyyy")), do đó không được phân bổ theo quy tắc chứng từ.
                                         </div>
                                     }
 
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered table-hover align-middle mb-0" style="min-width: 650px;">
-                                            <thead class="table-light text-center small">
+                                    <!-- Bảng danh sách phân bổ hóa đơn FIFO -->
+                                    <div class="table-responsive rounded-3 border">
+                                        <table class="table table-hover align-middle mb-0 fifo-table" style="min-width: 650px;">
+                                            <thead class="text-center small">
                                                 <tr>
-                                                    <th style="width: 40px;" class="text-nowrap">#</th>
-                                                    <th class="text-nowrap">Mã hóa đơn</th>
-                                                    <th style="width: 110px;" class="text-nowrap">Ngày lập</th>
-                                                    <th style="width: 130px;" class="text-end text-nowrap">Nợ ban đầu</th>
-                                                    <th style="width: 140px;" class="text-end text-nowrap">Tiền cấn trừ</th>
-                                                    <th style="width: 130px;" class="text-end text-nowrap">Nợ còn lại</th>
-                                                    <th style="width: 140px;" class="text-center text-nowrap">Trạng thái sau thu</th>
+                                                    <th style="width: 40px;">#</th>
+                                                    <th>Mã hóa đơn</th>
+                                                    <th style="width: 105px;">Ngày lập</th>
+                                                    <th style="width: 125px;" class="text-end">Nợ ban đầu</th>
+                                                    <th style="width: 135px;" class="text-end">Tiền cấn trừ</th>
+                                                    <th style="width: 125px;" class="text-end">Nợ còn lại</th>
+                                                    <th style="width: 140px;" class="text-center">Trạng thái sau thu</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 @if (!ketQuaXemTruoc.DanhSachPhanBo.Any())
                                                 {
                                                     <tr>
-                                                        <td colspan="7" class="text-center py-4 text-muted fst-italic">
-                                                            @(tongCongNoXemTruoc == 0 ? "Khách hàng hiện không còn hóa đơn nào nợ." : "Không có hóa đơn nào đủ điều kiện cấn trừ.")
+                                                        <td colspan="7" class="text-center py-5 text-muted fst-italic">
+                                                            <i class="bi bi-inbox fs-3 d-block mb-1 text-secondary"></i>
+                                                            @(tongCongNoXemTruoc == 0 ? "Khách hàng hiện không còn hóa đơn nào còn nợ." : "Không có hóa đơn nào đủ điều kiện cấn trừ.")
                                                         </td>
                                                     </tr>
                                                 }
@@ -242,22 +432,26 @@
                                                     {
                                                         var item = ketQuaXemTruoc.DanhSachPhanBo[i];
                                                         <tr>
-                                                            <td class="text-center text-muted">@(i + 1)</td>
-                                                            <td class="fw-semibold text-primary">@item.MaHoaDon</td>
-                                                            <td class="text-center">@item.NgayLap.ToString("dd/MM/yyyy")</td>
-                                                            <td class="text-end text-muted">@item.SoNoTruocPhanBo.ToString("N0", viCulture) đ</td>
-                                                            <td class="text-end fw-bold text-success">@item.SoTienPhanBo.ToString("N0", viCulture) đ</td>
-                                                            <td class="text-end fw-semibold @(item.SoNoSauPhanBo > 0 ? "text-danger" : "text-muted")">
+                                                            <td class="text-center text-muted small">@(i + 1)</td>
+                                                            <td class="fw-bold text-primary font-mono">@item.MaHoaDon</td>
+                                                            <td class="text-center small text-muted font-mono">@item.NgayLap.ToString("dd/MM/yyyy")</td>
+                                                            <td class="text-end text-muted font-mono">@item.SoNoTruocPhanBo.ToString("N0", viCulture) đ</td>
+                                                            <td class="text-end fw-bold text-success font-mono">@item.SoTienPhanBo.ToString("N0", viCulture) đ</td>
+                                                            <td class="text-end fw-semibold font-mono @(item.SoNoSauPhanBo > 0 ? "text-danger" : "text-muted")">
                                                                 @item.SoNoSauPhanBo.ToString("N0", viCulture) đ
                                                             </td>
                                                             <td class="text-center">
                                                                 @if (item.DaThanhToanXong)
                                                                 {
-                                                                    <span class="badge bg-success">Đã thanh toán hết</span>
+                                                                    <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
+                                                                        <i class="bi bi-check-circle me-1"></i>Hết nợ
+                                                                    </span>
                                                                 }
                                                                 else
                                                                 {
-                                                                    <span class="badge bg-warning text-dark">Thanh toán 1 phần</span>
+                                                                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-2 py-1">
+                                                                        <i class="bi bi-pie-chart me-1"></i>1 phần
+                                                                    </span>
                                                                 }
                                                             </td>
                                                         </tr>
@@ -266,8 +460,8 @@
                                             </tbody>
                                             <tfoot class="table-light fw-bold">
                                                 <tr>
-                                                    <td colspan="4" class="text-end">TỔNG CỘNG PHÂN BỔ:</td>
-                                                    <td class="text-end text-success">@ketQuaXemTruoc.TongDaPhanBo.ToString("N0", viCulture) đ</td>
+                                                    <td colspan="4" class="text-end text-slate-700">TỔNG CỘNG ĐÃ PHÂN BỔ:</td>
+                                                    <td class="text-end text-success font-mono fs-6">@ketQuaXemTruoc.TongDaPhanBo.ToString("N0", viCulture) đ</td>
                                                     <td colspan="2"></td>
                                                 </tr>
                                             </tfoot>
@@ -276,29 +470,58 @@
                                 }
                                 else
                                 {
-                                    <div class="text-center py-5 text-muted fst-italic">
+                                    <div class="text-center py-5 text-muted fst-italic bg-light rounded-3 border">
+                                        <i class="bi bi-card-checklist fs-2 text-secondary d-block mb-2"></i>
                                         Vui lòng chọn khách hàng và nhập số tiền nộp để xem trước phân bổ cấn trừ theo hóa đơn.
                                     </div>
                                 }
                             </div>
                         </div>
 
-                        <!-- Nút thao tác lưu -->
-                        <div class="d-flex justify-content-end gap-2 mb-4">
-                            <a href="/thanh-toan" class="btn btn-outline-secondary">Hủy bỏ</a>
-                            <button type="submit" class="btn btn-success px-4 fw-semibold" 
-                                    disabled="@(isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0)" 
-                                    id="btn-luu-thanh-toan">
-                                @if (isSubmitting)
+                        <!-- Khung nút hành động lưu phiếu thu -->
+                        <div class="action-bar-container d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                @if (formModel.PhuongThuc == "ChuyenKhoan" && (!daXacNhanTienVao || vietQrDto == null || !vietQrDto.HopLe))
                                 {
-                                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                    <span>Đang xử lý & lưu...</span>
+                                    <span class="small text-warning d-flex align-items-center gap-1">
+                                        <i class="bi bi-exclamation-circle-fill"></i>
+                                        @(!daXacNhanTienVao ? "Yêu cầu tích chọn 'Xác nhận tiền đã vào tài khoản' để mở khóa lưu." : "Cần mã VietQR hợp lệ để lưu.")
+                                    </span>
+                                }
+                                else if (ketQuaXemTruoc == null)
+                                {
+                                    <span class="small text-muted d-flex align-items-center gap-1">
+                                        <i class="bi bi-info-circle"></i>
+                                        Vui lòng nhập đầy đủ khách hàng và số tiền để xem trước FIFO.
+                                    </span>
                                 }
                                 else
                                 {
-                                    <span>Xác nhận & Lưu phiếu thu</span>
+                                    <span class="small text-success d-flex align-items-center gap-1">
+                                        <i class="bi bi-check-circle-fill"></i>
+                                        Chứng từ và phân bổ FIFO đã sẵn sàng để ghi sổ.
+                                    </span>
                                 }
-                            </button>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <a href="/thanh-toan" class="btn btn-outline-secondary px-3 shadow-sm">
+                                    Hủy bỏ
+                                </a>
+                                <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow d-inline-flex align-items-center gap-2" 
+                                        disabled="@KiemTraVoHieuHoaNutLuu()" 
+                                        id="btn-luu-thanh-toan">
+                                    @if (isSubmitting)
+                                    {
+                                        <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                                        <span>Đang ghi sổ...</span>
+                                    }
+                                    else
+                                    {
+                                        <i class="bi bi-check2-circle fs-5"></i>
+                                        <span>Xác nhận & Lưu phiếu thu</span>
+                                    }
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -348,6 +571,12 @@
     private decimal tongCongNoXemTruoc = 0;
     private KetQuaPhanBoFifo? ketQuaXemTruoc;
     private readonly CultureInfo viCulture = new CultureInfo("vi-VN");
+
+    private bool daXacNhanTienVao = false;
+    private VietQrThanhToanDto? vietQrDto;
+    private bool isQrImageError = false;
+    private bool isCopiedSoTaiKhoan = false;
+    private bool isCopiedNoiDung = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -419,6 +648,12 @@
 
     private async Task OnKhachHangSelected(ChangeEventArgs e)
     {
+        // Mọi thay đổi khách hàng làm mất hiệu lực kết quả xem trước FIFO và QR cũ
+        daXacNhanTienVao = false;
+        vietQrDto = null;
+        isQrImageError = false;
+        ketQuaXemTruoc = null;
+
         if (int.TryParse(e.Value?.ToString(), out int id) && id > 0)
         {
             formModel.KhachHangId = id;
@@ -430,7 +665,6 @@
         {
             formModel.KhachHangId = 0;
             khachHangHienTai = null;
-            ketQuaXemTruoc = null;
             tongCongNoXemTruoc = 0;
             editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.KhachHangId)));
         }
@@ -441,6 +675,7 @@
         if (formModel.KhachHangId <= 0 || formModel.SoTien <= 0)
         {
             ketQuaXemTruoc = null;
+            vietQrDto = null;
             return;
         }
 
@@ -457,17 +692,86 @@
             {
                 tongCongNoXemTruoc = res.TongCongNoHienTai;
                 ketQuaXemTruoc = res.KetQuaFifo;
+                CapNhatVietQr();
             }
             else
             {
                 errorMessage = res.ThongBao;
                 ketQuaXemTruoc = null;
+                vietQrDto = null;
             }
         }
         catch (Exception ex)
         {
             Logger.LogError(ex, "Lỗi xảy ra khi gọi XemTruocPhanBoFifoUseCase");
         }
+    }
+
+    private void CapNhatVietQr()
+    {
+        // Chỉ tạo mã VietQR khi phương thức là Chuyển khoản và đã có kết quả xem trước hợp lệ
+        if (formModel.PhuongThuc == "ChuyenKhoan" 
+            && formModel.KhachHangId > 0 
+            && formModel.SoTien > 0 
+            && khachHangHienTai != null 
+            && ketQuaXemTruoc != null)
+        {
+            isQrImageError = false;
+            // Số tiền QR lấy trực tiếp từ trường formModel.SoTien của phiếu thu
+            vietQrDto = VietQrService.TaoVietQr(maPhieuThu, khachHangHienTai.MaKhachHang, formModel.SoTien);
+        }
+        else
+        {
+            vietQrDto = null;
+        }
+    }
+
+    private void OnCheckboxXacNhanChanged(ChangeEventArgs e)
+    {
+        daXacNhanTienVao = e.Value is bool b && b;
+    }
+
+    private async Task SaoChepAsync(string text, bool laSoTaiKhoan)
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("navigator.clipboard.writeText", text);
+            if (laSoTaiKhoan)
+            {
+                isCopiedSoTaiKhoan = true;
+                StateHasChanged();
+                await Task.Delay(2000);
+                isCopiedSoTaiKhoan = false;
+            }
+            else
+            {
+                isCopiedNoiDung = true;
+                StateHasChanged();
+                await Task.Delay(2000);
+                isCopiedNoiDung = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogWarning(ex, "Không thể sao chép văn bản vào clipboard: {Text}", text);
+        }
+    }
+
+    private bool KiemTraVoHieuHoaNutLuu()
+    {
+        if (isSubmitting || formModel.KhachHangId <= 0 || formModel.SoTien <= 0 || ketQuaXemTruoc == null)
+        {
+            return true;
+        }
+
+        if (formModel.PhuongThuc == "ChuyenKhoan")
+        {
+            // Chuyển khoản: chỉ bật khi form hợp lệ, kết quả FIFO còn hiệu lực và kế toán đã xác nhận tiền vào
+            return !daXacNhanTienVao || vietQrDto == null || !vietQrDto.HopLe;
+        }
+
+        // Tiền mặt: bật khi form và kết quả FIFO hợp lệ
+        return false;
     }
 
     private async Task LuuThanhToanAsync()
@@ -487,6 +791,22 @@
             return;
         }
 
+        // Kiểm tra điều kiện phương thức chuyển khoản
+        if (formModel.PhuongThuc == "ChuyenKhoan")
+        {
+            if (!daXacNhanTienVao)
+            {
+                errorMessage = "Kế toán phải kiểm tra tiền đã vào tài khoản và tích chọn xác nhận trước khi lưu phiếu thu chuyển khoản.";
+                return;
+            }
+
+            if (vietQrDto == null || !vietQrDto.HopLe)
+            {
+                errorMessage = vietQrDto?.ThongBaoLoi ?? "Thông tin mã VietQR chuyển khoản chưa hợp lệ. Vui lòng kiểm tra lại.";
+                return;
+            }
+        }
+
         isSubmitting = true;
 
         try
@@ -499,6 +819,7 @@
                 SoTien = formModel.SoTien,
                 PhuongThuc = formModel.PhuongThuc,
                 GhiChu = formModel.GhiChu,
+                DaXacNhanTienVao = formModel.PhuongThuc == "ChuyenKhoan" && daXacNhanTienVao,
                 DanhSachXemTruoc = ketQuaXemTruoc?.DanhSachPhanBo
                     .Select(p => new ChiTietXemTruocDto
                     {
@@ -556,6 +877,11 @@
                 }
             }
         }
+        catch (InvalidOperationException ex)
+        {
+            errorMessage = ex.Message;
+            Logger.LogWarning(ex, "Lỗi nghiệp vụ/cấu hình khi lưu phiếu thu {MaPhieuThu}: {Message}", maPhieuThu, ex.Message);
+        }
         catch (Exception ex)
         {
             errorMessage = "Đã xảy ra lỗi hệ thống khi lưu phiếu thu. Vui lòng liên hệ quản trị viên hoặc thử lại sau.";
@@ -569,6 +895,11 @@
 
     private async Task OnNgayThanhToanChanged()
     {
+        // Thay đổi ngày thanh toán làm mất hiệu lực kết quả xem trước cũ
+        daXacNhanTienVao = false;
+        vietQrDto = null;
+        ketQuaXemTruoc = null;
+
         editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.NgayThanhToan)));
         await CapNhatXemTruocAsync();
     }
@@ -576,6 +907,21 @@
     private void OnPhuongThucChanged()
     {
         editContextThanhToan?.NotifyFieldChanged(new FieldIdentifier(formModel, nameof(formModel.PhuongThuc)));
+
+        // Mọi thay đổi phương thức làm mất hiệu lực kết quả xem trước FIFO và QR cũ
+        ketQuaXemTruoc = null;
+        daXacNhanTienVao = false;
+        vietQrDto = null;
+        isQrImageError = false;
+
+        if (formModel.PhuongThuc == "ChuyenKhoan")
+        {
+            // Tiền mặt -> Chuyển khoản: Tạo lại QR nếu dữ liệu hiện tại hợp lệ
+            if (formModel.KhachHangId > 0 && formModel.SoTien > 0)
+            {
+                _ = CapNhatXemTruocAsync();
+            }
+        }
     }
 
     public static (decimal SoTien, string? Loi) KiemTraSoTienThanhToan(string? rawVal)
@@ -607,6 +953,12 @@
 
     private async Task OnSoTienInputChanged(ChangeEventArgs e)
     {
+        // Mọi thay đổi số tiền làm mất hiệu lực kết quả xem trước FIFO và QR cũ
+        daXacNhanTienVao = false;
+        vietQrDto = null;
+        isQrImageError = false;
+        ketQuaXemTruoc = null;
+
         var raw = e.Value?.ToString()?.Trim() ?? string.Empty;
         soTienInput = raw;
 

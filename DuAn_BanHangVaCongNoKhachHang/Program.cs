@@ -127,6 +127,9 @@ builder.Services.AddScoped<IHoaDonNhapStateService, HoaDonNhapStateService>();
 builder.Services.AddScoped<IThanhToanRepository, ThanhToanRepository>();
 builder.Services.AddScoped<IXemDanhSachThanhToanUseCase, XemDanhSachThanhToanUseCase>();
 builder.Services.AddScoped<IXemTruocPhanBoFifoUseCase, XemTruocPhanBoFifoUseCase>();
+var vietQrSettings = builder.Configuration.GetSection("VietQrSettings").Get<VietQrSettings>() ?? new VietQrSettings();
+builder.Services.AddSingleton(vietQrSettings);
+builder.Services.AddScoped<IVietQrService, VietQrService>();
 builder.Services.AddScoped<ITaoThanhToanUseCase, TaoThanhToanUseCase>();
 
 builder.Services.AddScoped<IBaoCaoTuoiNoRepository, BaoCaoTuoiNoRepository>();
@@ -270,6 +273,39 @@ if (app.Environment.IsDevelopment() && app.Configuration.GetValue<bool>("EnableD
 {
     using var scope = app.Services.CreateScope();
     await NguoiDungSeeder.SeedFromConfigurationAsync(scope.ServiceProvider, app.Configuration);
+}
+
+if (app.Environment.IsDevelopment())
+{
+    // Kiểm tra chẩn đoán trạng thái schema đối soát VietQR cho môi trường Development / Verify_K21
+    try
+    {
+        var connStr = app.Configuration.GetConnectionString("BanHangCongNo");
+        if (!string.IsNullOrWhiteSpace(connStr))
+        {
+            using var conn = new Microsoft.Data.SqlClient.SqlConnection(connStr);
+            await conn.OpenAsync();
+            using var cmd = conn.CreateCommand();
+            cmd.CommandText = @"
+                SELECT COUNT(1) 
+                FROM sys.columns 
+                WHERE object_id = OBJECT_ID('dbo.ThanhToans') 
+                  AND name IN ('NoiDungChuyenKhoan', 'TaiKhoanThuHuong', 'NganHangThuHuong', 'DaXacNhanTienVao', 'ThoiDiemXacNhan', 'NguoiXacNhan');";
+            var colsCount = Convert.ToInt32(await cmd.ExecuteScalarAsync());
+            if (colsCount == 6)
+            {
+                app.Logger.LogInformation("[VIETQR-SCHEMA] Cơ sở dữ liệu đã có đầy đủ 6/6 cột audit VietQR trong dbo.ThanhToans.");
+            }
+            else
+            {
+                app.Logger.LogWarning("[VIETQR-SCHEMA] Cơ sở dữ liệu hiện có {ColsCount}/6 cột audit VietQR trong dbo.ThanhToans. Để kích hoạt tính năng Chuyển khoản VietQR, vui lòng chạy migration: 'BanHang.DataStore.SQL/Scripts/Migration_Add_VietQR_Audit_To_ThanhToans.sql'. (Phiếu thu Tiền mặt vẫn hoạt động bình thường).", colsCount);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        app.Logger.LogDebug(ex, "[VIETQR-SCHEMA] Bỏ qua kiểm tra schema lúc khởi động: {Message}", ex.Message);
+    }
 }
 
 // Configure the HTTP request pipeline.

@@ -119,9 +119,22 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
                     SoTien DECIMAL(18,2) NOT NULL CHECK (SoTien > 0),
                     PhuongThuc NVARCHAR(50) NOT NULL DEFAULT (N'ChuyenKhoan'),
                     GhiChu NVARCHAR(500) NULL,
+                    NoiDungChuyenKhoan NVARCHAR(100) NULL,
+                    TaiKhoanThuHuong NVARCHAR(50) NULL,
+                    NganHangThuHuong NVARCHAR(50) NULL,
+                    DaXacNhanTienVao BIT NOT NULL DEFAULT (0),
+                    ThoiDiemXacNhan DATETIME NULL,
+                    NguoiXacNhan NVARCHAR(100) NULL,
                     NgayTao DATETIME NOT NULL DEFAULT (GETDATE())
                 );
             END
+
+            IF COL_LENGTH('dbo.ThanhToans', 'NoiDungChuyenKhoan') IS NULL ALTER TABLE dbo.ThanhToans ADD NoiDungChuyenKhoan NVARCHAR(100) NULL;
+            IF COL_LENGTH('dbo.ThanhToans', 'TaiKhoanThuHuong') IS NULL ALTER TABLE dbo.ThanhToans ADD TaiKhoanThuHuong NVARCHAR(50) NULL;
+            IF COL_LENGTH('dbo.ThanhToans', 'NganHangThuHuong') IS NULL ALTER TABLE dbo.ThanhToans ADD NganHangThuHuong NVARCHAR(50) NULL;
+            IF COL_LENGTH('dbo.ThanhToans', 'DaXacNhanTienVao') IS NULL ALTER TABLE dbo.ThanhToans ADD DaXacNhanTienVao BIT NOT NULL DEFAULT (0);
+            IF COL_LENGTH('dbo.ThanhToans', 'ThoiDiemXacNhan') IS NULL ALTER TABLE dbo.ThanhToans ADD ThoiDiemXacNhan DATETIME NULL;
+            IF COL_LENGTH('dbo.ThanhToans', 'NguoiXacNhan') IS NULL ALTER TABLE dbo.ThanhToans ADD NguoiXacNhan NVARCHAR(100) NULL;
 
             IF OBJECT_ID('dbo.PhanBoThanhToans', 'U') IS NULL
             BEGIN
@@ -206,6 +219,7 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             NgayThanhToan = new DateTime(2026, 10, 10),
             SoTien = 7000000,
             PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true,
             GhiChu = "Thanh toán cấn trừ 7M"
         };
 
@@ -320,7 +334,8 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang1Id,
             NgayThanhToan = DateTime.Today,
             SoTien = 1000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         };
         var res1 = await _taoThanhToanUseCase.ExecuteAsync(req1);
         Assert.True(res1.ThanhCong);
@@ -406,7 +421,8 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang2Id,
             NgayThanhToan = DateTime.Today,
             SoTien = 4000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
 
         var taskB = _taoThanhToanUseCase.ExecuteAsync(new TaoThanhToanRequest
@@ -415,7 +431,8 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang2Id,
             NgayThanhToan = DateTime.Today,
             SoTien = 4000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
 
         var results = await Task.WhenAll(taskA, taskB);
@@ -482,7 +499,8 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang1Id,
             NgayThanhToan = DateTime.Today,
             SoTien = 10000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
 
         await Task.WhenAll(taskTaoHD, taskThuTien);
@@ -530,7 +548,8 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             KhachHangId = KhachHang1Id,
             NgayThanhToan = DateTime.Today,
             SoTien = 2000000,
-            PhuongThuc = "ChuyenKhoan"
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
         });
         Assert.True(ptIntervene.ThanhCong);
 
@@ -542,6 +561,7 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
             NgayThanhToan = DateTime.Today,
             SoTien = 5000000,
             PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true,
             DanhSachXemTruoc = danhSachXemTruoc
         });
 
@@ -556,5 +576,116 @@ public class ThanhToanIntegrationTests : IAsyncLifetime
         var count = await conn.ExecuteScalarAsync<int>(
             "SELECT COUNT(1) FROM dbo.ThanhToans WHERE MaPhieuThu = 'PT_SUBMIT_STALE'");
         Assert.Equal(0, count);
+    }
+
+    [Fact]
+    public async Task ChuyenKhoan_ThieuCotAudit_RollbackVaBaoLoiCauHinh()
+    {
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        // 1. Giả lập cơ sở dữ liệu thiếu cột audit bằng cách tạm đổi tên cột NoiDungChuyenKhoan
+        await conn.ExecuteAsync("EXEC sp_rename 'dbo.ThanhToans.NoiDungChuyenKhoan', 'NoiDungChuyenKhoan_Missing', 'COLUMN';");
+
+        try
+        {
+            var req = new TaoThanhToanRequest
+            {
+                MaPhieuThu = "PT_THIEU_COT",
+                KhachHangId = KhachHang1Id,
+                NgayThanhToan = DateTime.Today,
+                SoTien = 1000000,
+                PhuongThuc = "ChuyenKhoan",
+                DaXacNhanTienVao = true
+            };
+
+            // Phải ném ngoại lệ cấu hình, không âm thầm nuốt lỗi hay dùng câu INSERT cũ
+            var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => _taoThanhToanUseCase.ExecuteAsync(req));
+            Assert.Contains("Lỗi cấu hình", ex.Message);
+            Assert.Contains("Migration_Add_VietQR_Audit_To_ThanhToans.sql", ex.Message);
+
+            // Kiểm tra transaction đã rollback: Không có dòng dữ liệu nào lọt vào DB
+            var count = await conn.ExecuteScalarAsync<int>(
+                "SELECT COUNT(1) FROM dbo.ThanhToans WHERE MaPhieuThu = 'PT_THIEU_COT'");
+            Assert.Equal(0, count);
+
+            // Tuy nhiên Tiền mặt vẫn có thể hoạt động trên schema phù hợp
+            var reqTienMat = new TaoThanhToanRequest
+            {
+                MaPhieuThu = "PT_TIENMAT_OK",
+                KhachHangId = KhachHang1Id,
+                NgayThanhToan = DateTime.Today,
+                SoTien = 500000,
+                PhuongThuc = "TienMat"
+            };
+            var resTienMat = await _taoThanhToanUseCase.ExecuteAsync(reqTienMat);
+            Assert.True(resTienMat.ThanhCong);
+        }
+        finally
+        {
+            // Phục hồi lại tên cột nguyên bản để không ảnh hưởng các test khác
+            await conn.ExecuteAsync("EXEC sp_rename 'dbo.ThanhToans.NoiDungChuyenKhoan_Missing', 'NoiDungChuyenKhoan', 'COLUMN';");
+        }
+    }
+
+    [Fact]
+    public async Task KhongCoTruongHop_ChuyenKhoanLuuThanhCong_NhungThieuAudit()
+    {
+        var req = new TaoThanhToanRequest
+        {
+            MaPhieuThu = "PT_FULL_AUDIT",
+            KhachHangId = KhachHang1Id,
+            NgayThanhToan = DateTime.Today,
+            SoTien = 2000000,
+            PhuongThuc = "ChuyenKhoan",
+            DaXacNhanTienVao = true
+        };
+
+        var result = await _taoThanhToanUseCase.ExecuteAsync(req);
+        Assert.True(result.ThanhCong);
+
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        var row = await conn.QuerySingleOrDefaultAsync<dynamic>(
+            "SELECT * FROM dbo.ThanhToans WHERE MaPhieuThu = 'PT_FULL_AUDIT'");
+
+        Assert.NotNull(row);
+        Assert.True((bool)row!.DaXacNhanTienVao);
+        Assert.Equal("107879627729", (string)row.TaiKhoanThuHuong);
+        Assert.Equal("ICB", (string)row.NganHangThuHuong);
+        Assert.False(string.IsNullOrWhiteSpace((string)row.NoiDungChuyenKhoan));
+        Assert.False(string.IsNullOrWhiteSpace((string)row.NguoiXacNhan));
+        Assert.NotNull((DateTime?)row.ThoiDiemXacNhan);
+    }
+
+    [Fact]
+    public async Task TienMat_KhongLuuThongTinVietQr_TrenDatabase()
+    {
+        var req = new TaoThanhToanRequest
+        {
+            MaPhieuThu = "PT_TIENMAT_NO_QR",
+            KhachHangId = KhachHang1Id,
+            NgayThanhToan = DateTime.Today,
+            SoTien = 1000000,
+            PhuongThuc = "TienMat"
+        };
+
+        var result = await _taoThanhToanUseCase.ExecuteAsync(req);
+        Assert.True(result.ThanhCong);
+
+        using var conn = new SqlConnection(TestConnectionString);
+        await conn.OpenAsync();
+
+        var row = await conn.QuerySingleOrDefaultAsync<dynamic>(
+            "SELECT * FROM dbo.ThanhToans WHERE MaPhieuThu = 'PT_TIENMAT_NO_QR'");
+
+        Assert.NotNull(row);
+        Assert.False((bool)row!.DaXacNhanTienVao);
+        Assert.Null((string)row.TaiKhoanThuHuong);
+        Assert.Null((string)row.NganHangThuHuong);
+        Assert.Null((string)row.NoiDungChuyenKhoan);
+        Assert.Null((string)row.NguoiXacNhan);
+        Assert.Null((DateTime?)row.ThoiDiemXacNhan);
     }
 }

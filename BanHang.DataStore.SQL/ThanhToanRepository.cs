@@ -235,25 +235,97 @@ public class ThanhToanRepository : IThanhToanRepository
             }
 
             // 6. Ghi nhận Header phiếu thu vào dbo.ThanhToans
-            const string sqlInsertThanhToan = @"
-                INSERT INTO dbo.ThanhToans 
-                    (MaPhieuThu, KhachHangId, NgayThanhToan, SoTien, PhuongThuc, GhiChu, NgayTao)
-                VALUES 
-                    (@MaPhieuThu, @KhachHangId, @NgayThanhToan, @SoTien, @PhuongThuc, @GhiChu, GETDATE());
-                SELECT CAST(SCOPE_IDENTITY() AS INT);";
+            // Kiểm tra schema: Bắt buộc phải có đủ 6 cột audit VietQR nếu là ChuyenKhoan
+            const string sqlCheckVietQrCols = @"
+                SELECT COUNT(1) 
+                FROM sys.columns 
+                WHERE object_id = OBJECT_ID('dbo.ThanhToans') 
+                  AND name IN ('NoiDungChuyenKhoan', 'TaiKhoanThuHuong', 'NganHangThuHuong', 'DaXacNhanTienVao', 'ThoiDiemXacNhan', 'NguoiXacNhan');";
 
-            var thanhToanId = await connection.ExecuteScalarAsync<int>(
-                sqlInsertThanhToan,
-                new
+            var vietQrColsCount = await connection.ExecuteScalarAsync<int>(sqlCheckVietQrCols, transaction: transaction);
+            bool hasVietQrCols = (vietQrColsCount == 6);
+
+            bool laChuyenKhoan = string.Equals(request.PhuongThuc, "ChuyenKhoan", StringComparison.OrdinalIgnoreCase) 
+                              || string.Equals(request.PhuongThuc, "Chuyển khoản", StringComparison.OrdinalIgnoreCase);
+
+            if (laChuyenKhoan)
+            {
+                if (!hasVietQrCols)
                 {
-                    request.MaPhieuThu,
-                    request.KhachHangId,
-                    request.NgayThanhToan,
-                    request.SoTien,
-                    request.PhuongThuc,
-                    request.GhiChu
-                },
-                transaction: transaction);
+                    transaction.Rollback();
+                    throw new InvalidOperationException("Lỗi cấu hình cơ sở dữ liệu: Bảng dbo.ThanhToans chưa được bổ sung các cột đối soát chuyển khoản VietQR (NoiDungChuyenKhoan, TaiKhoanThuHuong, NganHangThuHuong, DaXacNhanTienVao, ThoiDiemXacNhan, NguoiXacNhan). Vui lòng áp dụng migration 'Migration_Add_VietQR_Audit_To_ThanhToans.sql' trước khi thực hiện thanh toán chuyển khoản.");
+                }
+
+                if (string.IsNullOrWhiteSpace(request.NoiDungChuyenKhoan))
+                {
+                    request.NoiDungChuyenKhoan = $"THU {maThucTe} {khachHang.MaKhachHang}".Trim().ToUpperInvariant();
+                }
+            }
+            else
+            {
+                // Phiếu thu tiền mặt không lưu dữ liệu QR, tài khoản hoặc xác nhận chuyển khoản
+                request.NoiDungChuyenKhoan = null;
+                request.TaiKhoanThuHuong = null;
+                request.NganHangThuHuong = null;
+                request.DaXacNhanTienVao = false;
+                request.ThoiDiemXacNhan = null;
+                request.NguoiXacNhan = null;
+            }
+
+            int thanhToanId;
+            if (hasVietQrCols)
+            {
+                const string sqlInsertThanhToan = @"
+                    INSERT INTO dbo.ThanhToans 
+                        (MaPhieuThu, KhachHangId, NgayThanhToan, SoTien, PhuongThuc, GhiChu,
+                         NoiDungChuyenKhoan, TaiKhoanThuHuong, NganHangThuHuong, DaXacNhanTienVao, ThoiDiemXacNhan, NguoiXacNhan, NgayTao)
+                    VALUES 
+                        (@MaPhieuThu, @KhachHangId, @NgayThanhToan, @SoTien, @PhuongThuc, @GhiChu,
+                         @NoiDungChuyenKhoan, @TaiKhoanThuHuong, @NganHangThuHuong, @DaXacNhanTienVao, @ThoiDiemXacNhan, @NguoiXacNhan, GETDATE());
+                    SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                thanhToanId = await connection.ExecuteScalarAsync<int>(
+                    sqlInsertThanhToan,
+                    new
+                    {
+                        request.MaPhieuThu,
+                        request.KhachHangId,
+                        request.NgayThanhToan,
+                        request.SoTien,
+                        request.PhuongThuc,
+                        request.GhiChu,
+                        request.NoiDungChuyenKhoan,
+                        request.TaiKhoanThuHuong,
+                        request.NganHangThuHuong,
+                        request.DaXacNhanTienVao,
+                        request.ThoiDiemXacNhan,
+                        request.NguoiXacNhan
+                    },
+                    transaction: transaction);
+            }
+            else
+            {
+                // Chỉ chạy khi là Tiền mặt (do ChuyenKhoan đã bị chặn và rollback ở trên)
+                const string sqlInsertThanhToan = @"
+                    INSERT INTO dbo.ThanhToans 
+                        (MaPhieuThu, KhachHangId, NgayThanhToan, SoTien, PhuongThuc, GhiChu, NgayTao)
+                    VALUES 
+                        (@MaPhieuThu, @KhachHangId, @NgayThanhToan, @SoTien, @PhuongThuc, @GhiChu, GETDATE());
+                    SELECT CAST(SCOPE_IDENTITY() AS INT);";
+
+                thanhToanId = await connection.ExecuteScalarAsync<int>(
+                    sqlInsertThanhToan,
+                    new
+                    {
+                        request.MaPhieuThu,
+                        request.KhachHangId,
+                        request.NgayThanhToan,
+                        request.SoTien,
+                        request.PhuongThuc,
+                        request.GhiChu
+                    },
+                    transaction: transaction);
+            }
 
             // 7. Ghi nhận từng dòng phân bổ và cập nhật hóa đơn
             const string sqlInsertPhanBo = @"

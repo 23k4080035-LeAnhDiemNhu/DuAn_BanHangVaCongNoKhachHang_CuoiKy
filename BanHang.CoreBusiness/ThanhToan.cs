@@ -44,6 +44,25 @@ public class ThanhToan
     public string? GhiChu { get; set; }
 
     /// <summary>
+    /// Thông tin đối soát chuyển khoản VietQR (chỉ áp dụng khi PhuongThuc == "ChuyenKhoan")
+    /// </summary>
+    [StringLength(100)]
+    public string? NoiDungChuyenKhoan { get; set; }
+
+    [StringLength(50)]
+    public string? TaiKhoanThuHuong { get; set; }
+
+    [StringLength(50)]
+    public string? NganHangThuHuong { get; set; }
+
+    public bool DaXacNhanTienVao { get; set; } = false;
+
+    public DateTime? ThoiDiemXacNhan { get; set; }
+
+    [StringLength(100)]
+    public string? NguoiXacNhan { get; set; }
+
+    /// <summary>
     /// Danh sách chi tiết phân bổ tiền thu vào các hóa đơn còn nợ (theo thuật toán FIFO)
     /// </summary>
     public List<PhanBoThanhToan> DanhSachPhanBo { get; set; } = new();
