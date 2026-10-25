@@ -93,7 +93,6 @@ public class ThanhToanRepository : IThanhToanRepository
         using var transaction = connection.BeginTransaction(IsolationLevel.ReadCommitted);
         try
         {
-            // 1. Khóa ứng dụng cấp mã phiếu thu để tránh đụng độ đồng thời (timeout 5 giây)
             const string sqlAppLock = @"
                 DECLARE @res INT;
                 EXEC @res = sp_getapplock 
@@ -120,7 +119,6 @@ public class ThanhToanRepository : IThanhToanRepository
                 };
             }
 
-            // 2. Khóa khách hàng theo hàng (UPDLOCK, HOLDLOCK) đồng bộ với quy ước tạo hóa đơn
             const string sqlLockKhachHang = @"
                 SELECT KhachHangId, MaKhachHang, TenKhachHang, TrangThai
                 FROM dbo.KhachHangs WITH (UPDLOCK, HOLDLOCK)
@@ -141,7 +139,6 @@ public class ThanhToanRepository : IThanhToanRepository
                 };
             }
 
-            // 3. Xác định mã phiếu thu thực tế
             string maThucTe;
             bool laMaTuyChinh = !string.IsNullOrWhiteSpace(request.MaPhieuThu) 
                 && !(System.Text.RegularExpressions.Regex.IsMatch(request.MaPhieuThu.Trim(), @"^PT\d+$", System.Text.RegularExpressions.RegexOptions.IgnoreCase));
@@ -176,7 +173,6 @@ public class ThanhToanRepository : IThanhToanRepository
 
             request.MaPhieuThu = maThucTe;
 
-            // 3. Đọc lại danh sách hóa đơn còn nợ đủ điều kiện trong transaction có khóa UPDLOCK, HOLDLOCK
             const string sqlHoaDonConNo = @"
                 SELECT 
                     HoaDonId,
@@ -194,10 +190,8 @@ public class ThanhToanRepository : IThanhToanRepository
                 new { request.KhachHangId },
                 transaction: transaction)).ToList();
 
-            // 4. Áp dụng thuật toán FIFO thuần túy trong CoreBusiness
             var ketQuaFifo = ThuatToanFIFO.PhanBo(hoaDons, request.SoTien, request.NgayThanhToan);
 
-            // 5. Kiểm tra phát hiện thay đổi so với bản xem trước (nếu có gửi bản xem trước)
             if (request.DanhSachXemTruoc != null)
             {
                 bool khopXemTruoc = true;
@@ -234,8 +228,6 @@ public class ThanhToanRepository : IThanhToanRepository
                 }
             }
 
-            // 6. Ghi nhận Header phiếu thu vào dbo.ThanhToans
-            // Kiểm tra schema: Bắt buộc phải có đủ 6 cột audit VietQR nếu là ChuyenKhoan
             const string sqlCheckVietQrCols = @"
                 SELECT COUNT(1) 
                 FROM sys.columns 
@@ -263,7 +255,6 @@ public class ThanhToanRepository : IThanhToanRepository
             }
             else
             {
-                // Phiếu thu tiền mặt không lưu dữ liệu QR, tài khoản hoặc xác nhận chuyển khoản
                 request.NoiDungChuyenKhoan = null;
                 request.TaiKhoanThuHuong = null;
                 request.NganHangThuHuong = null;
@@ -305,7 +296,6 @@ public class ThanhToanRepository : IThanhToanRepository
             }
             else
             {
-                // Chỉ chạy khi là Tiền mặt (do ChuyenKhoan đã bị chặn và rollback ở trên)
                 const string sqlInsertThanhToan = @"
                     INSERT INTO dbo.ThanhToans 
                         (MaPhieuThu, KhachHangId, NgayThanhToan, SoTien, PhuongThuc, GhiChu, NgayTao)
@@ -327,7 +317,6 @@ public class ThanhToanRepository : IThanhToanRepository
                     transaction: transaction);
             }
 
-            // 7. Ghi nhận từng dòng phân bổ và cập nhật hóa đơn
             const string sqlInsertPhanBo = @"
                 INSERT INTO dbo.PhanBoThanhToans 
                     (ThanhToanId, HoaDonId, SoTienPhanBo, NgayPhanBo)
@@ -342,7 +331,6 @@ public class ThanhToanRepository : IThanhToanRepository
 
             foreach (var pb in ketQuaFifo.DanhSachPhanBo)
             {
-                // Thêm dòng phân bổ (NgayPhanBo là thời điểm thực tế GETDATE())
                 await connection.ExecuteAsync(
                     sqlInsertPhanBo,
                     new
@@ -353,7 +341,6 @@ public class ThanhToanRepository : IThanhToanRepository
                     },
                     transaction: transaction);
 
-                // Cập nhật DaThanhToan và TrangThai hóa đơn (Tuyệt đối không update cột computed ConLai)
                 await connection.ExecuteAsync(
                     sqlUpdateHoaDon,
                     new
@@ -364,7 +351,6 @@ public class ThanhToanRepository : IThanhToanRepository
                     transaction: transaction);
             }
 
-            // 8. Toàn bộ thao tác thành công -> Commit transaction
             transaction.Commit();
 
             return new TaoThanhToanResult

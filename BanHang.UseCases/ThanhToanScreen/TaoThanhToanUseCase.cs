@@ -112,7 +112,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
 
         if (laChuyenKhoan)
         {
-            // 1. Kiểm tra xác định người dùng hiện tại và vai trò Kế toán công nợ
             var isAuth = await _currentUserService.IsAuthenticatedAsync();
             var tenDangNhap = await _currentUserService.GetTenDangNhapAsync();
             if (!isAuth || string.IsNullOrWhiteSpace(tenDangNhap))
@@ -134,7 +133,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
                 };
             }
 
-            // 2. Kế toán phải kiểm tra và xác nhận tiền đã vào tài khoản trước khi lưu
             if (!request.DaXacNhanTienVao)
             {
                 return new TaoThanhToanResult
@@ -144,7 +142,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
                 };
             }
 
-            // 3. Số tiền chuyển khoản VietQR phải là số nguyên VND, > 0, tối đa 13 chữ số
             var kiemTraTien = _vietQrService.KiemTraSoTienVietQr(request.SoTien);
             if (!kiemTraTien.HopLe)
             {
@@ -155,7 +152,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
                 };
             }
 
-            // 4. Lấy mã khách hàng từ repository nếu có, hoặc tạo mặc định
             string maKhachHang;
             if (_khachHangRepository != null)
             {
@@ -180,7 +176,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
                 request.MaPhieuThu = await _thanhToanRepository.LayMaPhieuThuTiepTheoAsync();
             }
 
-            // 5. Tự động sinh và ghi đè toàn bộ dữ liệu audit từ Server (hoàn toàn không tin client)
             request.NguoiXacNhan = tenDangNhap.Trim();
             request.ThoiDiemXacNhan = DateTime.Now;
             request.TaiKhoanThuHuong = _vietQrService.Settings.AccountNumber;
@@ -189,7 +184,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
         }
         else
         {
-            // Phương thức Tiền mặt: Tuyệt đối không lưu dữ liệu QR, tài khoản hoặc xác nhận chuyển khoản
             request.DaXacNhanTienVao = false;
             request.NoiDungChuyenKhoan = null;
             request.TaiKhoanThuHuong = null;
@@ -198,7 +192,6 @@ public class TaoThanhToanUseCase : ITaoThanhToanUseCase
             request.NguoiXacNhan = null;
         }
 
-        // Chuyển xuống tầng DataStore để thực hiện nguyên tử trong Transaction có khóa khách hàng
         return await _thanhToanRepository.GhiNhanThanhToanAsync(request);
     }
 }
