@@ -49,7 +49,9 @@
     color: #059669 !important;
     background-color: #f0fdf4 !important;
     border: 2px solid #bbf7d0 !important;
-    letter-spacing: -0.01em;
+    font-family: var(--font-mono) !important;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: normal;
 }
 
 .amount-highlight-input:focus {
