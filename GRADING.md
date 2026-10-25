@@ -42,8 +42,7 @@
   - Tầng giao diện: Tất cả các trang Razor chỉ inject UseCase interface:
     - `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`: Dòng 9–11 (`@inject IXemDanhSachKhachHangUseCase`, `@inject IXemDanhSachSanPhamHoatDongUseCase`, `@inject ITaoHoaDonBanChiuUseCase`).
     - `DuAn_BanHangVaCongNoKhachHang/Pages/TaoThanhToanPage.razor`: Dòng 8–10 (`@inject IXemDanhSachKhachHangUseCase`, `@inject IXemTruocPhanBoFifoUseCase`, `@inject ITaoThanhToanUseCase`).
-    - `DuAn_BanHangVaCongNoKhachHang/Pages/BaoCaoTuoiNoPage.razor`: Dòng 7 (`@inject IXemBaoCaoTuoiNoUseCase`).
-    - `DuAn_BanHangVaCongNoKhachHang/Pages/EmailNhacNoPage.razor`: Dòng 11–13 (`@inject IXemDuLieuNhacNoKhachHangUseCase`, `@inject ISoanEmailNhacNoUseCase`, `@inject IPheDuyetEmailNhacNoUseCase`, `@inject IGuiEmailNhacNoUseCase`).
+    - `DuAn_BanHangVaCongNoKhachHang/Pages/BaoCaoTuoiNoPage.razor`: Dòng 13–18 (`@inject IXemBaoCaoTuoiNoUseCase`, `@inject IXuatBaoCaoTuoiNoExcelUseCase`, `@inject IXemDuLieuNhacNoKhachHangUseCase`, `@inject ISoanEmailNhacNoUseCase`, `@inject IPheDuyetEmailNhacNoUseCase`, `@inject IGuiEmailNhacNoUseCase`). Lưu ý: Tính năng AI soạn, phê duyệt và gửi email nhắc nợ được tích hợp trực tiếp trong Báo cáo tuổi nợ tại các phương thức `TaoBanNhapAiAsync` (Dòng 943), `PheDuyetBanNhapAsync` (Dòng 1005), `GuiEmailDaDuyetAsync` (Dòng 1050); không có tệp `EmailNhacNoPage.razor` riêng biệt trong mã nguồn.
 - **Bằng chứng kiểm thử / Demo**: Grep toàn bộ thư mục `DuAn_BanHangVaCongNoKhachHang/Pages` không có bất kỳ file `.razor` nào inject trực tiếp class cụ thể của Repository.
 - **Phần còn thiếu & Công việc cần thực hiện**: Không có.
 
@@ -438,7 +437,7 @@
 
 #### K4.3: Tính năng nâng cao: Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc Trợ lý AI (Mục 10 PDF)
 - **Yêu cầu của thầy**: Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật.
-- **Trạng thái**: **Đạt (Dự án triển khai và đạt cả 2 tính năng: Xuất báo cáo Excel từ dữ liệu thật VÀ Trợ lý AI soạn/gửi email nhắc nợ đạt đủ Mục 10 PDF)**
+- **Trạng thái**: **Đạt (Mức 1 = 6.0 / 6.0 điểm; Dự án triển khai cả 2 tính năng: Xuất báo cáo Excel từ dữ liệu thật VÀ Trợ lý AI Mục 10 PDF; điểm đề xuất giữ nguyên trần tối đa 6.0 điểm theo barem, không cộng vượt)**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
 
   #### 1. Tính năng A: Xuất Báo Cáo Tuổi Nợ Excel (.xlsx) Từ Dữ Liệu Thật (ClosedXML)
@@ -452,33 +451,24 @@
     - Đặt tên file xuất tự động: `BaoCaoTuoiNo_{yyyyMMdd}.xlsx` theo ngày chốt số liệu.
 
   #### 2. Tính năng B: Trợ Lý AI Soạn Email Nhắc Nợ & Phê Duyệt Gửi An Toàn (Mục 10 PDF)
-  - **Đối chiếu Yêu cầu Mục 10 PDF & Kiến trúc Clean Architecture**:
-    - *Yêu cầu đề bài*: Tích hợp Generative AI qua `IChatClient` (thư viện `Microsoft.Extensions.AI.Abstractions`) với UseCase riêng biệt.
-    - *Tuân thủ Dependency Inversion Principle (DIP)*: Để bảo vệ tầng CoreBusiness và UseCases không bị ô nhiễm bởi package bên ngoài, tầng `BanHang.UseCases` định nghĩa Port nghiệp vụ `IAiEmailDraftingService` (nhận DTO ngữ cảnh nợ, trả về nháp email B2B).
-    - *Adapter & Composition Root*:
-      - Tầng WebApp `DuAn_BanHangVaCongNoKhachHang/Services/AiChatClientEmailDraftingService.cs` đóng vai trò Adapter: inject `IChatClient` (từ `Microsoft.Extensions.AI.Abstractions`) và gọi Gemini / OpenAI / Fake client.
-      - `Program.cs` (Dòng 137–213): Cấu hình `IChatClient` linh hoạt theo cấu hình: hỗ trợ `FakeChatClient` (nội bộ, không tốn API key), `OpenAI`, hoặc `Gemini`. Hệ thống luôn ưu tiên cấu hình mô hình của người dùng trong User Secrets (`AiSettings:ModelId`); chỉ khi để trống mới áp dụng giá trị dự phòng là mô hình Flash GA `gemini-3.6-flash` phù hợp cho project mới có Free Tier (Google AI Studio trên endpoint OpenAI compatibility, đối chiếu tài liệu chính thức ngày 21/10/2026: https://ai.google.dev/gemini-api/docs/models/gemini). Hạn mức và quyền truy cập mô hình phụ thuộc project, mô hình và cấp sử dụng; kiểm tra trực tiếp trong Google AI Studio. Bộ kiểm thử tự động dùng mock client độc lập, không khẳng định kết nối API thật thành công nếu chưa cấu hình API key hợp lệ.
-    - *UseCases riêng biệt*:
-      - `BanHang.UseCases/EmailNhacNoScreen/SoanEmailNhacNoUseCase.cs`: Soạn email nhắc nợ AI ngữ cảnh B2B theo snapshot công nợ thực tế (`IXemDuLieuNhacNoKhachHangUseCase`), phân loại theo hóa đơn quá hạn và hóa đơn chưa đến hạn, prompt engineering theo tone chuẩn mực doanh nghiệp, có fallback dự phòng nếu AI mất kết nối.
-      - `BanHang.UseCases/EmailNhacNoScreen/PheDuyetEmailNhacNoUseCase.cs`: Phê duyệt nội dung nháp phía máy chủ (Server-side approval), lưu trữ snapshot đã duyệt, ngăn chặn gửi tự động khi chưa có sự xác nhận của kế toán.
-      - `BanHang.UseCases/EmailNhacNoScreen/GuiEmailNhacNoUseCase.cs`: Xác thực người duyệt, phát hiện dữ liệu công nợ thay đổi so với thời điểm duyệt (stale debt detection), cơ chế chống gửi trùng bền vững (Idempotency Key & Payload Hash) với kiểm tra tranh chấp INSERT khóa duy nhất (kiểm tra `dup.NguoiDuyet == currentUser` và `dup.PayloadHash == payloadHash`), gọi `IEmailSender` và lưu audit log.
+  - **Bảng đối chiếu 5 yêu cầu riêng cho phần AI tại Mục 10 PDF**:
+    1. *API key đặt trong User Secrets hoặc biến môi trường, không commit lên git*: **ĐÁP ỨNG ĐỦ**. Cấu hình `AiSettings:ApiKey` qua .NET User Secrets; `appsettings.json` chỉ chứa placeholder rỗng.
+    2. *IChatClient được inject vào một UseCase riêng, không gọi trực tiếp từ file .razor*:
+       - **Phần đáp ứng**: Tầng giao diện `.razor` tuyệt đối không gọi trực tiếp AI API; có cụm UseCase riêng biệt (`SoanEmailNhacNoUseCase`, `PheDuyetEmailNhacNoUseCase`, `GuiEmailNhacNoUseCase`).
+       - **Phần còn lệch với nguyên văn đề bài**: Nguyên văn PDF ghi *"IChatClient được inject vào một UseCase riêng (ví dụ GetAiAdviceUseCase)"*. Trong mã nguồn thực tế, để bảo đảm nguyên lý Clean Architecture / Dependency Inversion (tầng `UseCases` không phụ thuộc trực tiếp vào package bên ngoài `Microsoft.Extensions.AI.Abstractions`), tầng `UseCases` định nghĩa Port `IAiEmailDraftingService`. Tầng WebApp tạo Adapter `AiChatClientEmailDraftingService` đóng vai trò inject `IChatClient` và thực thi gọi API. Như vậy, `IChatClient` không nằm trực tiếp trong constructor của UseCase mà nằm tại Adapter.
+    3. *Có xử lý khi API lỗi hoặc hết hạn mức: ứng dụng vẫn chạy, hiển thị thông báo*: **ĐÁP ỨNG ĐỦ**. Khi AI lỗi hoặc hết quota, `SoanEmailNhacNoUseCase` tự động chuyển sang phương thức dự phòng `TaoBanNhapTheoTemplate` nạp mẫu email chuẩn mực, ghi nhận thông báo lỗi tại `banNhap.ThongBaoLoiAi` và hiển thị cảnh báo lên modal, ứng dụng không bị văng lỗi.
+    4. *AI chỉ gợi ý; dữ liệu do AI tạo phải được người dùng xác nhận trước khi ghi vào CSDL*: **ĐÁP ỨNG ĐỦ**. Bản nháp AI chỉ hiển thị trên giao diện cho kế toán đọc/sửa. Kế toán phải bấm "Phê duyệt" (`PheDuyetEmailNhacNoUseCase`) trước khi lưu trữ audit log và cho phép gửi đi.
+    5. *Có thể dùng Ollama chạy local để không tốn phí*: **ĐÁP ỨNG ĐỦ**. Hệ thống hỗ trợ chế độ `FakeChatClient` nội bộ không tốn phí, đồng thời hỗ trợ OpenAI, Gemini và các endpoint tương thích.
   - **Độ tin cậy gửi email & Bảo toàn dữ liệu đã duyệt**:
-    - `DuAn_BanHangVaCongNoKhachHang/Services/SmtpEmailSender.cs`:
-      - Phân biệt chính xác: lỗi ở giai đoạn kết nối/xác thực (`ConnectAsync`/`AuthenticateAsync`) trả về `ThatBai`; lỗi gián đoạn mạng ở giai đoạn `SendAsync` trả về `ChuaRoKetQua` (không tự gửi lại); lỗi ở giai đoạn ngắt kết nối (`DisconnectAsync`) sau khi máy chủ SMTP đã tiếp nhận thành công vẫn giữ nguyên kết quả `TiepNhan`.
-      - Bảo lưu kiểm tra TLS/SSL nghiêm ngặt.
-    - `DuAn_BanHangVaCongNoKhachHang/Services/EmailHtmlFormatter.cs`:
-      - Bảo toàn 100% nội dung kế toán đã duyệt khi kết xuất HTML. Hỗ trợ bảng pipe `|` có hoặc không có dấu ở đầu/cuối dòng.
-      - Các dòng hóa đơn hoặc ghi chú kế toán sửa tay không parse được vào bảng được bảo toàn nguyên vẹn (HTML-encoded) bên dưới bảng, tuyệt đối không âm thầm nuốt bỏ dòng nào.
-      - Lọc bỏ tiêu đề lặp mà không làm mất bất kỳ số liệu công nợ nào.
-    - `BanHang.DataStore.SQL/NhatKyEmailRepository.cs`:
-      - Cập nhật và lưu trữ `EmailNhanThucTe` và `CheDoGui` phản ánh đúng dịch vụ thực tế (đặc biệt khi bật `TestRecipientRedirect`), đồng thời bảo toàn `EmailNguoiNhan` dự kiến không bị ghi đè.
-
+    - `DuAn_BanHangVaCongNoKhachHang/Services/SmtpEmailSender.cs`: Phân biệt chính xác lỗi kết nối (`ThatBai`), lỗi gián đoạn truyền tải (`ChuaRoKetQua`), và ngắt kết nối an toàn (`TiepNhan`).
+    - `DuAn_BanHangVaCongNoKhachHang/Services/EmailHtmlFormatter.cs`: Bảo toàn 100% nội dung bảng pipe và các dòng kế toán chỉnh sửa tay.
+    - `BanHang.DataStore.SQL/NhatKyEmailRepository.cs`: Lưu trữ và cập nhật audit log đầy đủ.
 - **Bằng chứng kiểm thử / Demo**:
   - `BanHang.Tests/BaoCaoTuoiNoExcelTests.cs`: 7 test cases tự động cho xuất Excel ClosedXML (kiểm tra ngày chốt, freeze panes, STT, định dạng số, formula injection, phân quyền, stale snapshot).
-  - `BanHang.Tests/EmailNhacNoUnitTests.cs`: 43 test cases unit test toàn diện (Mock AI, Mock SMTP, bao quát quy tắc soạn thảo, phê duyệt máy chủ, stale debt detection, chống gửi trùng idempotency key & payload hash, tranh chấp INSERT duplicate key, xử lý kết quả SMTP TiepNhan/ThatBai/ChuaRoKetQua, bảo toàn HTML bảng pipe và unparsed lines, audit log).
-  - `BanHang.Tests/DurableIdempotencyIntegrationTests.cs`: 4 integration tests kiểm thử chống gửi trùng bền vững trên CSDL test an toàn.
-  - Kết quả chạy kiểm thử toàn solution: **345/345 tests Passed 100%** (Failed: 0, Skipped: 0).
-- **Phần còn thiếu & Công việc cần thực hiện**: Không có. Cả 2 tính năng nâng cao đều đã hoàn thành trọn vẹn và đạt kiểm thử tự động 100%.
+  - `BanHang.Tests/EmailNhacNoUnitTests.cs`: 43 test cases unit test toàn diện (Mock AI, Mock SMTP, quy tắc soạn thảo, phê duyệt máy chủ, stale debt detection, chống gửi trùng idempotency key & payload hash, xử lý kết quả SMTP, audit log).
+  - `BanHang.Tests/DurableIdempotencyIntegrationTests.cs`: 4 integration tests kiểm thử chống gửi trùng bền vững trên CSDL test an toàn `QuanLyBanHangCongNo_Email_AutoTest`.
+  - Kết quả chạy kiểm thử toàn solution: **345/345 tests Passed** (Failed: 0, Skipped: 0; kết quả chạy lúc 09:27 ngày 25/10/2026 trên môi trường local).
+- **Phần còn thiếu & Công việc cần thực hiện**: Thao tác gọi Gemini API thật và gửi email SMTP thật phụ thuộc vào API key và hòm thư người dùng (chờ người dùng kiểm chứng trên môi trường thực tế khi cần). Điểm số giữ nguyên trần 6.0/6.0đ theo quy định barem.
 
 ---
 
@@ -527,66 +517,85 @@
 
 #### K5.2: Thuyết trình vấn đáp: Chỉ đúng dòng cài luật và giải thích Dependency Rule
 - **Yêu cầu của thầy**: Vấn đáp: mỗi thành viên chỉ đúng dòng cài luật và giải thích Dependency Rule.
-- **Trạng thái**: **Chưa xác minh**
+- **Trạng thái**: **Chưa đánh giá** (Tiêu chí vấn đáp trực tiếp với Hội đồng chấm thi tại buổi bảo vệ; chưa diễn ra nên không tự tính điểm vào kết quả đã xác nhận).
+- **Điểm đề xuất**: **Chưa đánh giá (0.0 / 6.0 điểm đã xác nhận; tối đa 6.0 điểm khi vấn đáp thành công)**.
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
-  - Phụ thuộc trực tiếp vào phần trả lời cá nhân của từng thành viên trong buổi bảo vệ với Hội đồng chấm thi.
-- **Tài liệu chuẩn bị cho thành viên nhóm**:
-  - *Dòng cài luật FIFO*: `BanHang.CoreBusiness/ThuatToanFIFO.cs:55-130`.
-  - *Dòng cài luật Báo cáo tuổi nợ 4 nhóm*: `BanHang.CoreBusiness/PhanTichTuoiNoService.cs:42-101`.
-  - *Dòng cài luật Hạn mức tín dụng*: `BanHang.CoreBusiness/KhachHang.cs:60-63`, `BanHang.DataStore.SQL/HoaDonRepository.cs:204` và `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor:418`.
-  - *Dòng cài đặt trừ tồn kho & cấp mã qua `sp_getapplock`*: `BanHang.DataStore.SQL/HoaDonRepository.cs:220-350`.
-  - *Giải thích Dependency Rule*: Mở 4 file `.csproj` chứng minh `CoreBusiness` độc lập hoàn toàn, `UseCases` chỉ nhìn thấy `CoreBusiness`, `DataStore.SQL` đóng vai trò plugin phụ thuộc ngược vào `UseCases`, và `DuAn_BanHangVaCongNoKhachHang` chỉ biết Plugin tại composition root `Program.cs`.
+  - *Dòng cài Luật 1 (Hạn mức tín dụng)*:
+    - Định nghĩa nghiệp vụ: `BanHang.CoreBusiness/KhachHang.cs`: Dòng 66–69 (`KiemTraVuotHanMucKhiMua`).
+    - Kiểm soát trong Transaction phía CSDL: `BanHang.DataStore.SQL/HoaDonRepository.cs`: Dòng 74 mở transaction, dòng 79–87 khóa `UPDLOCK, HOLDLOCK`, dòng 193 đọc công nợ thực tế, dòng 204 gọi `khachHang.KiemTraVuotHanMucKhiMua(tongTienMoi)`.
+    - Đối soát giao diện Blazor: `DuAn_BanHangVaCongNoKhachHang/Pages/TaoHoaDonPage.razor`: Dòng 345, 368, 396 (disable nút Lưu), 478 (`VuotHanMucHienTai`), 927.
+  - *Dòng cài Luật 2 (Thuật toán FIFO & Tuổi nợ 4 nhóm)*:
+    - Thuật toán FIFO: `BanHang.CoreBusiness/ThuatToanFIFO.cs`: Dòng 55–130. Gọi tại `BanHang.UseCases/ThanhToanScreen/XemTruocPhanBoFifoUseCase.cs`: Dòng 66 và `BanHang.DataStore.SQL/ThanhToanRepository.cs`: Dòng 198.
+    - Phân tích 4 nhóm tuổi nợ: `BanHang.CoreBusiness/PhanTichTuoiNoService.cs`: Dòng 42–101. Gọi tại `BanHang.UseCases/BaoCaoTuoiNoScreen/XemBaoCaoTuoiNoUseCase.cs`: Dòng 69.
+  - *Cấp mã và Trừ tồn kho đồng thời qua `sp_getapplock`*: `BanHang.DataStore.SQL/HoaDonRepository.cs`: Dòng 220–377.
+  - *Giải thích Quy tắc Phụ thuộc (Dependency Rule)*:
+    - `BanHang.CoreBusiness/BanHang.CoreBusiness.csproj`: Độc lập 100%, không tham chiếu project nào.
+    - `BanHang.UseCases/BanHang.UseCases.csproj`: Chỉ tham chiếu duy nhất `CoreBusiness`.
+    - `BanHang.DataStore.SQL/BanHang.DataStore.SQL.csproj`: Tham chiếu `CoreBusiness` và `UseCases` (đóng vai trò Plugin triển khai Repository Interfaces).
+    - `DuAn_BanHangVaCongNoKhachHang/Program.cs`: Dòng 94–135 (Composition Root liên kết các thành phần qua DI).
 
 ---
 
 #### K5.3: Lịch sử Git commit của các thành viên rải đều trên ít nhất 3 tuần
 - **Yêu cầu của thầy**: Mọi thành viên có commit, rải trên ít nhất 3 tuần.
-- **Trạng thái**: **Thiếu / Không đạt tiêu chí 3 tuần**
+- **Trạng thái**: **Không đạt (Mức 0 = 0.0 / 3.0 điểm)**
 - **Đường dẫn tương đối & Số dòng làm bằng chứng**:
   - Lệnh kiểm tra tác giả: `git shortlog -sn --all`
-    - Kết quả: Duy nhất **1 thành viên** có commit (`13 Lê Ánh Diễm Như`).
+    - Kết quả thực tế: Duy nhất **1 tác giả** có commit (`31 Lê Ánh Diễm Như`).
   - Lệnh kiểm tra thời gian: `git log --date=short --format="%ad %an <%ae> %s"`
-    - Kết quả: Các commit chỉ diễn ra trong vòng 4 ngày từ `2026-10-15` đến `2026-10-18`.
-- **Đánh giá trung thực**: Chưa đáp ứng tiêu chí mọi thành viên đều có commit và chưa rải đều qua 3 tuần (Tuần 05, Tuần 06, Tuần 07) theo quy định lộ trình Capstone. Nhóm cam kết giữ nguyên lịch sử Git trung thực, không tạo commit giả mạo.
+    - Kết quả thực tế: Toàn bộ 31 commit diễn ra trong khoảng thời gian từ `2026-10-15` đến `2026-10-25` (11 ngày).
+- **Đánh giá trung thực theo barem**: Chưa đáp ứng tiêu chí mọi thành viên đều có commit và chưa rải đều trên ít nhất 3 tuần (Tuần 05, Tuần 06, Tuần 07) theo quy định lộ trình Capstone. Nhóm cam kết giữ nguyên lịch sử Git trung thực, không tạo commit giả mạo hay suy diễn thời gian. Tiêu chí này nhận mức 0 (0 điểm).
 
 ---
 
-## II. TỔNG HỢP TRẠNG THÁI 18 TIÊU CHÍ
+## II. BẢNG TỔNG HỢP VÀ ĐỐI SOÁT CHI TIẾT 18 TIÊU CHÍ (K1.1 – K5.3)
 
-**Thống kê tổng quan 18 tiêu chí:**
-- **Đạt**: **16 tiêu chí** (`K1.1`, `K1.2`, `K1.3`, `K1.4`, `K2.1`, `K2.2`, `K2.3`, `K2.4`, `K3.1`, `K3.2`, `K3.3`, `K3.4`, `K4.1`, `K4.2`, `K4.3`, `K5.1`)
-- **Thiếu (0 điểm)**: **1 tiêu chí** (`K5.3`)
-- **Chưa xác minh**: **1 tiêu chí** (`K5.2`)
+| Mã | Nội Dung Barem (capstone-topics-2026.pdf) | Điểm Tối Đa | Bằng Chứng File / Phương Thức Kiểm Tra Được | Kết Quả Kiểm Chứng Thực Tế | Mức Đạt (1 / 0.5 / 0) | Điểm Đề Xuất |
+| :---: | :--- | :---: | :--- | :--- | :---: | :---: |
+| **K1.1** | Đủ 4 project; CoreBusiness không tham chiếu project nào; UseCases chỉ tham chiếu CoreBusiness | 8 | 4 file `.csproj` trong solution | Solution build thành công cả 4 project bằng `dotnet build` | 1 | **8.0** |
+| **K1.2** | Interface repository nằm ở UseCases, Plugin cài đặt; file .razor inject interface, không inject lớp cụ thể | 7 | `BanHang.UseCases/PluginInterfaces/DataStore/`, `Program.cs:94-135`, `.razor` inject UseCase | Grep toàn bộ thư mục `Pages` không có `.razor` nào inject class cụ thể của SQL | 1 | **7.0** |
+| **K1.3** | 2 luật nghiệp vụ của đề cài trong CoreBusiness/UseCases, không nằm trong .razor (3 điểm mỗi luật) | 6 | `KhachHang.cs:66-69`, `HoaDonRepository.cs:204`, `ThuatToanFIFO.cs:55-130`, `PhanTichTuoiNoService.cs:42-101` | 345/345 test cases Passed (kết quả kiểm thử chạy lúc 09:27 ngày 25/10/2026) | 1 | **6.0** |
+| **K1.4** | DI đăng ký đủ; giỏ/lựa chọn tạm dùng Scoped | 4 | `Program.cs:118` AddScoped `IHoaDonNhapStateService`, `TaoHoaDonPage.razor:12` | 9 unit tests trong `HoaDonNhapStateServiceTests.cs` Passed | 1 | **4.0** |
+| **K2.1** | Từ 5 bảng, 3NF, có khóa ngoại; script tạo bảng + dữ liệu mẫu trong repo chạy được | 8 | 6 bảng 3NF + `NguoiDungs`, 5 scripts tại `BanHang.DataStore.SQL/Scripts/` | 4 tests trong `K21DatabaseVerificationTests.cs` Passed trên DB `QuanLyBanHangCongNo_K21_AutoTest` | 1 | **8.0** |
+| **K2.2** | Cặp header–line ghi trong 1 transaction | 6 | `HoaDonRepository.cs:74-377`, `ThanhToanRepository.cs:93-290` | Rollback và commit nguyên tử đã kiểm chứng qua `TruTonKhoHoaDonIntegrationTests.cs` | 1 | **6.0** |
+| **K2.3** | Mọi truy vấn tham số hóa, không nối chuỗi SQL | 5 | Toàn bộ truy vấn trong `BanHang.DataStore.SQL` dùng `const string` với tham số `@ParamName` Dapper | Rà soát toàn bộ project SQL: không có câu lệnh SQL nào ghép chuỗi nội suy hay tên bảng động | 1 | **5.0** |
+| **K2.4** | Luồng giao dịch chính chạy end-to-end và dữ liệu nằm trong SQL Server | 6 | CSDL SQL Server LocalDB, bảng `HoaDons`, `ChiTietHoaDons`, `ThanhToans`, `PhanBoThanhToans` | Đã kiểm chứng ghi nhận CSDL qua integration tests; luồng thao tác live: Chờ người dùng kiểm chứng qua profile Verify_K21 | 1 | **6.0** |
+| **K3.1** | Ít nhất 3 component tái sử dụng có [Parameter] / EventCallback | 6 | `ModalXacNhan.razor`, `BadgeTrangThai.razor`, `TrangThaiDuLieu.razor` trong `Components/` | 17 tests trong `ComponentLogicTests.cs` Passed; tái sử dụng tại 4 trang thực tế | 1 | **6.0** |
+| **K3.2** | EditForm + DataAnnotations; lỗi nhập liệu hiển thị cạnh ô nhập | 5 | `<EditForm>`, `<DataAnnotationsValidator />`, `<ValidationMessage />` trên 4 form | 35 tests trong `FormValidationTests.cs` Passed | 1 | **5.0** |
+| **K3.3** | Ca vi phạm 2 luật nghiệp vụ hiện thông báo thân thiện, không văng lỗi | 4 | `TaoHoaDonPage.razor:345-380, 396`, `TaoThanhToanPage.razor:32-40`, bắt mã lỗi âm `sp_getapplock` | Đã kiểm chứng logic chặn UI và rollback qua unit/integration test; thao tác demo live: Chờ người dùng kiểm chứng | 1 | **4.0** |
+| **K3.4** | Dùng được trên màn hình điện thoại (DevTools, bề rộng 390px) | 5 | Bootstrap 5, `table-responsive`, modal scrollable flexbox (`site.css:121-195`) | Đã kiểm tra giao diện trên Edge DevTools 390 × 844 px; kiểm tra trực tiếp trên thiết bị di động thật: Chờ người dùng kiểm chứng | 1 | **5.0** |
+| **K4.1** | Đăng nhập, đăng xuất; ít nhất 2 vai trò | 4 | Cookie Auth `Login.cshtml.cs:20-154`, `Logout.cshtml.cs:1-35`, `VaiTroConstants.cs`, băm PBKDF2 | 12 tests trong `AuthUnitTests.cs` Passed | 1 | **4.0** |
+| **K4.2** | Tài khoản thường gõ thẳng URL trang quản trị bị chặn | 5 | `App.razor:5-30` (`<AuthorizeRouteView>`, `<NotAuthorized>`), `[Authorize]` trên các trang kế toán | `HttpSecurityIntegrationTests.cs:45-120` Passed | 1 | **5.0** |
+| **K4.3** | Tính năng nâng cao: AI đạt đủ mục 10, hoặc xuất báo cáo (Excel/PDF) từ dữ liệu thật | 6 | Xuất Excel ClosedXML (`ClosedXmlBaoCaoTuoiNoExcelExporter.cs`) VÀ Trợ lý AI Mục 10 PDF (`SoanEmailNhacNoUseCase.cs`, Adapter DIP) | 7 tests Excel + 43 tests Email + 4 tests Idempotency Passed; điểm đề xuất giữ trần tối đa 6.0đ, không cộng vượt | 1 | **6.0** |
+| **K5.1** | Use Case, Class, Sequence (PlantUML) khớp tên lớp và luồng trong code | 6 | 19 file `.puml` trong `docs/uml/`, tài liệu PDF in A4 font $\ge$ 9pt `BaoCao_UML_A4.pdf` và `KiemChung_BoCuc_A4.pdf` | Render thành công 19/19 SVG và PDF vector; khớp tên lớp và luồng giao dịch chính | 1 | **6.0** |
+| **K5.2** | Vấn đáp: mỗi thành viên chỉ đúng dòng cài luật và giải thích Dependency Rule | 6 | Phụ thuộc vào phần trả lời cá nhân của từng thành viên trước Hội đồng chấm thi | **Chưa đánh giá** (chưa diễn ra buổi bảo vệ) | Chưa đánh giá | **Chưa đánh giá (0/6 đã xác nhận)** |
+| **K5.3** | Mọi thành viên có commit, rải trên ít nhất 3 tuần | 3 | Lịch sử Git: `git shortlog -sn --all`, `git log --date=short` | 1 tác giả duy nhất (`Lê Ánh Diễm Như` - 31 commits), 11 ngày (15/10 đến 25/10/2026); không đạt 3 tuần | 0 | **0.0** |
+| **TỔNG** | | **100** | | | | **91.0 / 100** *(chưa tính 6đ K5.2)* |
 
-| Nhóm tiêu chí | Mã | Nội dung | Trạng thái |
-| :--- | :--- | :--- | :--- |
-| **1. Kiến trúc Clean Architecture (25%)** | **K1.1** | Đủ 4 project, đúng chiều phụ thuộc | **Đạt** |
-| | **K1.2** | Interface ở UseCases, Razor inject interface | **Đạt** |
-| | **K1.3** | 2 luật nghiệp vụ cài ở CoreBusiness / UseCases | **Đạt** |
-| | **K1.4** | DI đăng ký đủ, giỏ/lựa chọn tạm dùng Scoped | **Đạt** |
-| **2. CSDL & Toàn vẹn Dữ liệu (25%)** | **K2.1** | CSDL từ 5 bảng, chuẩn 3NF, script chạy được | **Đạt** |
-| | **K2.2** | Header–Line ghi trong 1 transaction | **Đạt** |
-| | **K2.3** | Mọi truy vấn tham số hóa, không nối chuỗi SQL | **Đạt** |
-| | **K2.4** | Luồng giao dịch chính chạy end-to-end trên SQL Server | **Đạt** |
-| **3. Giao diện & Trải nghiệm (20%)** | **K3.1** | Ít nhất 3 component tái sử dụng (Parameter/EventCallback) | **Đạt** |
-| | **K3.2** | EditForm + DataAnnotations, lỗi cạnh ô nhập | **Đạt** |
-| | **K3.3** | Báo lỗi thân thiện khi vi phạm 2 luật nghiệp vụ | **Đạt** |
-| | **K3.4** | Tương thích màn hình điện thoại (bề rộng 390px) | **Đạt** |
-| **4. Bảo mật & Nâng cao (15%)** | **K4.1** | Đăng nhập, đăng xuất, ít nhất 2 vai trò | **Đạt** |
-| | **K4.2** | Gõ trực tiếp URL trang quản trị bị chặn | **Đạt** |
-| | **K4.3** | Xuất báo cáo (Excel/PDF) từ dữ liệu thật hoặc AI | **Đạt** (Đạt cả 2: Xuất báo cáo Excel ClosedXML và Trợ lý AI Mục 10 PDF; 345/345 tests Passed) |
-| **5. Hồ sơ & Vấn đáp (15%)** | **K5.1** | Sơ đồ PlantUML (Use Case, Class, Sequence) khớp code | **Đạt** (Đã render cục bộ 19/19 tệp SVG, PDF vector & kiểm chứng PDF A4 lề 20mm 13 trang) |
-| | **K5.2** | Vấn đáp: chỉ đúng dòng cài luật & Dependency Rule | **Chưa xác minh** |
-| | **K5.3** | Lịch sử commit rải đều trên ít nhất 3 tuần | **Thiếu** |
+> **Ghi chú điểm số**:
+> - Điểm kỹ thuật và hồ sơ đã xác nhận trước buổi vấn đáp: **91.0 / 100 điểm**.
+> - Điểm tiêu chí K5.2 (Vấn đáp): Tối đa **6.0 điểm**, sẽ được Hội đồng chấm thi đánh giá trực tiếp dựa trên phần trả lời của thành viên trong buổi bảo vệ.
+> - Tiêu chí K5.3 (Lịch sử commit): Đánh giá trung thực **0.0 / 3.0 điểm** do chỉ có 1 tác giả commit trong khoảng thời gian 11 ngày.
+> - Dự án không tự ý quy đổi sang điểm chữ (A/A+) khi chưa có quy định thang điểm chính thức từ Đề cương học phần.
 
 ---
 
-## III. DANH SÁCH CÔNG VIỆC CẦN HOÀN THIỆN THEO MỨC ƯU TIÊN
+## III. TỐI ĐA 5 VIỆC CẦN LÀM TRƯỚC BUỔI BẢO VỆ
 
-### Ưu tiên cao:
-*(Không còn mục điểm 0 nào về mã nguồn, tính năng, CSDL, tài liệu hay hồ sơ thiết kế UML; tiêu chí K5.3 thuộc về lịch sử Git quá khứ, nhóm cam kết giữ trung thực không giả lập commit).*
+1. **Luyện tập định vị nhanh các dòng code then chốt (Chuẩn bị cho K5.2)**:
+   - Thuộc lòng 4 vị trí:
+     + Luật 1 Hạn mức: `KhachHang.cs:66-69` và `HoaDonRepository.cs:204`.
+     + Luật 2 FIFO: `ThuatToanFIFO.cs:55-130` và `ThanhToanRepository.cs:198`.
+     + Luật 2 Tuổi nợ: `PhanTichTuoiNoService.cs:42-101` và `XemBaoCaoTuoiNoUseCase.cs:69`.
+     + Dependency Rule: Mở 4 file `.csproj` và `Program.cs:94-135`.
+2. **Kiểm tra chạy thử toàn bộ luồng demo bằng profile `Verify_K21` trên trình duyệt**:
+   - Sử dụng lệnh: `dotnet run --project DuAn_BanHangVaCongNoKhachHang --launch-profile Verify_K21`.
+   - Thực hiện kiểm chứng checklist theo kịch bản: tạo hóa đơn hợp lệ $\rightarrow$ cố tình tạo đơn vượt hạn mức bị chặn $\rightarrow$ thu tiền cấn trừ FIFO $\rightarrow$ xem báo cáo tuổi nợ 4 nhóm $\rightarrow$ xuất file Excel $\rightarrow$ gõ URL trái quyền.
+3. **Kiểm tra trực quan trên màn hình di động DevTools (390 × 844 px)**:
+   - Mở DevTools (F12) trên trình duyệt, chuyển chế độ mô phỏng thiết bị di động (iPhone 12/13/14 Pro - bề rộng 390px).
+   - Kiểm tra xem bảng danh sách có cuộn ngang êm không (`table-responsive`), modal thêm/sửa khách hàng và sản phẩm có cuộn được hết các trường và bấm được nút Lưu/Hủy không.
+4. **Chuẩn bị lời giải trình trung thực về tiêu chí Git Commit K5.3**:
+   - Khi thầy hỏi về lịch sử commit: Báo cáo trung thực việc thực hiện đồ án độc lập và dồn sức hoàn thành toàn bộ 345 automated tests trong giai đoạn nước rút 11 ngày, không bao biện, cam kết toàn bộ mã nguồn do tự tay thực hiện.
+5. **Dọn dẹp các tệp mẫu mặc định còn sót lại**:
+   - Xóa bỏ các file không dùng: `Counter.razor`, `FetchData.razor`, và `Shared/SurveyPrompt.razor` để cây thư mục hoàn toàn sạch sẽ trước khi nộp đồ án.
 
-### Đã hoàn thành:
-1. **Hoàn thiện `README.md`**: Cấu trúc project thực tế, yêu cầu môi trường, thứ tự chạy 5 script CSDL & migration, cơ chế tạo/băm tài khoản PBKDF2, cấu hình mẫu an toàn không chứa bí mật, lựa chọn profile chạy và lệnh kiểm thử tự động, phân biệt Classic Blazor Server với Blazor Web App.
-2. **Kiểm thử tự động toàn diện**: 345/345 test cases Passed 100% trên CSDL test cách ly an toàn (`QuanLyBanHangCongNo_K21_AutoTest` và `QuanLyBanHangCongNo_Test`).
-3. **Đồng bộ hồ sơ đánh giá `GRADING.md`**: Cập nhật chính xác số dòng, đường dẫn và bằng chứng thực tế mới nhất, đối chiếu chi tiết Mục 10 PDF về Clean Architecture & `IChatClient` Adapter.
